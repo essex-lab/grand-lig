@@ -12,6 +12,7 @@ Currently have a basic framework to do this, but certain points need to be added
 - Write out which waters are ghosts
 - Add support for other water models
 - Add random rotation upon particle insertion
+- Enforce units in all relevant parameters
 
 Also need to do some rigorous testing at some point to make sure that everything has been implemented correctly.
 
