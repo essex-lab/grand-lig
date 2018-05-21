@@ -6,6 +6,7 @@ Currently have a basic framework to do this, but certain points need to be added
 ### To Do
 - Make sure all parameters are correct
 - Allow the use of multiple atoms to define the centre of the GCMC box
+- Allow more intuitive definition of reference atoms
 - Add periodic boundary considerations
 - Make sure there are no singularities involving ghost waters
 - Write out which waters are ghosts
