@@ -11,7 +11,14 @@ Code to execute GCMC moves in OpenMM
 
 Notes
 -----
-Need to look at risk of instabilities from ghost waters
+To Do:
+    - Double check all thermodynamic/GCMC parameters
+    - Extend the box definition to include multiple atoms
+    - Add periodic boundary considerations
+    - Write out a list of ghost waters to file
+    - Add support for other water models
+    - Add random rotation upon particle insertion
+    - Enforce units where relevant
 """
 
 import numpy as np
@@ -41,8 +48,10 @@ class GrandCanonicalMonteCarloSampler(object):
             Topology object for the system to be simulated
         temperature : simtk.unit.Quantity
             Temperature of the simulation, must be in appropriate units
-        boxcentre : int
-            ID of the atom to use as the centre of the GCMC box
+        boxcentre : list
+            List containing details of the atom to use as the centre of the GCMC region
+            Must contain atom name, residue name and (optionally) residue ID,
+            e.g. ['CA1', 'LIG', 0] or just ['CA1', 'LIG']
         boxsize : simtk.unit.Quantity
             Size of the GCMC region in all three dimensions. Must be a 3D
             vector with appropriate units
@@ -55,7 +64,7 @@ class GrandCanonicalMonteCarloSampler(object):
 
         # Calculate GCMC-specific variables
         self.box_size = boxsize   # Size of the GCMC region
-        self.box_atom = boxcentre  # Atom around which the GCMC region is centred
+        self.box_atom = self.getReferenceAtomIndex(boxcentre)  # Atom around which the GCMC region is centred
         self.box_centre = np.zeros(3) * unit.nanometers  # Store the coordinates of the box centre
         self.box_origin = np.zeros(3) * unit.nanometers  # Initialise the origin of the box
         mu = -6.2 * unit.kilocalorie_per_mole
@@ -85,6 +94,36 @@ class GrandCanonicalMonteCarloSampler(object):
         # Need a list to store the IDs of waters in the GCMC region
         self.waters_in_box = []  # Empty for now
         return None
+
+    def getReferenceAtomIndex(self, box_atom):
+        """
+        Get the index of the atom used to define the centre of the GCMC box
+        
+        Notes
+        -----
+        Need to extend this to multiple atoms at some stage
+        
+        Parameters
+        ----------
+        box_atom : list
+            List containing the atom name, residue name and (optionally) residue ID, in that order
+        
+        Returns
+        -------
+        atom_idx : int
+            Index of the atom chosen
+        """
+        atom_idx = None  # Initialise as None in case there is an error
+        for resid, residue in enumerate(self.topology.residues()):
+            if residue.name != box_atom[1]:
+                continue
+            if len(box_atom) > 2 and resid != box_atom[2]:
+                continue
+            for atom in residue.atoms():
+                if atom.name == box_atom[0]:
+                    atom_idx = atom.index
+        return atom_idx
+
 
     def getWaterParameters(self):
         """
