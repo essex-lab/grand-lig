@@ -1,7 +1,17 @@
 # -*- coding: utf-8 -*-
 
 """
+gcmc.py
+Marley Samways
+
+Description
+-----------
 Code to execute GCMC moves in OpenMM
+(need to write more here)
+
+Notes
+-----
+Need to look at risk of instabilities from ghost waters
 """
 
 import numpy as np
