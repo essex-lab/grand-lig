@@ -1,7 +1,17 @@
 """
-Functions to provide support for the use of GCMC in OpenMM
-These functions are not used during the simulation, but will
-be relevant in setting up and processing results
+gcmcutils.py
+Marley Samways
+
+Description
+-----------
+Functions to provide support for the use of GCMC in OpenMM.
+These functions are not used during the simulation, but will be relevant in setting up
+simulations and processing results
+
+Notes
+-----
+Need to add trajectory processing functions (to aid visualisation).
+Also need to think of what else will need to be added here (think what's useful)
 """
 
 import numpy as np
