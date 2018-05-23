@@ -6,7 +6,7 @@ Marley Samways
 
 Description
 -----------
-Code to execute GCMC moves in OpenMM
+Code to execute GCMC moves with ater molecules in OpenMM
 (need to write more here)
 
 Notes
@@ -17,7 +17,6 @@ To Do:
     - Add periodic boundary considerations
     - Write out a list of ghost waters to file
     - Add support for other water models
-    - Add random rotation upon particle insertion
     - Enforce units where relevant
 """
 
@@ -245,7 +244,7 @@ class GrandCanonicalMonteCarloSampler(object):
         """
         # Get initial positions and energy
         state = context.getState(getPositions=True, getEnergy=True)
-        self.positions = deepcopy(state.getPositions())
+        self.positions = deepcopy(state.getPositions(asNumpy=True))
         initial_energy = state.getPotentialEnergy()
         # Update GCMC region based on current state
         self.updateGCMCBox(context)
@@ -280,7 +279,7 @@ class GrandCanonicalMonteCarloSampler(object):
         context : simtk.openmm.Context
             Updated context after the move
         """
-        # Select a position within the box and a ghost water to insert
+        # Select a ghost water to insert
         box_fractions = np.random.rand(3)
         insert_point = self.box_origin + box_fractions * self.box_size
         wat_id = np.random.choice(np.where(self.water_status == 0)[0])
@@ -291,15 +290,24 @@ class GrandCanonicalMonteCarloSampler(object):
             if resid == insert_water:
                 for atom in residue.atoms():
                     atom_indices.append(atom.index)
-        # Calculate the vector needed to translate the ghost particle to its new position
-        trans_vector = insert_point - self.positions[atom_indices[0]]
-        # Insert water to the position decided
+        # Select a point to insert the water (based on O position)
+        box_fractions = np.random.rand(3)
+        insert_point = self.box_origin + box_fractions * self.box_size
+        # Generate a random rotation matrix
+        R = self.getRandomRotationMatrix()
         new_positions = deepcopy(self.positions)
         for i, index in enumerate(atom_indices):
-            # Translate ghost atom's position
-            # Need to add in a random rotation
-            new_positions[index] = self.positions[index] + trans_vector
-            # Switch atom's interactions back on
+            # Translate coordinates to an origin defined by the oxygen atom, and normalise
+            atom_position = new_positions[index] - new_positions[atom_indices[0]]
+            # Rotate about the oxygen position
+            if i != 0:
+                vec_length = np.linalg.norm(atom_position)
+                atom_position = atom_position / vec_length
+                # Rotate coordinates & restore length
+                atom_position = vec_length * np.dot(R, atom_position) * unit.nanometer
+            # Translate to new position 
+            new_positions[index] = atom_position + insert_point
+            # Switch atom's interactions on
             atom_params = self.water_params[i]
             self.nonbonded_force.setParticleParameters(index,
                                                        charge=atom_params["charge"],
@@ -314,7 +322,6 @@ class GrandCanonicalMonteCarloSampler(object):
         acc_prob = np.exp(self.adams) * np.exp(-(final_energy - initial_energy)/self.kT) / (N + 1)
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             # Need to revert the changes made if the move is to be rejected
-            # Don't need to bother reverting the positions as the water is now non-interacting
             # Switch off nonbonded interactions involving this water
             for i, index in enumerate(atom_indices):
                 self.nonbonded_force.setParticleParameters(index,
@@ -382,3 +389,28 @@ class GrandCanonicalMonteCarloSampler(object):
             self.n_accepted += 1
         return context
 
+    def getRandomRotationMatrix(self):
+        """
+        Generate a random axis and angle for rotation of the water coordinates (using the
+        method used for this in the ProtoMS source code (www.protoms.org), and then return
+        a rotation matrix produced from these
+        """
+        # First generate a random axis about which the rotation will occur
+        rand1 = rand2 = 2.0
+        while (rand1**2 + rand2**2) >= 1.0:
+            rand1 = np.random.rand()
+            rand2 = np.random.rand()
+        rand_h = 2 * np.sqrt(1.0 - (rand1**2 + rand2**2))
+        axis = np.array([rand1 * rand_h, rand2 * rand_h, 1 - 2*(rand1**2 + rand2**2)])
+        axis /= np.linalg.norm(axis)
+        # Get a random angle
+        theta = np.pi * (2*np.random.rand() - 1.0)
+        # Simplify products & generate matrix
+        x, y, z = axis[0], axis[1], axis[2]
+        x2, y2, z2 = axis[0]*axis[0], axis[1]*axis[1], axis[2]*axis[2]
+        xy, xz, yz = axis[0]*axis[1], axis[0]*axis[2], axis[1]*axis[2]
+        cos_theta, sin_theta = np.cos(theta), np.sin(theta)
+        rot_matrix = np.array([[cos_theta + x2*(1-cos_theta),   xy*(1-cos_theta) - z*sin_theta, xz*(1-cos_theta) + y*sin_theta],
+                               [xy*(1-cos_theta) + z*sin_theta, cos_theta + y2*(1-cos_theta),   yz*(1-cos_theta) - x*sin_theta],
+                               [xz*(1-cos_theta) - y*sin_theta, yz*(1-cos_theta) + x*sin_theta, cos_theta + z2*(1-cos_theta)  ]])
+        return rot_matrix
