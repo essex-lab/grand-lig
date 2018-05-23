@@ -20,7 +20,6 @@ To Do:
     - Add periodic boundary considerations
     - Write out a list of ghost waters to file
     - Add support for other water models
-    - Enforce units where relevant
 """
 
 import numpy as np
