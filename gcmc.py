@@ -186,7 +186,7 @@ class GrandCanonicalMonteCarloSampler(object):
                     # Switch off nonbonded interactions involving this water
                     self.nonbonded_force.setParticleParameters(atom.index,
                                                                charge=0*unit.elementary_charge,
-                                                               sigma=0*unit.angstrom,
+                                                               sigma=1*unit.angstrom,
                                                                epsilon=0*unit.kilojoule_per_mole)
                 # Mark that this water has been switched off
                 for i in range(len(self.water_resids)):
@@ -332,7 +332,7 @@ class GrandCanonicalMonteCarloSampler(object):
             for i, index in enumerate(atom_indices):
                 self.nonbonded_force.setParticleParameters(index,
                                                            charge=0*unit.elementary_charge,
-                                                           sigma=0*unit.angstrom,
+                                                           sigma=1*unit.angstrom,
                                                            epsilon=0*unit.kilojoule_per_mole)
             self.nonbonded_force.updateParametersInContext(context)
         else:
@@ -374,7 +374,7 @@ class GrandCanonicalMonteCarloSampler(object):
         for index in atom_indices:
             self.nonbonded_force.setParticleParameters(index,
                                                        charge=0*unit.elementary_charge,
-                                                       sigma=0*unit.angstrom,
+                                                       sigma=1*unit.angstrom,
                                                        epsilon=0*unit.kilojoule_per_mole)
         self.nonbonded_force.updateParametersInContext(context)
         # Calculate energy of new state and acceptance probability
