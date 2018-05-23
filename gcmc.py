@@ -100,6 +100,10 @@ class GrandCanonicalMonteCarloSampler(object):
         return None
 
     def createForceExceptions(self):
+        """
+        Create force exceptions for all water interactions
+        WAAYYY too slow - don't do it this way...
+        """
         import time
         start = time.time()
         count = 0
@@ -347,7 +351,7 @@ class GrandCanonicalMonteCarloSampler(object):
         new_positions = deepcopy(self.positions)
         for i, index in enumerate(atom_indices):
             # Translate coordinates to an origin defined by the oxygen atom, and normalise
-            atom_position = new_positions[index] - new_positions[atom_indices[0]]
+            atom_position = self.positions[index] - self.positions[atom_indices[0]]
             # Rotate about the oxygen position
             if i != 0:
                 vec_length = np.linalg.norm(atom_position)
@@ -378,6 +382,7 @@ class GrandCanonicalMonteCarloSampler(object):
                                                            sigma=1*unit.angstrom,
                                                            epsilon=0*unit.kilojoule_per_mole)
             self.nonbonded_force.updateParametersInContext(context)
+            context.setPositions(self.positions)
         else:
             # Update some variables if move is accepted
             self.water_status[wat_id] = 1
