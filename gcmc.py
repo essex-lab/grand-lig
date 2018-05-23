@@ -228,7 +228,7 @@ class GrandCanonicalMonteCarloSampler(object):
                 self.waters_in_box.append(resid)
         return None
 
-    def move(self, context):
+    def move(self, context, n=1):
         """
         Execute one GCMC move on the current system
         
@@ -241,21 +241,25 @@ class GrandCanonicalMonteCarloSampler(object):
         -------
         context : simtk.openmm.Context
             Updated context after carrying out the move
+        n : int
+            Number of moves to execute
         """
-        # Get initial positions and energy
-        state = context.getState(getPositions=True, getEnergy=True)
-        self.positions = deepcopy(state.getPositions(asNumpy=True))
-        initial_energy = state.getPotentialEnergy()
         # Update GCMC region based on current state
+        self.positions = deepcopy(context.getState(getPositions=True).getPositions(asNumpy=True))
         self.updateGCMCBox(context)
-        # Insert of delete a water, based on random choice
-        if np.random.randint(2) == 1:
-            # Attempt to insert a water
-            context = self.insertRandomWater(context, initial_energy)
-        else:
-            # Attempt to delete a water
-            context = self.deleteRandomWater(context, initial_energy)
-        self.n_moves += 1
+        for i in range(n):
+            # Get initial positions and energy
+            state = context.getState(getPositions=True, getEnergy=True)
+            self.positions = deepcopy(state.getPositions(asNumpy=True))
+            initial_energy = state.getPotentialEnergy()
+            # Insert or delete a water, based on random choice
+            if np.random.randint(2) == 1:
+                # Attempt to insert a water
+                context = self.insertRandomWater(context, initial_energy)
+            else:
+                # Attempt to delete a water
+                context = self.deleteRandomWater(context, initial_energy)
+            self.n_moves += 1
         return context
 
     def insertRandomWater(self, context, initial_energy):
@@ -333,6 +337,7 @@ class GrandCanonicalMonteCarloSampler(object):
             # Update some variables if move is accepted
             self.water_status[wat_id] = 1
             self.n_accepted += 1
+            self.waters_in_box.append(insert_water)
         return context
 
     def deleteRandomWater(self, context, initial_energy):
@@ -387,6 +392,7 @@ class GrandCanonicalMonteCarloSampler(object):
             # Update some variables if move is accepted
             self.water_status[wat_id] = 0
             self.n_accepted += 1
+            self.waters_in_box = [resid for resid in self.waters_in_box if resid != delete_water]
         return context
 
     def getRandomRotationMatrix(self):
