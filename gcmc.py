@@ -6,8 +6,11 @@ Marley Samways
 
 Description
 -----------
-Code to execute GCMC moves with ater molecules in OpenMM
-(need to write more here)
+This code to execute GCMC moves with water molecules in OpenMM, in a way that
+can easily be included with other OpenMM simulations or implemented methods,
+with minimal extra effort.
+
+(Need to add more description on how to use and how this works...)
 
 Notes
 -----
