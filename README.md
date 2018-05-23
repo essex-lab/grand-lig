@@ -11,7 +11,6 @@ The idea is to make this as generally transferable as possible, so that it can b
 - Add periodic boundary considerations
 - Write out which waters are ghosts
 - Add support for other water models
-- Add random rotation upon particle insertion
 - Enforce units in all relevant parameters
 
 Also need to do some rigorous testing at some point to make sure that everything has been implemented correctly.
