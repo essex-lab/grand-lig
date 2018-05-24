@@ -18,7 +18,6 @@ To Do:
     - Double check all thermodynamic/GCMC parameters
     - Extend the box definition to include multiple atoms
     - Write out a list of ghost waters to file
-    - Add support for other water models
 
 References
 ----------
