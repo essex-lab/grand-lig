@@ -12,12 +12,15 @@ with minimal extra effort.
 
 (Need to add more description on how to use and how this works...)
 
+References
+----------
+(Add these...)
+
 Notes
 -----
 To Do:
     - Double check all thermodynamic/GCMC parameters
     - Extend the box definition to include multiple atoms
-    - Add periodic boundary considerations
     - Write out a list of ghost waters to file
     - Add support for other water models
 """
@@ -31,7 +34,7 @@ class GrandCanonicalMonteCarloSampler(object):
     """
     Class to carry out the GCMC moves in OpenMM
     """
-    def __init__(self, system, topology, temperature, boxcentre, boxsize):
+    def __init__(self, system, topology, temperature, boxcentre, boxsize, adams=None, mu=None):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
 
@@ -56,6 +59,14 @@ class GrandCanonicalMonteCarloSampler(object):
         boxsize : simtk.unit.Quantity
             Size of the GCMC region in all three dimensions. Must be a 3D
             vector with appropriate units
+        adams : float
+            Adams B value for the simulation (dimensionless). Default is None,
+            if None, the B value is calculated from the box volume and chemical
+            potential
+        mu : simtk.unit.Quantity
+            Chemical potential of the simulation, default is None. This is to be used
+            if you don't want to use the equilibrium value or if using a water model
+            other than TIP3P (need to add others).
         """
         # Set important variables here
         self.system = system
@@ -65,14 +76,18 @@ class GrandCanonicalMonteCarloSampler(object):
         self.simulation_box = np.zeros(3) * unit.nanometer  # Set to zero for now
 
         # Calculate GCMC-specific variables
+        self.N = 0  # Initialise N as zero
         self.box_size = boxsize   # Size of the GCMC region
         self.box_atom = self.getReferenceAtomIndex(boxcentre)  # Atom around which the GCMC region is centred
         self.box_centre = np.zeros(3) * unit.nanometers  # Store the coordinates of the box centre
         self.box_origin = np.zeros(3) * unit.nanometers  # Initialise the origin of the box
-        mu = -6.2 * unit.kilocalorie_per_mole
-        std_vol = 30.0 * unit.angstrom ** 3
-        self.adams = mu/self.kT + np.log(boxsize[0]*boxsize[1]*boxsize[2] / std_vol)
-        self.N = 0  # Initialise N as zero
+        if adams is None:
+            if mu is None:
+                mu = -6.2 * unit.kilocalorie_per_mole
+            std_vol = 30.0 * unit.angstrom ** 3
+            self.adams = mu/self.kT + np.log(boxsize[0]*boxsize[1]*boxsize[2] / std_vol)
+        else:
+            self.adams = adams
 
         # Other variables
         self.n_moves = 0
