@@ -200,6 +200,46 @@ class GrandCanonicalMonteCarloSampler(object):
         self.nonbonded_force.updateParametersInContext(context)
         return context
 
+    def deleteWatersInGCMCBox(self, context):
+        """
+        Function to delete all of the waters currently present in the GCMC region
+        This may be useful the plan is to generate a water distribution for this
+        region from scratch. If so, it would be recommended to interleave the GCMC
+        sampling with coordinate propagation, as this will converge faster.
+        
+        Parameters
+        ----------
+        context : simtk.openmm.Context
+            Current context of the system
+        
+        Returns
+        -------
+        context : simtk.openmm.Context
+            Updated context after deleting the relevant waters
+        """
+        # Read in positions of the context and update GCMC box
+        state = context.getState(getPositions=True, enforcePeriodicBox=True)
+        self.positions = deepcopy(state.getPositions(asNumpy=True))
+        self.updateGCMCBox(context)
+        # Loop over all residues to find those of interest
+        for resid, residue in enumerate(self.topology.residues()):
+            if resid == 0: continue  # Just using this for testing - delete this later..........................
+            if resid in self.waters_in_box:
+                for atom in residue.atoms():
+                    # Switch off interactions involving the atoms of this residue
+                    self.nonbonded_force.setParticleParameters(atom.index,
+                                                               charge=0*unit.elementary_charge,
+                                                               sigma=1*unit.angstrom,
+                                                               epsilon=0*unit.kilojoule_per_mole)
+                # Update relevant parametera
+                wat_id = np.where(np.array(self.water_resids) == resid)[0]
+                self.water_status[wat_id] = 0
+                self.N -= 1
+                self.waters_in_box = [i for i in self.waters_in_box if i != resid]
+        # Update the context with the modified forces
+        self.nonbonded_force.updateParametersInContext(context)
+        return context
+
     def updateGCMCBox(self, context):
         """
         Update the centre and origin of the GCMC box. Also count the number of
@@ -388,7 +428,7 @@ class GrandCanonicalMonteCarloSampler(object):
             # No waters to delete
             return context
         delete_water = np.random.choice(self.waters_in_box)
-        if delete_water == 0: return context
+        if delete_water == 0: return context  # need to remove this later - just used in testing........
         wat_id = np.where(np.array(self.water_resids) == delete_water)[0]
         atom_indices = []
         for resid, residue in enumerate(self.topology.residues()):
