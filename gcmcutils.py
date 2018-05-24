@@ -41,8 +41,9 @@ def flood_system(topology, positions, ff='tip3p', n=100, pdb='extrawats.pdb'):
     positions : simtk.unit.Quantity
         Atomic coordinates of the initial system
     ff : str
-        Water forcefield to use. Currently the only option is 'tip3p'
-        Should be the same as used for the solvent
+        Water forcefield to use. Currently the only options
+        are 'tip3p', 'spce' or 'tip4pew'. Should be the same
+        as used for the solvent
     n : int
         Number of waters to add to the system
     pdb : str
@@ -66,9 +67,9 @@ def flood_system(topology, positions, ff='tip3p', n=100, pdb='extrawats.pdb'):
     box_size = np.array([box_vectors[0][0]._value,
                          box_vectors[1][1]._value,
                          box_vectors[2][2]._value]) * unit.nanometer
-    # Load topology of water model - only TIP3P for now
-    assert ff == 'tip3p', "Only TIP3P is currently supported!"
-    water = app.PDBFile(file='tip3p.pdb')
+    # Load topology of water model 
+    assert ff.lower() in ['spce', 'tip3p', 'tip4pew'], "Water model must be SPCE, TIP3P or TIP4Pew!"
+    water = app.PDBFile(file='{}.pdb'.format(ff.lower()))
     # Add multiple copies of the same water, then write out a pdb (for visualisation)
     ghosts = []
     for i in range(n):
