@@ -171,9 +171,9 @@ class GrandCanonicalMonteCarloSampler(object):
                 for atom in residue.atoms():
                     # Store the parameters of each atom
                     atom_params = self.nonbonded_force.getParticleParameters(atom.index)
-                    wat_params.append({'charge' : atom_params[0]._value,
-                                       'sigma' : atom_params[1]._value,
-                                       'epsilon' : atom_params[2]._value})
+                    wat_params.append({'charge' : atom_params[0],
+                                       'sigma' : atom_params[1],
+                                       'epsilon' : atom_params[2]})
                 break  # Don't need to continue past the first instance
         return wat_params
 
