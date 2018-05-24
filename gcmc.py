@@ -37,7 +37,7 @@ class GrandCanonicalMonteCarloSampler(object):
     """
     Class to carry out the GCMC moves in OpenMM
     """
-    def __init__(self, system, topology, temperature, boxcentre, boxsize, adams=None, mu=None):
+    def __init__(self, system, topology, temperature, boxcentre, boxsize, adams=None, model='tip3p', mu=None):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
 
@@ -66,10 +66,13 @@ class GrandCanonicalMonteCarloSampler(object):
             Adams B value for the simulation (dimensionless). Default is None,
             if None, the B value is calculated from the box volume and chemical
             potential
+        model : str
+            Name of the water model being used. This is used to identify the equilibrium chemical
+            potential to use. Default: TIP3P. Accepted: SPCE, TIP3P, TIP4Pew
         mu : simtk.unit.Quantity
             Chemical potential of the simulation, default is None. This is to be used
             if you don't want to use the equilibrium value or if using a water model
-            other than TIP3P (need to add others).
+            other than SPCE, TIP3P, TIP4Pew (need to add others).
         """
         # Set important variables here
         self.system = system
@@ -86,7 +89,11 @@ class GrandCanonicalMonteCarloSampler(object):
         self.box_origin = np.zeros(3) * unit.nanometers  # Initialise the origin of the box
         if adams is None:
             if mu is None:
-                mu = -6.2 * unit.kilocalorie_per_mole
+                assert model.lower() in ['spce', 'tip3p', 'tip4pew'], "Unsupported water model. Must define mu' manually"
+                mu_dict = {"spce" : -6.2 * unit.kilocalorie_per_mole,
+                           "tip3p" : -6.2 * unit.kilocalorie_per_mole,
+                           "tip4pew" : -6.2 * unit.kilocalorie_per_mole}
+                mu = mu_dict[model.lower()]
             std_vol = 30.0 * unit.angstrom ** 3
             self.adams = mu/self.kT + np.log(boxsize[0]*boxsize[1]*boxsize[2] / std_vol)
         else:
