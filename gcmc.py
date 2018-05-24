@@ -254,7 +254,7 @@ class GrandCanonicalMonteCarloSampler(object):
         self.updateGCMCBox(context)
         # Loop over all residues to find those of interest
         for resid, residue in enumerate(self.topology.residues()):
-            if resid == 0: continue  # Just using this for testing - delete this later..........................
+            #if resid == 0: continue  # Just using this for testing - delete this later..........................
             if resid in self.waters_in_box:
                 for atom in residue.atoms():
                     # Switch off interactions involving the atoms of this residue
@@ -462,7 +462,7 @@ class GrandCanonicalMonteCarloSampler(object):
             # No waters to delete
             return context
         delete_water = np.random.choice(self.waters_in_box)
-        if delete_water == 0: return context  # need to remove this later - just used in testing........
+        #if delete_water == 0: return context  # need to remove this later - just used in testing........
         wat_id = np.where(np.array(self.water_resids) == delete_water)[0]
         atom_indices = []
         for resid, residue in enumerate(self.topology.residues()):
