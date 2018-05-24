@@ -6,7 +6,7 @@ Currently have a basic framework to do this, but certain points need to be added
 The idea is to make this as generally transferable as possible, so that it can be easily integrated with other work based in OpenMM.
 
 ### To Do
-- Make sure all parameters are correct
+- Make sure all parameters are correct (need to calculate hydration free energies for each model)
 - Allow the use of multiple atoms to define the centre of the GCMC box
 - Write out which waters are ghosts
 
