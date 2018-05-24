@@ -83,7 +83,7 @@ class GrandCanonicalMonteCarloSampler(object):
         # Calculate GCMC-specific variables
         self.N = 0  # Initialise N as zero
         self.box_size = boxsize   # Size of the GCMC region
-        self.box_atom = self.getReferenceAtomIndex(boxcentre)  # Atom around which the GCMC region is centred
+        self.box_atoms = self.getReferenceAtomIndices(boxcentre)  # Atoms around which the GCMC region is centred
         self.box_centre = np.zeros(3) * unit.nanometers  # Store the coordinates of the box centre
         self.box_origin = np.zeros(3) * unit.nanometers  # Initialise the origin of the box
         if adams is None:
@@ -123,34 +123,42 @@ class GrandCanonicalMonteCarloSampler(object):
 
         return None
 
-    def getReferenceAtomIndex(self, box_atom):
+    def getReferenceAtomIndices(self, ref_atoms):
         """
         Get the index of the atom used to define the centre of the GCMC box
         
         Notes
         -----
-        Need to extend this to multiple atoms at some stage
+        Should make this more efficient at some stage.
         
         Parameters
         ----------
-        box_atom : list
-            List containing the atom name, residue name and (optionally) residue ID, in that order
+        ref_atoms : list
+            List containing the atom name, residue name and (optionally) residue ID, in that order.
+            May be a list of these values for each reference atom.
         
         Returns
         -------
-        atom_idx : int
-            Index of the atom chosen
+        atom_indices : list
+            Indices of the atoms chosen
         """
-        atom_idx = None  # Initialise as None in case there is an error
-        for resid, residue in enumerate(self.topology.residues()):
-            if residue.name != box_atom[1]:
-                continue
-            if len(box_atom) > 2 and resid != box_atom[2]:
-                continue
-            for atom in residue.atoms():
-                if atom.name == box_atom[0]:
-                    atom_idx = atom.index
-        return atom_idx
+        atom_indices = []
+        # Convert to list of lists, if not already
+        if type(ref_atoms[0]) != list:
+            ref_atoms = [ref_atoms]
+        # Find atom index for each of the atoms used
+        for box_atom in ref_atoms:
+            for resid, residue in enumerate(self.topology.residues()):
+                if residue.name != box_atom[1]:
+                    continue
+                if len(box_atom) > 2 and resid != box_atom[2]:
+                    continue
+                for atom in residue.atoms():
+                    if atom.name == box_atom[0]:
+                        atom_indices.append(atom.index)
+        if len(atom_indices) == 0:
+            raise Exception("No GCMC reference atoms found")
+        return atom_indices
 
     def getWaterParameters(self):
         """
@@ -280,7 +288,10 @@ class GrandCanonicalMonteCarloSampler(object):
             Current context of the simulation
         """
         # Update box centre and origin
-        self.box_centre = self.positions[self.box_atom]
+        self.box_centre = self.positions[self.box_atoms[0]]
+        for i in range(1, len(self.box_atoms)):
+            self.box_centre += self.positions[self.box_atoms[i]]
+        self.box_centre /= len(self.box_atoms)
         self.box_origin = self.box_centre - 0.5 * self.box_size
         # Check which waters are on inside the GCMC box
         # Need to add a PBC correction, but this will do for now
