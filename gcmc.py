@@ -52,7 +52,7 @@ class GrandCanonicalMonteCarloSampler(object):
         boxcentre : list
             List containing details of the atom to use as the centre of the GCMC region
             Must contain atom name, residue name and (optionally) residue ID,
-            e.g. ['CA1', 'LIG', 0] or just ['CA1', 'LIG']
+            e.g. ['C1', 'LIG', 123] or just ['C1', 'LIG']
         boxsize : simtk.unit.Quantity
             Size of the GCMC region in all three dimensions. Must be a 3D
             vector with appropriate units
@@ -62,6 +62,7 @@ class GrandCanonicalMonteCarloSampler(object):
         self.topology = topology
         self.positions = 0  # Store no positions upon initialisation
         self.kT = unit.BOLTZMANN_CONSTANT_kB * unit.AVOGADRO_CONSTANT_NA * temperature
+        self.simulation_box = np.zeros(3) * unit.nanometer  # Set to zero for now
 
         # Calculate GCMC-specific variables
         self.box_size = boxsize   # Size of the GCMC region
@@ -71,6 +72,7 @@ class GrandCanonicalMonteCarloSampler(object):
         mu = -6.2 * unit.kilocalorie_per_mole
         std_vol = 30.0 * unit.angstrom ** 3
         self.adams = mu/self.kT + np.log(boxsize[0]*boxsize[1]*boxsize[2] / std_vol)
+        self.N = 0  # Initialise N as zero
 
         # Other variables
         self.n_moves = 0
@@ -154,7 +156,6 @@ class GrandCanonicalMonteCarloSampler(object):
                 if atom.name == box_atom[0]:
                     atom_idx = atom.index
         return atom_idx
-
 
     def getWaterParameters(self):
         """
@@ -241,7 +242,6 @@ class GrandCanonicalMonteCarloSampler(object):
         
         # Update the context with the new parameters and return it
         self.nonbonded_force.updateParametersInContext(context)
-        #print('done!')
         return context
 
     def updateGCMCBox(self, context):
@@ -267,14 +267,29 @@ class GrandCanonicalMonteCarloSampler(object):
         self.waters_in_box = []
         for resid, residue in enumerate(self.topology.residues()):
             if resid not in self.water_resids:
+                # Ignore anything that isn't water
+                continue
+            # Need the position of this water in the lists stored
+            wat_id = np.where(np.array(self.water_resids) == resid)[0]
+            if self.water_status[wat_id] != 1:
+                # Ignore waters which are switched off
                 continue
             for atom in residue.atoms():
+                # Need the index of the oxygen atom
                 ox_index = atom.index
                 break
-            wat_id = np.where(np.array(self.water_resids) == resid)[0]
-            if np.all([self.box_origin[i] <= self.positions[ox_index][i] <= self.box_origin[i]+self.box_size[i]
-                       for i in range(3)]) and self.water_status[wat_id] == 1:
+            # Consider the distance of the water from the GCMC box centre
+            vector = self.positions[ox_index] - self.box_centre
+            # Correct PBCs of this vector - need to make this part cleaner
+            for i in range(3):
+                if vector[i] >= 0.5 * self.simulation_box[i]:
+                    vector[i] -= self.simulation_box[i]
+                elif vector[i] <= -0.5 * self.simulation_box[i]:
+                    vector[i] += self.simulation_box[i]
+            # Check if the water is sufficiently close to the box centre in each dimension
+            if np.all([abs(vector[i]) <= 0.5*self.box_size for i in range(3)]):
                 self.waters_in_box.append(resid)
+        self.N = len(self.waters_in_box)
         return None
 
     def move(self, context, n=1):
@@ -293,12 +308,18 @@ class GrandCanonicalMonteCarloSampler(object):
         n : int
             Number of moves to execute
         """
+        # Read in positions and box vectors
+        state = context.getState(getPositions=True, enforcePeriodicBox=True)
+        self.positions = deepcopy(state.getPositions(asNumpy=True))
+        box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
+        self.simulation_box = np.array([box_vectors[0,0]._value,
+                                        box_vectors[1,1]._value,
+                                        box_vectors[2,2]._value]) * unit.nanometer
         # Update GCMC region based on current state
-        self.positions = deepcopy(context.getState(getPositions=True).getPositions(asNumpy=True))
         self.updateGCMCBox(context)
         for i in range(n):
             # Get initial positions and energy
-            state = context.getState(getPositions=True, getEnergy=True)
+            state = context.getState(getPositions=True, enforcePeriodicBox=True, getEnergy=True)
             self.positions = deepcopy(state.getPositions(asNumpy=True))
             initial_energy = state.getPotentialEnergy()
             # Insert or delete a water, based on random choice
@@ -371,8 +392,7 @@ class GrandCanonicalMonteCarloSampler(object):
         context.setPositions(new_positions)
         # Calculate new system energy and acceptance probability
         final_energy = context.getState(getEnergy=True).getPotentialEnergy()
-        N = len(self.waters_in_box)
-        acc_prob = np.exp(self.adams) * np.exp(-(final_energy - initial_energy)/self.kT) / (N + 1)
+        acc_prob = np.exp(self.adams) * np.exp(-(final_energy - initial_energy)/self.kT) / (self.N + 1)
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             # Need to revert the changes made if the move is to be rejected
             # Switch off nonbonded interactions involving this water
@@ -386,6 +406,7 @@ class GrandCanonicalMonteCarloSampler(object):
         else:
             # Update some variables if move is accepted
             self.water_status[wat_id] = 1
+            self.N += 1
             self.n_accepted += 1
             self.waters_in_box.append(insert_water)
         return context
@@ -427,8 +448,7 @@ class GrandCanonicalMonteCarloSampler(object):
         self.nonbonded_force.updateParametersInContext(context)
         # Calculate energy of new state and acceptance probability
         final_energy = context.getState(getEnergy=True).getPotentialEnergy()
-        N = len(self.waters_in_box)
-        acc_prob = N * np.exp(-self.adams) * np.exp(-(final_energy - initial_energy)/self.kT)
+        acc_prob = self.N * np.exp(-self.adams) * np.exp(-(final_energy - initial_energy)/self.kT)
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             # Switch the water back on if the move is rejected
             for i, index in enumerate(atom_indices):
@@ -441,6 +461,7 @@ class GrandCanonicalMonteCarloSampler(object):
         else:
             # Update some variables if move is accepted
             self.water_status[wat_id] = 0
+            self.N -= 1
             self.n_accepted += 1
             self.waters_in_box = [resid for resid in self.waters_in_box if resid != delete_water]
         return context
