@@ -6,15 +6,11 @@ Marley Samways
 
 Description
 -----------
-This code to execute GCMC moves with water molecules in OpenMM, in a way that
-can easily be included with other OpenMM simulations or implemented methods,
-with minimal extra effort.
+This code is written to execute GCMC moves with water molecules in OpenMM, in a 
+way that can easily be included with other OpenMM simulations or implemented
+methods, with minimal extra effort.
 
 (Need to add more description on how to use and how this works...)
-
-References
-----------
-(Add these...)
 
 Notes
 -----
@@ -23,6 +19,13 @@ To Do:
     - Extend the box definition to include multiple atoms
     - Write out a list of ghost waters to file
     - Add support for other water models
+
+References
+----------
+1 - G. A. Ross, M. S. Bodnarchuk and J. W. Essex, J. Am. Chem. Soc., 2015,
+    137, 14930-14943
+2 - G. A. Ross, H. E. Bruce Macdonald, C. Cave-Ayland, A. I. Cabedo Martinez
+    and J. W. Essex, J. Chem. Theory Comput., 2017, 13, 6373-6381
 """
 
 import numpy as np
@@ -54,7 +57,7 @@ class GrandCanonicalMonteCarloSampler(object):
             Temperature of the simulation, must be in appropriate units
         boxcentre : list
             List containing details of the atom to use as the centre of the GCMC region
-            Must contain atom name, residue name and (optionally) residue ID,
+            Must contain atom name, residue name and (optionally) residue ID (numbered from 0),
             e.g. ['C1', 'LIG', 123] or just ['C1', 'LIG']
         boxsize : simtk.unit.Quantity
             Size of the GCMC region in all three dimensions. Must be a 3D
