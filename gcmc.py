@@ -97,35 +97,6 @@ class GrandCanonicalMonteCarloSampler(object):
         # Need a list to store the IDs of waters in the GCMC region
         self.waters_in_box = []  # Empty for now
 
-        #self.createForceExceptions()
-
-        return None
-
-    def createForceExceptions(self):
-        """
-        Create force exceptions for all water interactions
-        WAAYYY too slow - don't do it this way...
-        """
-        import time
-        start = time.time()
-        count = 0
-        for resid_i, residue_i in enumerate(self.topology.residues()):
-            print(resid_i)
-            for resid_j, residue_j in enumerate(self.topology.residues()):
-                if resid_j <= resid_i:
-                    continue
-                if resid_i not in self.water_resids and resid_j not in self.water_resids:
-                    continue
-                for atom_i in residue_i.atoms():
-                    params_i = self.nonbonded_force.getParticleParameters(atom_i.index)
-                    for atom_j in residue_j.atoms():
-                        params_j = self.nonbonded_force.getParticleParameters(atom_j.index)
-                        self.nonbonded_force.addException(atom_i.index, atom_j.index,
-                                                          chargeProd=params_i[0]*params_j[0],
-                                                          sigma=0.5*(params_i[1]*params_j[1]),
-                                                          epsilon=np.sqrt(params_i[2]*params_j[2]))
-                        count += 1
-        print("{} exceptions added in {:.1f} seconds".format(count, time.time()-start))
         return None
 
     def getReferenceAtomIndex(self, box_atom):
