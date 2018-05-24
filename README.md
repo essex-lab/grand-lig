@@ -7,7 +7,6 @@ The idea is to make this as generally transferable as possible, so that it can b
 
 ### To Do
 - Make sure all parameters are correct (need to calculate hydration free energies for each model)
-- Allow the use of multiple atoms to define the centre of the GCMC box
 - Write out which waters are ghosts
 
 Also need to do some rigorous testing at some point to make sure that everything has been implemented correctly.
