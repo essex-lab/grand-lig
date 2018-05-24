@@ -182,21 +182,6 @@ class GrandCanonicalMonteCarloSampler(object):
         context : simtk.openmm.Context
             Updated context, with ghost waters switched off
         """
-        '''
-        for resid_i in ghost_resids:
-            ghost_atom_indices = []
-            for resid_j, residue in enumerate(self.topology.residues()):
-                if resid_i == resid_j:
-                    for atom in residue.atoms():
-                        ghost_atom_indices.append(atom.index)
-            for resid_j, residue in enumerate(self.topology.residues()):
-                if resid_j == resid_i:
-                    continue
-                for atom in residue.atoms():
-                    for index in ghost_atom_indices:
-                        self.nonbonded_force.addException(index, atom.index, 0*unit.elementary_charge**2, 1*unit.angstrom, 0*unit.kilojoule_per_mole, replace=True)
-        #self.nonbonded_force.addException(0, 0, 0*unit.elementary_charge, 1*unit.angstrom, 0*unit.kilojoule_per_mole)
-        '''
         for resid, residue in enumerate(self.topology.residues()):
             if resid in ghost_resids:
                 for i, atom in enumerate(residue.atoms()):
