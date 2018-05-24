@@ -17,7 +17,9 @@ Also need to think of what else will need to be added here (think what's useful)
 """
 
 import numpy as np
+from simtk import unit
 from simtk.openmm import app
+from copy import deepcopy
 
 
 def flood_system(topology, positions, ff='tip3p', n=100, pdb='extrawats.pdb'):
@@ -59,6 +61,11 @@ def flood_system(topology, positions, ff='tip3p', n=100, pdb='extrawats.pdb'):
     """
     # Create a Modeller instance of the system
     modeller = app.Modeller(topology=topology, positions=positions)
+    # Read in simulation box size
+    box_vectors = topology.getPeriodicBoxVectors()
+    box_size = np.array([box_vectors[0][0]._value,
+                         box_vectors[1][1]._value,
+                         box_vectors[2][2]._value]) * unit.nanometer
     # Load topology of water model - only TIP3P for now
     assert ff == 'tip3p', "Only TIP3P is currently supported!"
     water = app.PDBFile(file='tip3p.pdb')
@@ -66,8 +73,17 @@ def flood_system(topology, positions, ff='tip3p', n=100, pdb='extrawats.pdb'):
     ghosts = []
     for i in range(n):
         # Need a slightly more elegant way than this as each water is written to a different chain...
-        modeller.add(addTopology=water.topology, addPositions=np.random.rand(3)*water.positions)
+        # Read in template water positions
+        positions = water.positions
+        # Need to translate the water to a random point in the simulation box
+        new_centre = np.random.rand(3) * box_size
+        new_positions = deepcopy(water.positions)
+        for i in range(len(positions)):
+            new_positions[i] = positions[i] + new_centre - positions[0]
+        # Add the water to the model and include the resid in a list
+        modeller.add(addTopology=water.topology, addPositions=new_positions)
         ghosts.append(modeller.topology._numResidues - 1)
+    # Write the new topology and positions to a PDB file
     pdbfile = open(pdb, 'w')
     water.writeFile(topology=modeller.topology, positions=modeller.positions, file=pdbfile)
     pdbfile.close()
