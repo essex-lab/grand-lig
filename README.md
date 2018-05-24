@@ -8,9 +8,7 @@ The idea is to make this as generally transferable as possible, so that it can b
 ### To Do
 - Make sure all parameters are correct
 - Allow the use of multiple atoms to define the centre of the GCMC box
-- Add periodic boundary considerations
 - Write out which waters are ghosts
-- Add support for other water models
 
 Also need to do some rigorous testing at some point to make sure that everything has been implemented correctly.
 
