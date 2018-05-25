@@ -35,8 +35,8 @@ class GrandCanonicalMonteCarloSampler(object):
     """
     Class to carry out the GCMC moves in OpenMM
     """
-    def __init__(self, system, topology, temperature, boxsize, boxatoms=None,
-                 boxcentre=None, adams=None, model='tip3p', mu=None):
+    def __init__(self, system, topology, temperature, boxSize, boxAtoms=None, boxCentre=None,
+                 adams=None, chemicalPotential=None, waterName="HOH", waterModel="tip3p"):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
 
@@ -67,13 +67,15 @@ class GrandCanonicalMonteCarloSampler(object):
             Adams B value for the simulation (dimensionless). Default is None,
             if None, the B value is calculated from the box volume and chemical
             potential
-        model : str
-            Name of the water model being used. This is used to identify the equilibrium chemical
-            potential to use. Default: TIP3P. Accepted: SPCE, TIP3P, TIP4Pew
         mu : simtk.unit.Quantity
             Chemical potential of the simulation, default is None. This is to be used
             if you don't want to use the equilibrium value or if using a water model
             other than SPCE, TIP3P, TIP4Pew (need to add others).
+        waterName : str
+            Name of the water residues. Default is 'HOH'
+        waterModel : str
+            Name of the water model being used. This is used to identify the equilibrium chemical
+            potential to use. Default: TIP3P. Accepted: SPCE, TIP3P, TIP4Pew
         """
         # Set important variables here
         self.system = system
@@ -84,27 +86,28 @@ class GrandCanonicalMonteCarloSampler(object):
 
         # Calculate GCMC-specific variables
         self.N = 0  # Initialise N as zero
-        self.box_size = boxsize   # Size of the GCMC region
+        self.box_size = boxSize   # Size of the GCMC region
         # Check whether to use reference atoms for the GCMC box or not
-        if boxcentre is not None:
+        if boxCentre is not None:
             self.box_atoms = None
-            self.box_centre = boxcentre
+            self.box_centre = boxCentre
             self.box_origin = self.box_centre - 0.5 * self.box_size  # Store the box origin
-        elif boxatoms is not None:
-            self.box_atoms = self.getReferenceAtomIndices(boxatoms)  # Atoms around which the GCMC region is centred
+        elif boxAtoms is not None:
+            self.box_atoms = self.getReferenceAtomIndices(boxAtoms)  # Atoms around which the GCMC region is centred
             self.box_centre = np.zeros(3) * unit.nanometers  # Store the coordinates of the box centre
             self.box_origin = np.zeros(3) * unit.nanometers  # Initialise the origin of the box
         else:
             raise Exception("Either a set of atoms or coordinates must be used to define the GCMC box!")
         if adams is None:
-            if mu is None:
+            if chemicalPotential is None:
                 assert model.lower() in ['spce', 'tip3p', 'tip4pew'], "Unsupported water model. Must define mu' manually"
                 mu_dict = {"spce" : -6.2 * unit.kilocalorie_per_mole,
                            "tip3p" : -6.2 * unit.kilocalorie_per_mole,
                            "tip4pew" : -6.2 * unit.kilocalorie_per_mole}
                 mu = mu_dict[model.lower()]
-            std_vol = 30.0 * unit.angstrom ** 3
-            self.adams = mu/self.kT + np.log(boxsize[0]*boxsize[1]*boxsize[2] / std_vol)
+            else:
+                mu = chemicalPotential
+            self.adams = mu/self.kT + np.log(boxSize[0]*boxSize[1]*boxSize[2] / 30.0 * unit.angstrom ** 3)
         else:
             self.adams = adams
 
@@ -122,10 +125,10 @@ class GrandCanonicalMonteCarloSampler(object):
                 raise Exception("GCMC must be used at constant volume!")
         
         # Get parameters for the water model
-        self.water_params = self.getWaterParameters()
+        self.water_params = self.getWaterParameters(waterName)
 
         # Get water residue IDs & assign statuses to each
-        self.water_resids = self.getWaterResids()
+        self.water_resids = self.getWaterResids(waterName)
         self.water_status = np.ones(len(self.water_resids))  # 1 indicates on, 0 indicates off
 
         # Need a list to store the IDs of waters in the GCMC region
@@ -170,9 +173,14 @@ class GrandCanonicalMonteCarloSampler(object):
             raise Exception("No GCMC reference atoms found")
         return atom_indices
 
-    def getWaterParameters(self):
+    def getWaterParameters(self, water_resname="HOH"):
         """
         Get the non-bonded parameters for each of the atoms in the water model used
+
+        Parameters
+        ----------
+        water_resname : str
+            Name of the water residues
     
         Returns
         -------
@@ -181,7 +189,7 @@ class GrandCanonicalMonteCarloSampler(object):
         """
         wat_params = []  # Store parameters in a list
         for residue in self.topology.residues():
-            if residue.name == "HOH":
+            if residue.name == water_resname:
                 for atom in residue.atoms():
                     # Store the parameters of each atom
                     atom_params = self.nonbonded_force.getParticleParameters(atom.index)
@@ -191,9 +199,14 @@ class GrandCanonicalMonteCarloSampler(object):
                 break  # Don't need to continue past the first instance
         return wat_params
 
-    def getWaterResids(self):
+    def getWaterResids(self, water_resname="HOH"):
         """
         Get the residue IDs of all water molecules in the system
+
+        Parameters
+        ----------
+        water_resname : str
+            Name of the water residues
 
         Returns
         -------
@@ -202,7 +215,7 @@ class GrandCanonicalMonteCarloSampler(object):
         """
         resid_list = []
         for resid, residue in enumerate(self.topology.residues()):
-            if residue.name == "HOH":
+            if residue.name == water_resname:
                 resid_list.append(resid)
         return resid_list
 
