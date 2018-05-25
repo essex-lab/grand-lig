@@ -35,15 +35,15 @@ class GrandCanonicalMonteCarloSampler(object):
     """
     Class to carry out the GCMC moves in OpenMM
     """
-    def __init__(self, system, topology, temperature, boxcentre, boxsize, adams=None, model='tip3p', mu=None):
+    def __init__(self, system, topology, temperature, boxsize, boxatoms=None,
+                 boxcentre=None, adams=None, model='tip3p', mu=None):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
 
         Notes
         -----
-        Need to update some of the values below for two reasons. First: they are probably wrong,
-        as I've just picked them from memory. Second: the equilibrium chemical potential
-        will need to be dependent on the water forcefield used.
+        At some point the mu' values below will have to be replaced with calculated
+        hydration free energies for each of the water models.
 
         Parameters
         ----------
@@ -53,13 +53,16 @@ class GrandCanonicalMonteCarloSampler(object):
             Topology object for the system to be simulated
         temperature : simtk.unit.Quantity
             Temperature of the simulation, must be in appropriate units
-        boxcentre : list
-            List containing details of the atom to use as the centre of the GCMC region
-            Must contain atom name, residue name and (optionally) residue ID (numbered from 0),
-            e.g. ['C1', 'LIG', 123] or just ['C1', 'LIG']
         boxsize : simtk.unit.Quantity
             Size of the GCMC region in all three dimensions. Must be a 3D
             vector with appropriate units
+        boxatoms : list
+            List containing details of the atom to use as the centre of the GCMC region
+            Must contain atom name, residue name and (optionally) residue ID (numbered from 0),
+            e.g. ['C1', 'LIG', 123] or just ['C1', 'LIG']
+        boxcentre : simtk.unit.Quantity
+            Define coordinates for the centre of the GCMC region. Default is None. If not
+            None, this will override the reference atoms.
         adams : float
             Adams B value for the simulation (dimensionless). Default is None,
             if None, the B value is calculated from the box volume and chemical
@@ -82,9 +85,17 @@ class GrandCanonicalMonteCarloSampler(object):
         # Calculate GCMC-specific variables
         self.N = 0  # Initialise N as zero
         self.box_size = boxsize   # Size of the GCMC region
-        self.box_atoms = self.getReferenceAtomIndices(boxcentre)  # Atoms around which the GCMC region is centred
-        self.box_centre = np.zeros(3) * unit.nanometers  # Store the coordinates of the box centre
-        self.box_origin = np.zeros(3) * unit.nanometers  # Initialise the origin of the box
+        # Check whether to use reference atoms for the GCMC box or not
+        if boxcentre is not None:
+            self.box_atoms = None
+            self.box_centre = boxcentre
+            self.box_origin = self.box_centre - 0.5 * self.box_size  # Store the box origin
+        elif boxatoms is not None:
+            self.box_atoms = self.getReferenceAtomIndices(boxatoms)  # Atoms around which the GCMC region is centred
+            self.box_centre = np.zeros(3) * unit.nanometers  # Store the coordinates of the box centre
+            self.box_origin = np.zeros(3) * unit.nanometers  # Initialise the origin of the box
+        else:
+            raise Exception("Either a set of atoms or coordinates must be used to define the GCMC box!")
         if adams is None:
             if mu is None:
                 assert model.lower() in ['spce', 'tip3p', 'tip4pew'], "Unsupported water model. Must define mu' manually"
@@ -286,12 +297,13 @@ class GrandCanonicalMonteCarloSampler(object):
         context : simtk.openmm.Context
             Current context of the simulation
         """
-        # Update box centre and origin
-        self.box_centre = self.positions[self.box_atoms[0]]
-        for i in range(1, len(self.box_atoms)):
-            self.box_centre += self.positions[self.box_atoms[i]]
-        self.box_centre /= len(self.box_atoms)
-        self.box_origin = self.box_centre - 0.5 * self.box_size
+        # Update box centre and origin - if using reference atoms
+        if self.box_atoms is not None:
+            self.box_centre = self.positions[self.box_atoms[0]]
+            for i in range(1, len(self.box_atoms)):
+                self.box_centre += self.positions[self.box_atoms[i]]
+            self.box_centre /= len(self.box_atoms)
+            self.box_origin = self.box_centre - 0.5 * self.box_size
         # Check which waters are on inside the GCMC box
         # Need to add a PBC correction, but this will do for now
         self.waters_in_box = []
