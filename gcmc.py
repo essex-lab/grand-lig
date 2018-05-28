@@ -227,7 +227,7 @@ class GrandCanonicalMonteCarloSampler(object):
                 resid_list.append(resid)
         return resid_list
 
-    def deleteGhostWaters(self, context, ghost_resids):
+    def deleteGhostWaters(self, context, ghostResids=None, ghostFile=None):
         """
         Switch off nonbonded interactions involving the ghost molecules initially added
         This function should be executed before beginning the simulation, to prevent any
@@ -237,14 +237,30 @@ class GrandCanonicalMonteCarloSampler(object):
         ----------
         context : simtk.openmm.Context
             Current context of the simulation
-        ghost_resids : list
+        ghostResids : list
             List of residue IDs corresponding to the ghost waters added
+        ghostFile : str
+            File containing residue IDs of ghost waters. Will switch off those on the
+            last line. This will be useful in restarting simulations
 
         Returns
         -------
         context : simtk.openmm.Context
             Updated context, with ghost waters switched off
         """
+        # Get a list of all ghost residue IDs supplied from list and file
+        ghost_resids = []
+        # Read in list
+        if ghostResids is not None:
+            for resid in ghostResids:
+                ghost_resids.append(resid)
+        # Read residues from file if needed
+        if ghostFile is not None:
+            with open(ghostFile, 'r') as f:
+                lines = f.readlines()
+                for resid in lines[-1].split(","):
+                    ghost_resids.append(int(resid))
+        # Switch of the interactions involving ghost waters
         for resid, residue in enumerate(self.topology.residues()):
             if resid in ghost_resids:
                 for i, atom in enumerate(residue.atoms()):
@@ -258,7 +274,6 @@ class GrandCanonicalMonteCarloSampler(object):
                     if resid == self.water_resids[i]:
                         self.water_status[i] = 0
                         break
-        
         # Update the context with the new parameters and return it
         self.nonbonded_force.updateParametersInContext(context)
         return context
