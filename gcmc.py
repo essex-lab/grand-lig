@@ -36,7 +36,8 @@ class GrandCanonicalMonteCarloSampler(object):
     Class to carry out the GCMC moves in OpenMM
     """
     def __init__(self, system, topology, temperature, boxSize, boxAtoms=None, boxCentre=None,
-                 adams=None, chemicalPotential=None, waterName="HOH", waterModel="tip3p"):
+                 adams=None, chemicalPotential=None, waterName="HOH", waterModel="tip3p",
+                 ghostFile="gcmc-ghost-wats.txt"):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
 
@@ -76,6 +77,10 @@ class GrandCanonicalMonteCarloSampler(object):
         waterModel : str
             Name of the water model being used. This is used to identify the equilibrium chemical
             potential to use. Default: TIP3P. Accepted: SPCE, TIP3P, TIP4Pew
+        ghostFile : str
+            Name of a file to write out the residue IDs of ghost water molecules. This is
+            useful if you want to visualise the sampling, as you can then remove these waters
+            from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
         """
         # Set important variables here
         self.system = system
@@ -100,11 +105,11 @@ class GrandCanonicalMonteCarloSampler(object):
             raise Exception("Either a set of atoms or coordinates must be used to define the GCMC box!")
         if adams is None:
             if chemicalPotential is None:
-                assert model.lower() in ['spce', 'tip3p', 'tip4pew'], "Unsupported water model. Must define mu' manually"
+                assert waterModel.lower() in ['spce', 'tip3p', 'tip4pew'], "Unsupported water model. Must define mu' manually"
                 mu_dict = {"spce" : -6.2 * unit.kilocalorie_per_mole,
                            "tip3p" : -6.2 * unit.kilocalorie_per_mole,
                            "tip4pew" : -6.2 * unit.kilocalorie_per_mole}
-                mu = mu_dict[model.lower()]
+                mu = mu_dict[waterModel.lower()]
             else:
                 mu = chemicalPotential
             self.adams = mu/self.kT + np.log(boxSize[0]*boxSize[1]*boxSize[2] / 30.0 * unit.angstrom ** 3)
@@ -133,6 +138,9 @@ class GrandCanonicalMonteCarloSampler(object):
 
         # Need a list to store the IDs of waters in the GCMC region
         self.waters_in_box = []  # Empty for now
+
+        # Need to open the file to store ghost water IDs
+        self.ghost_file = ghostFile
 
         return None
 
@@ -526,6 +534,11 @@ class GrandCanonicalMonteCarloSampler(object):
         Generate a random axis and angle for rotation of the water coordinates (using the
         method used for this in the ProtoMS source code (www.protoms.org), and then return
         a rotation matrix produced from these
+
+        Returns
+        -------
+        rot_matrix : numpy.ndarray
+            Rotation matrix generated
         """
         # First generate a random axis about which the rotation will occur
         rand1 = rand2 = 2.0
@@ -546,3 +559,20 @@ class GrandCanonicalMonteCarloSampler(object):
                                [xy*(1-cos_theta) + z*sin_theta, cos_theta + y2*(1-cos_theta),   yz*(1-cos_theta) - x*sin_theta],
                                [xz*(1-cos_theta) - y*sin_theta, yz*(1-cos_theta) + x*sin_theta, cos_theta + z2*(1-cos_theta)  ]])
         return rot_matrix
+
+    def writeGhostWaterResids(self):
+        """
+        Write out a comma-separated list of the residue IDs of waters which are
+        non-interacting, so that they can be removed from visualisations. It is important 
+        to execute this function when writing to trajectory files, so that each line
+        in the ghost water file corresponds to a frame in the trajectory
+        """
+        # Need to write this function
+        with open(self.ghost_file, 'a') as f:
+            ghost_resids = np.where(self.water_status == 0)[0]
+            f.write("{}".format(ghost_resids[0]))
+            for resid in ghost_resids[1:]:
+                f.write(",{}".format(resid))
+            f.write("\n")
+        return None
+
