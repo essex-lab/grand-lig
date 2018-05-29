@@ -16,7 +16,6 @@ Notes
 -----
 To Do:
     - Double check all thermodynamic/GCMC parameters
-    - Write out a list of ghost waters to file
 
 References
 ----------
@@ -59,7 +58,7 @@ class GrandCanonicalMonteCarloSampler(object):
             vector with appropriate units
         boxatoms : list
             List containing details of the atom to use as the centre of the GCMC region
-            Must contain atom name, residue name and (optionally) residue ID (numbered from 0),
+            Must contain atom name, residue name and (optionally) residue ID,
             e.g. ['C1', 'LIG', 123] or just ['C1', 'LIG']
         boxcentre : simtk.unit.Quantity
             Define coordinates for the centre of the GCMC region. Default is None. If not
@@ -179,10 +178,10 @@ class GrandCanonicalMonteCarloSampler(object):
             ref_atoms = [ref_atoms]
         # Find atom index for each of the atoms used
         for box_atom in ref_atoms:
-            for resid, residue in enumerate(self.topology.residues()):
+            for residue in self.topology.residues():
                 if residue.name != box_atom[1]:
                     continue
-                if len(box_atom) > 2 and resid != box_atom[2]:
+                if len(box_atom) > 2 and residue.id != box_atom[2]:
                     continue
                 for atom in residue.atoms():
                     if atom.name == box_atom[0]:
