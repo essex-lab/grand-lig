@@ -37,7 +37,7 @@ class GrandCanonicalMonteCarloSampler(object):
     """
     def __init__(self, system, topology, temperature, boxSize, boxAtoms=None, boxCentre=None,
                  adams=None, chemicalPotential=None, waterName="HOH", waterModel="tip3p",
-                 ghostFile="gcmc-ghost-wats.txt"):
+                 ghostFile="gcmc-ghost-wats.txt", boxFile="gcmc-box.pdb"):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
 
@@ -81,6 +81,9 @@ class GrandCanonicalMonteCarloSampler(object):
             Name of a file to write out the residue IDs of ghost water molecules. This is
             useful if you want to visualise the sampling, as you can then remove these waters
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
+        boxFile : str
+            Name of the PDB file to which the GCMC box coordinates will be written. Default is
+            'gcmc-box.pdb'
         """
         # Set important variables here
         self.system = system
@@ -141,6 +144,13 @@ class GrandCanonicalMonteCarloSampler(object):
 
         # Need to open the file to store ghost water IDs
         self.ghost_file = ghostFile
+        with open(self.ghost_file, 'w') as f:
+            pass
+
+        # Also want a PDB file for storing the GCMC box position
+        self.box_pdb = boxFile
+        with open(self.box_pdb, 'w') as f:
+            f.write("HEADER GCMC box file\n")
 
         return None
 
@@ -590,4 +600,48 @@ class GrandCanonicalMonteCarloSampler(object):
                 f.write(",{}".format(resid))
             f.write("\n")
         return None
+
+    def writeGCMCBox(self):
+        """
+        Write out the coordinates of the GCMC box at a given point in the simulation
+        Useful for visualising the GCMC region. Using the format used in ProtoMS
+        (www.protoms.org)
+        """
+        # Get box dimensions in angstroms (dimensionless)
+        origin = self.box_origin.in_units_of(unit.angstroms)._value
+        boxsize = self.box_size.in_units_of(unit.angstroms)._value
+        # Calculate positions of each corner
+        a = origin.copy()
+        b = a + np.array([boxsize[0], 0, 0])
+        c = b + np.array([0, 0, boxsize[2]])
+        d = a + np.array([0, 0, boxsize[2]])
+        e = a + np.array([0, boxsize[1], 0])
+        f = b + np.array([0, boxsize[1], 0])
+        g = c + np.array([0, boxsize[1], 0])
+        h = d + np.array([0, boxsize[1], 0])
+        corners = [["A", a], ["B", b], ["C", c], ["D", d], ["E", e], ["F", f], ["G", g], ["H", h]]
+        # Write out data to PDB file
+        with open(self.box_pdb, 'a') as f:
+            f.write("MODEL\n")
+            for i, corner in enumerate(corners):
+                label, pos = corner
+                f.write("ATOM  {0:>5} {1:<4} {2:<4} {3:>4}    {4:>8.3f}{5:>8.3f}{6:>8.3f}\n".format(i+1, "DU"+label, "BOX", 1,
+                                                                                                             pos[0], pos[1], pos[2]))
+            f.write("CONECT    1    2    4    5\n")
+            f.write("CONECT    2    1    3    6\n")
+            f.write("CONECT    3    2    4    7\n")
+            f.write("CONECT    4    1    3    8\n")
+            f.write("CONECT    5    1    6    8\n")
+            f.write("CONECT    6    2    5    7\n")
+            f.write("CONECT    7    3    6    8\n")
+            f.write("CONECT    8    4    5    7\n")
+            f.write("ENDMDL\n")
+        return None
+        
+        
+
+
+
+
+
 
