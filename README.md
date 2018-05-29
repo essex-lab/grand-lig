@@ -18,7 +18,6 @@ The aim is for this code to be very simply incorporated into OpenMM scripts, wit
 
 ## To Do (Development)
 - Make sure all parameters are correct (need to calculate hydration free energies for each model)
-- Write out which waters are ghosts
-
-Also need to do some rigorous testing at some point to make sure that everything has been implemented correctly.
+- Add support for spherical GCMC regions
+- Start generating some test results on previously used systems
 
