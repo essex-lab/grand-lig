@@ -585,6 +585,15 @@ class GrandCanonicalMonteCarloSampler(object):
                                [xz*(1-cos_theta) - y*sin_theta, yz*(1-cos_theta) + x*sin_theta, cos_theta + z2*(1-cos_theta)  ]])
         return rot_matrix
 
+    def writeFrame(self):
+        """
+        Function to execute both writeGhostWaterResids() and writeGCMCBox(), via a single
+        line - for easier use...
+        """
+        self.writeGhostWaterResids()
+        self.writeGCMCBox()
+        return None
+
     def writeGhostWaterResids(self):
         """
         Write out a comma-separated list of the residue IDs of waters which are
@@ -604,8 +613,8 @@ class GrandCanonicalMonteCarloSampler(object):
     def writeGCMCBox(self):
         """
         Write out the coordinates of the GCMC box at a given point in the simulation
-        Useful for visualising the GCMC region. Using the format used in ProtoMS
-        (www.protoms.org)
+        Useful for visualising the GCMC region. Using the format used in the ProtoMS
+        software package (www.protoms.org)
         """
         # Get box dimensions in angstroms (dimensionless)
         origin = self.box_origin.in_units_of(unit.angstroms)._value
@@ -626,7 +635,7 @@ class GrandCanonicalMonteCarloSampler(object):
             for i, corner in enumerate(corners):
                 label, pos = corner
                 f.write("ATOM  {0:>5} {1:<4} {2:<4} {3:>4}    {4:>8.3f}{5:>8.3f}{6:>8.3f}\n".format(i+1, "DU"+label, "BOX", 1,
-                                                                                                             pos[0], pos[1], pos[2]))
+                                                                                                    pos[0], pos[1], pos[2]))
             f.write("CONECT    1    2    4    5\n")
             f.write("CONECT    2    1    3    6\n")
             f.write("CONECT    3    2    4    7\n")
@@ -637,11 +646,4 @@ class GrandCanonicalMonteCarloSampler(object):
             f.write("CONECT    8    4    5    7\n")
             f.write("ENDMDL\n")
         return None
-        
-        
-
-
-
-
-
 
