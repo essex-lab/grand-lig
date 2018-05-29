@@ -17,6 +17,7 @@ Also need to think of what else will need to be added here (think what's useful)
 """
 
 import numpy as np
+import mdtraj
 from simtk import unit
 from simtk.openmm import app
 from copy import deepcopy
@@ -90,4 +91,44 @@ def flood_system(topology, positions, ff='tip3p', n=100, pdb='gcmc-extra-wats.pd
         water.writeFile(topology=modeller.topology, positions=modeller.positions, file=pdbfile)
         pdbfile.close()
     return modeller.topology, modeller.positions, ghosts
+
+
+def remove_trajectory_ghosts(topology, trajectory, ghost_file, output="trajectory-gcmc.dcd"):
+    """
+    Translate all ghost waters in a trajectory out of the simulation box, to make
+    visualisation clearer
+
+    Parameters
+    ----------
+    topology : str
+        Name of the topology/connectivity file (e.g. PDB, GRO, etc.)
+    trajectory : str
+        Name of the trajectory file (e.g. DCD, XTC, etc.)
+    ghost_file : str
+        Name of the file containing the ghost water residue IDs at each frame
+    output : str
+        Name of the file to which the new trajectory is written
+    """
+    # Read in residue IDs for the ghost waters in each frame
+    ghost_resids = []
+    with open(ghost_file, 'r') as f:
+        for line in f.readlines():
+            ghost_resids.append([int(resid) for resid in line.split(",")])
+    # Read in trajectory data
+    t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
+    # Identify which atoms need to be moved out of sight
+    ghost_atom_ids = []
+    for frame in range(len(ghost_resids)):
+        atom_ids = []
+        for i, residue in enumerate(t.topology.residues):
+            if i in ghost_resids[frame]:
+                for atom in residue.atoms:
+                    atom_ids.append(atom.index)
+        ghost_atom_ids.append(atom_ids)
+    # Shift coordinates of ghost atoms by several unit cells and write out trajectory
+    for frame, atom_ids in enumerate(ghost_atom_ids):
+        for index in atom_ids:
+            t.xyz[frame, index, :] += 3 * t.unitcell_lengths[frame, :]
+    t.save(output)
+    return None
 
