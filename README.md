@@ -18,6 +18,7 @@ The aim is for this code to be very simply incorporated into OpenMM scripts, wit
 
 ## To Do (Development)
 - Make sure all parameters are correct (need to calculate hydration free energies for each model)
+- Add option to prevent water leaks when not simulating at equilibrium
 - Add support for spherical GCMC regions
 - Start generating some test results on previously used systems
 
