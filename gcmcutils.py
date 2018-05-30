@@ -94,7 +94,29 @@ def flood_system(topology, positions, ff='tip3p', n=100, pdb='gcmc-extra-wats.pd
     return modeller.topology, modeller.positions, ghosts
 
 
-def flood_system_parmed(prmtop, inpcrd, ff='tip3p', n=100, out='gcmc-extra-wats'):
+def flood_system_parmed(prmtop, inpcrd, n=100, out='gcmc-extra-wats'):
+    """
+    Add a series of ghost waters to the structure of interest.
+    This function was written because the previous approach does not work
+    well when using AMBER simulation files, so this function uses ParmEd
+    to achieve the same goal.
+    
+    Parameters
+    ----------
+    prmtop : str
+        Name of the AMBER .prmtop file
+    inpcrd : str
+        Name of the AMBER coordinate file (in .rst7 format)
+    n : int
+        Number of water molecules to add to the system
+    out : str
+        Stem for the output file names
+    
+    Returns
+    -------
+    ghost_resids : list
+        List of the reisdue IDs for the ghost waters added
+    """
     # Read in structure
     struct = parmed.load_file(prmtop, xyz=inpcrd, structure=True)
     # Read in a template residue - to get water resname and number of atoms
@@ -107,7 +129,8 @@ def flood_system_parmed(prmtop, inpcrd, ff='tip3p', n=100, out='gcmc-extra-wats'
     # Simulation box size
     box_size = struct.box[:3]
     # Need to iteratively add water molecules to the structure
-    for i in range(3):
+    ghost_resids = []
+    for i in range(n):
         # Add a water molecule to the structure
         struct += struct[":{}".format(water_name)][:water_natoms]
         # Need to translate the newly addedwater molecule to a random point
@@ -118,10 +141,11 @@ def flood_system_parmed(prmtop, inpcrd, ff='tip3p', n=100, out='gcmc-extra-wats'
             new_coords[j,:] = old_coords[j,:] + new_centre - old_coords[-water_natoms,:]
         # Update structure coordinates
         struct.coordinates = new_coords
+        ghost_resids.append(len(struct.residues))
     # Save a .prmtop and .inpcrd file
     struct.save("{}.prmtop".format(out))
     struct.save("{}.inpcrd".format(out), format='rst7')
-    return None
+    return ghost_resids
 
 
 def remove_trajectory_ghosts(topology, trajectory, ghost_file, output="gcmc-traj.dcd"):
