@@ -153,6 +153,14 @@ class GrandCanonicalMonteCarloSampler(object):
 
         return None
 
+    def reset(self):
+        """
+        Reset counted values (such as number of total or accepted moves) to zero
+        """
+        self.n_accepted = 0
+        self.n_moves = 0
+        return None
+
     def getReferenceAtomIndices(self, ref_atoms):
         """
         Get the index of the atom used to define the centre of the GCMC box
@@ -276,7 +284,7 @@ class GrandCanonicalMonteCarloSampler(object):
                     # Switch off nonbonded interactions involving this water
                     self.nonbonded_force.setParticleParameters(atom.index,
                                                                charge=0*unit.elementary_charge,
-                                                               sigma=1*unit.angstrom,
+                                                               sigma=0*unit.angstrom,
                                                                epsilon=0*unit.kilojoule_per_mole)
                 # Mark that this water has been switched off
                 for i in range(len(self.water_resids)):
@@ -310,13 +318,12 @@ class GrandCanonicalMonteCarloSampler(object):
         self.updateGCMCBox(context)
         # Loop over all residues to find those of interest
         for resid, residue in enumerate(self.topology.residues()):
-            #if resid == 0: continue  # Just using this for testing - delete this later..........................
             if resid in self.waters_in_box:
                 for atom in residue.atoms():
                     # Switch off interactions involving the atoms of this residue
                     self.nonbonded_force.setParticleParameters(atom.index,
                                                                charge=0*unit.elementary_charge,
-                                                               sigma=1*unit.angstrom,
+                                                               sigma=0*unit.angstrom,
                                                                epsilon=0*unit.kilojoule_per_mole)
                 # Update relevant parametera
                 wat_id = np.where(np.array(self.water_resids) == resid)[0]
@@ -486,7 +493,7 @@ class GrandCanonicalMonteCarloSampler(object):
             for i, index in enumerate(atom_indices):
                 self.nonbonded_force.setParticleParameters(index,
                                                            charge=0*unit.elementary_charge,
-                                                           sigma=1*unit.angstrom,
+                                                           sigma=0*unit.angstrom,
                                                            epsilon=0*unit.kilojoule_per_mole)
             self.nonbonded_force.updateParametersInContext(context)
             context.setPositions(self.positions)
@@ -519,7 +526,6 @@ class GrandCanonicalMonteCarloSampler(object):
             # No waters to delete
             return context
         delete_water = np.random.choice(self.waters_in_box)
-        #if delete_water == 0: return context  # need to remove this later - just used in testing........
         wat_id = np.where(np.array(self.water_resids) == delete_water)[0]
         atom_indices = []
         for resid, residue in enumerate(self.topology.residues()):
@@ -530,7 +536,7 @@ class GrandCanonicalMonteCarloSampler(object):
         for index in atom_indices:
             self.nonbonded_force.setParticleParameters(index,
                                                        charge=0*unit.elementary_charge,
-                                                       sigma=1*unit.angstrom,
+                                                       sigma=0*unit.angstrom,
                                                        epsilon=0*unit.kilojoule_per_mole)
         self.nonbonded_force.updateParametersInContext(context)
         # Calculate energy of new state and acceptance probability
@@ -602,7 +608,8 @@ class GrandCanonicalMonteCarloSampler(object):
         """
         # Need to write this function
         with open(self.ghost_file, 'a') as f:
-            ghost_resids = np.where(self.water_status == 0)[0]
+            wat_ids = np.where(self.water_status == 0)[0]
+            ghost_resids = [self.water_resids[id] for id in wat_ids]
             f.write("{}".format(ghost_resids[0]))
             for resid in ghost_resids[1:]:
                 f.write(",{}".format(resid))
