@@ -146,7 +146,7 @@ class GrandCanonicalMonteCarloSampler(object):
         with open(self.ghost_file, 'w') as f:
             pass
 
-        # Also want a PDB file for storing the GCMC box position
+        # Initialise the file to store the GCMC box
         self.box_pdb = boxFile
         with open(self.box_pdb, 'w') as f:
             f.write("HEADER GCMC box file\n")
