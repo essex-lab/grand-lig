@@ -11,7 +11,7 @@ import gcmc
 import gcmcutils
 
 pdb = PDBFile('bpti-equil.pdb')
-pdb.topology, pdb.positions, ghosts = gcmcutils.flood_system(pdb.topology, pdb.positions, n=25)
+pdb.topology, pdb.positions, ghosts = gcmcutils.flood_system(pdb.topology, pdb.positions, n=25, pdb='bpti-gcmc.pdb')
 
 ff = ForceField('amber10.xml', 'tip3p.xml')
 system = ff.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=10.0*angstroms,
@@ -21,6 +21,7 @@ ref_atoms = [['CA', 'TYR', '10'], ['C', 'ASN', '43']]
 gcmc_box = np.array([7.0, 7.0, 7.0])*angstroms
 gcmc_mover = gcmc.GrandCanonicalMonteCarloSampler(system=system, topology=pdb.topology, temperature=300*kelvin,
                                                   boxSize=gcmc_box, boxAtoms=ref_atoms)
+
 # Langevin integrator
 integrator = LangevinIntegrator(300*kelvin, 1.0/picosecond, 0.002*picoseconds)
 
@@ -64,5 +65,5 @@ for i in range(50):
     print("\t{} GCMC moves completed. N = {}".format(gcmc_mover.n_moves, gcmc_mover.N))
 print("{}/{} moves accepted".format(gcmc_mover.n_accepted, gcmc_mover.n_moves))
 
-gcmcutils.remove_trajectory_ghosts('bpti-gcmc.prmtop', 'bpti-gcmc.dcd', 'gcmc-ghost-wats.txt')
+gcmcutils.remove_trajectory_ghosts('bpti-gcmc.pdb', 'bpti-gcmc.dcd', 'gcmc-ghost-wats.txt')
 
