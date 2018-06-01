@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-gcmcutils.py
+utils.py
 Marley Samways
 
 Description
@@ -15,6 +15,7 @@ Notes
 Need to think of what else will need to be added here (think what's useful)
 """
 
+import os
 import numpy as np
 import mdtraj
 import openmoltools
@@ -70,7 +71,7 @@ def flood_system(topology, positions, ff='tip3p', n=100, pdb='gcmc-extra-wats.pd
                          box_vectors[2][2]._value]) * unit.nanometer
     # Load topology of water model 
     assert ff.lower() in ['spce', 'tip3p', 'tip4pew'], "Water model must be SPCE, TIP3P or TIP4Pew!"
-    water = app.PDBFile(file='{}.pdb'.format(ff.lower()))
+    water = app.PDBFile(file='{}/../data/{}.pdb'.format(os.path.abspath(os.path.dirname(__file__)), ff.lower()))
     # Add multiple copies of the same water, then write out a pdb (for visualisation)
     ghosts = []
     for i in range(n):

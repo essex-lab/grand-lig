@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-gcmc.py
+sampler.py
 Marley Samways
 
 Description
