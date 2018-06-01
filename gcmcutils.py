@@ -12,12 +12,12 @@ simulations and processing results
 
 Notes
 -----
-Need to add trajectory processing functions (to aid visualisation).
-Also need to think of what else will need to be added here (think what's useful)
+Need to think of what else will need to be added here (think what's useful)
 """
 
 import numpy as np
 import mdtraj
+import openmoltools
 from simtk import unit
 from simtk.openmm import app
 from copy import deepcopy
@@ -91,6 +91,32 @@ def flood_system(topology, positions, ff='tip3p', n=100, pdb='gcmc-extra-wats.pd
         water.writeFile(topology=modeller.topology, positions=modeller.positions, file=pdbfile)
         pdbfile.close()
     return modeller.topology, modeller.positions, ghosts
+
+
+def write_ligand_xml(mol2, frcmod, gaff, xml="ligand.xml"):
+    """
+    Create a .xml file for the ligand forcefield using openmoltools, from the .mol2,
+    .frcmod and gaff.dat files supplied
+
+    Parameters
+    ----------
+    mol2 : str
+        Name of the ligand .mol2 file (in AMBER format, with GAFF atom types)
+    frcmod : str
+        Name of the .frcmod file for the ligand
+    gaff : str
+        Name of the gaff.dat file (including path)
+    xml : str
+        Name of the .xml file to write. Default is 'ligand.xml'
+    """
+    # Read in parameters
+    ligand_parser = openmoltools.amber_parser.AmberParser()
+    ligand_parser.parse_filenames([gaff, mol2, frcmod])
+    # Generate .xml output and write to file
+    stream = ligand_parser.generate_xml()
+    with open(xml, 'w') as f:
+        f.write(stream.read())
+    return None
 
 
 def remove_trajectory_ghosts(topology, trajectory, ghost_file, output="gcmc-traj.dcd"):
