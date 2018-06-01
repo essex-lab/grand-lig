@@ -18,7 +18,6 @@ Also need to think of what else will need to be added here (think what's useful)
 
 import numpy as np
 import mdtraj
-import parmed
 from simtk import unit
 from simtk.openmm import app
 from copy import deepcopy
@@ -92,60 +91,6 @@ def flood_system(topology, positions, ff='tip3p', n=100, pdb='gcmc-extra-wats.pd
         water.writeFile(topology=modeller.topology, positions=modeller.positions, file=pdbfile)
         pdbfile.close()
     return modeller.topology, modeller.positions, ghosts
-
-
-def flood_system_parmed(prmtop, inpcrd, n=100, out='gcmc-extra-wats'):
-    """
-    Add a series of ghost waters to the structure of interest.
-    This function was written because the previous approach does not work
-    well when using AMBER simulation files, so this function uses ParmEd
-    to achieve the same goal.
-    
-    Parameters
-    ----------
-    prmtop : str
-        Name of the AMBER .prmtop file
-    inpcrd : str
-        Name of the AMBER coordinate file (in .rst7 format)
-    n : int
-        Number of water molecules to add to the system
-    out : str
-        Stem for the output file names
-    
-    Returns
-    -------
-    ghost_resids : list
-        List of the reisdue IDs for the ghost waters added
-    """
-    # Read in structure
-    struct = parmed.load_file(prmtop, xyz=inpcrd, structure=True)
-    # Read in a template residue - to get water resname and number of atoms
-    for residue in struct.residues:
-        if residue.name in ["WAT", "HOH"]:
-            water = deepcopy(residue)
-            water_name = water.name
-            water_natoms = len(water.atoms)
-            break
-    # Simulation box size
-    box_size = struct.box[:3]
-    # Need to iteratively add water molecules to the structure
-    ghost_resids = []
-    for i in range(n):
-        # Add a water molecule to the structure
-        struct += struct[":{}".format(water_name)][:water_natoms]
-        # Need to translate the newly addedwater molecule to a random point
-        new_centre = np.random.rand(3) * box_size
-        old_coords = struct.coordinates
-        new_coords = old_coords.copy()
-        for j in range(-water_natoms, 0):
-            new_coords[j,:] = old_coords[j,:] + new_centre - old_coords[-water_natoms,:]
-        # Update structure coordinates
-        struct.coordinates = new_coords
-        ghost_resids.append(len(struct.residues))
-    # Save a .prmtop and .inpcrd file
-    struct.save("{}.prmtop".format(out))
-    struct.save("{}.inpcrd".format(out), format='rst7')
-    return ghost_resids
 
 
 def remove_trajectory_ghosts(topology, trajectory, ghost_file, output="gcmc-traj.dcd"):
