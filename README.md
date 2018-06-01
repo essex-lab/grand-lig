@@ -19,7 +19,7 @@ However, there are a number of extra lines introduced, and those are discussed h
 
 The first line we see is the use of the flood\_system() function:
 ```python
-pdb.topology, pdb.positions, ghosts = gcmcutils.flood_system(pdb.topology, pdb.positions, n=25, pdb='bpti-gcmc.pdb')
+pdb.topology, pdb.positions, ghosts = gcmc.utils.flood_system(pdb.topology, pdb.positions, n=25, pdb='bpti-gcmc.pdb')
 ```
 This function is used to add 'ghost' water molecules to the topology of the system, and should be called after loading the PDB data.
 This returns the list of residue IDs corresponding to ghost water molecules, whcih should be retained as these will need to be swtiched off before the simulation begins.
@@ -29,8 +29,8 @@ Next, we have the following section:
 ```python
 ref_atoms = [['CA', 'TYR', '10'], ['C', 'ASN', '43']]
 gcmc_box = np.array([7.0, 7.0, 7.0])*angstroms
-gcmc_mover = gcmc.GrandCanonicalMonteCarloSampler(system=system, topology=pdb.topology, temperature=300*kelvin,
-                                                  boxSize=gcmc_box, boxAtoms=ref_atoms)
+gcmc_mover = gcmc.sampler.GrandCanonicalMonteCarloSampler(system=system, topology=pdb.topology, temperature=300*kelvin,
+                                                          boxSize=gcmc_box, boxAtoms=ref_atoms)
 ```
 Where we first define the reference atoms for the GCMC box, which will take its centre from the centre of geometry of these atoms, and the size of the cubic GCMC region (it is important that units are specified).
 The reference atoms are defined by their atom name, residue name and, optionally, a residue number (this is important if there are more than one of the residue of interest), and it is important to include the units in the definition of the box size.
@@ -75,7 +75,7 @@ This method writes out a list of ghost residues to file and also the coordinates
 
 Finally, we use the line:
 ```python
-gcmcutils.remove_trajectory_ghosts('bpti-gcmc.pdb', 'bpti-gcmc.dcd', 'gcmc-ghost-wats.txt')
+gcmc.utils.remove_trajectory_ghosts('bpti-gcmc.pdb', 'bpti-gcmc.dcd', 'gcmc-ghost-wats.txt')
 ```
 This line creates a new trajectory file, with the ghost water molecules displaced several unit cells away from their original positions.
 This allows the user to visualise the water smapling in the region of interest without being hindered by the present of ghost/dummy water molecules.
