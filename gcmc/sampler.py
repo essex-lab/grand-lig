@@ -10,8 +10,6 @@ This code is written to execute GCMC moves with water molecules in OpenMM, in a
 way that can easily be included with other OpenMM simulations or implemented
 methods, with minimal extra effort.
 
-(Need to add more description on how to use and how this works...)
-
 Notes
 -----
 To Do:
@@ -53,20 +51,23 @@ class GrandCanonicalMonteCarloSampler(object):
             Topology object for the system to be simulated
         temperature : simtk.unit.Quantity
             Temperature of the simulation, must be in appropriate units
-        boxsize : simtk.unit.Quantity
+        boxSize : simtk.unit.Quantity
             Size of the GCMC region in all three dimensions. Must be a 3D
             vector with appropriate units
-        boxatoms : list
+        boxAtoms : list
             List containing details of the atom to use as the centre of the GCMC region
             Must contain atom name, residue name and (optionally) residue ID,
             e.g. ['C1', 'LIG', 123] or just ['C1', 'LIG']
-        boxcentre : simtk.unit.Quantity
+        boxCentre : simtk.unit.Quantity
             Define coordinates for the centre of the GCMC region. Default is None. If not
             None, this will override the reference atoms.
         adams : float
             Adams B value for the simulation (dimensionless). Default is None,
             if None, the B value is calculated from the box volume and chemical
             potential
+        chemicalPotential : simtk.unit.Quantity
+            Chemical potential used to define the emsemble. Necessary if simulating away from
+            equilibrium or using a water model other than those considered below.
         mu : simtk.unit.Quantity
             Chemical potential of the simulation, default is None. This is to be used
             if you don't want to use the equilibrium value or if using a water model
@@ -128,7 +129,7 @@ class GrandCanonicalMonteCarloSampler(object):
             if force.__class__.__name__ == "NonbondedForce":
                 self.nonbonded_force = force
             # Flag an error if not simulating at constant volume
-            elif force.__class__.__name__ == "MonteCarloBarostat":
+            elif "Barostat" in force.__class__.__name__:
                 raise Exception("GCMC must be used at constant volume!")
         
         # Get parameters for the water model
