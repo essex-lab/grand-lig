@@ -32,9 +32,11 @@ class GrandCanonicalMonteCarloSampler(object):
     """
     Class to carry out the GCMC moves in OpenMM
     """
-    def __init__(self, system, topology, temperature, boxSize, boxAtoms=None, boxCentre=None,
-                 adams=None, chemicalPotential=None, waterName="HOH", waterModel="tip3p",
-                 ghostFile="gcmc-ghost-wats.txt", boxFile="gcmc-box.pdb"):
+    def __init__(self, system, topology, temperature, adams=None, chemicalPotential=None,
+                 waterName="HOH", waterModel="tip3p", ghostFile="gcmc-ghost-wats.txt",
+                 method=None, referenceAtoms=None, centre=None,
+                 boxSize=None, boxFile="gcmc-box.pdb",
+                 sphereRadius=None):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
 
@@ -51,24 +53,11 @@ class GrandCanonicalMonteCarloSampler(object):
             Topology object for the system to be simulated
         temperature : simtk.unit.Quantity
             Temperature of the simulation, must be in appropriate units
-        boxSize : simtk.unit.Quantity
-            Size of the GCMC region in all three dimensions. Must be a 3D
-            vector with appropriate units
-        boxAtoms : list
-            List containing details of the atom to use as the centre of the GCMC region
-            Must contain atom name, residue name and (optionally) residue ID,
-            e.g. ['C1', 'LIG', 123] or just ['C1', 'LIG']
-        boxCentre : simtk.unit.Quantity
-            Define coordinates for the centre of the GCMC region. Default is None. If not
-            None, this will override the reference atoms.
         adams : float
             Adams B value for the simulation (dimensionless). Default is None,
             if None, the B value is calculated from the box volume and chemical
             potential
         chemicalPotential : simtk.unit.Quantity
-            Chemical potential used to define the emsemble. Necessary if simulating away from
-            equilibrium or using a water model other than those considered below.
-        mu : simtk.unit.Quantity
             Chemical potential of the simulation, default is None. This is to be used
             if you don't want to use the equilibrium value or if using a water model
             other than SPCE, TIP3P, TIP4Pew (need to add others).
@@ -81,9 +70,24 @@ class GrandCanonicalMonteCarloSampler(object):
             Name of a file to write out the residue IDs of ghost water molecules. This is
             useful if you want to visualise the sampling, as you can then remove these waters
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
+        method : str
+            Indicate which GCMC method to use. Current options are 'box' (use a cuboidal GCMC
+            region) or 'sphere' (use a spherical GCMC region).
+        referenceAtoms : list
+            List containing details of the atom to use as the centre of the GCMC region
+            Must contain atom name, residue name and (optionally) residue ID,
+            e.g. ['C1', 'LIG', 123] or just ['C1', 'LIG']
+        centre : simtk.unit.Quantity
+            Define coordinates for the centre of the GCMC region. Default is None. If not
+            None, this will override the reference atoms.
+        boxSize : simtk.unit.Quantity
+            Size of the GCMC region in all three dimensions. Must be a 3D
+            vector with appropriate units. Requires method='box'
         boxFile : str
             Name of the PDB file to which the GCMC box coordinates will be written. Default is
-            'gcmc-box.pdb'
+            'gcmc-box.pdb'. Requires method='box'
+        sphereRadius : simtk.unit.Quantity
+            Radius of the spherical GCMC region. Requires method='sphere'
         """
         # Set important variables here
         self.system = system
@@ -94,18 +98,25 @@ class GrandCanonicalMonteCarloSampler(object):
 
         # Calculate GCMC-specific variables
         self.N = 0  # Initialise N as zero
-        self.box_size = boxSize   # Size of the GCMC region
-        # Check whether to use reference atoms for the GCMC box or not
-        if boxCentre is not None:
-            self.box_atoms = None
-            self.box_centre = boxCentre
-            self.box_origin = self.box_centre - 0.5 * self.box_size  # Store the box origin
-        elif boxAtoms is not None:
-            self.box_atoms = self.getReferenceAtomIndices(boxAtoms)  # Atoms around which the GCMC region is centred
-            self.box_centre = np.zeros(3) * unit.nanometers  # Store the coordinates of the box centre
-            self.box_origin = np.zeros(3) * unit.nanometers  # Initialise the origin of the box
+        if method == "box":
+            self.box_size = boxSize   # Size of the GCMC region
+            volume = boxSize[0] * boxSize[1] * boxSize[2]
+            # Check whether to use reference atoms for the GCMC box or not
+            if centre is not None:
+                self.box_atoms = None
+                self.box_centre = centre
+                self.box_origin = self.box_centre - 0.5 * self.box_size  # Store the box origin
+            elif referenceAtoms is not None:
+                self.box_atoms = self.getReferenceAtomIndices(referenceAtoms)  # Atoms around which the GCMC region is centred
+                self.box_centre = np.zeros(3) * unit.nanometers  # Store the coordinates of the box centre
+                self.box_origin = np.zeros(3) * unit.nanometers  # Initialise the origin of the box
+            else:
+                raise Exception("Either a set of atoms or coordinates must be used to define the GCMC box!")
+        elif method == "sphere":
+            raise Exception("GCMC sphere not yet fully implemented!")
         else:
-            raise Exception("Either a set of atoms or coordinates must be used to define the GCMC box!")
+            raise Exception("Either 'box' or 'sphere' must be set as the GCMC method!")
+        # Calculate Adams value, if needed
         if adams is None:
             if chemicalPotential is None:
                 assert waterModel.lower() in ['spce', 'tip3p', 'tip4pew'], "Unsupported water model. Must define mu' manually"
@@ -115,7 +126,7 @@ class GrandCanonicalMonteCarloSampler(object):
                 mu = mu_dict[waterModel.lower()]
             else:
                 mu = chemicalPotential
-            self.adams = mu/self.kT + np.log(boxSize[0]*boxSize[1]*boxSize[2] / 30.0 * unit.angstrom ** 3)
+            self.adams = mu/self.kT + np.log(volume / 30.0 * unit.angstrom ** 3)
         else:
             self.adams = adams
 
