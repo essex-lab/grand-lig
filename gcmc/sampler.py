@@ -353,7 +353,7 @@ class GrandCanonicalMonteCarloSampler(object):
         # Add ghost residues to list of GCMC residues
         for resid in ghost_resids:
             self.gcmc_resids.append(resid)
-        self.gcmc_status = np.ones_like(self.gcmc_resids)  # Store status of each GCMC water
+        self.gcmc_status = np.ones_like(self.gcmc_resids, dtype=np.int_)  # Store status of each GCMC water
         # Switch of the interactions involving ghost waters
         for resid, residue in enumerate(self.topology.residues()):
             if resid in ghost_resids:
@@ -396,7 +396,7 @@ class GrandCanonicalMonteCarloSampler(object):
         for resid, residue in enumerate(self.topology.residues()):
             if resid not in self.gcmc_resids:
                 continue  # Only concerned with GCMC waters
-            gcmc_id = np.where(self.gcmc_resids == resid)[0]
+            gcmc_id = np.where(np.array(self.gcmc_resids) == resid)[0]
             if self.gcmc_status[gcmc_id] == 1:
                 for atom in residue.atoms():
                     # Switch off interactions involving the atoms of this residue
@@ -438,9 +438,6 @@ class GrandCanonicalMonteCarloSampler(object):
         self.sphere_centre /= len(self.ref_atoms)
         # Execute moves
         for i in range(n):
-            # Get initial positions and energy
-            #state = context.getState(getPositions=True, enforcePeriodicBox=True)
-            #self.positions = deepcopy(state.getPositions(asNumpy=True))
             # Insert or delete a water, based on random choice
             if np.random.randint(2) == 1:
                 # Attempt to insert a water
@@ -545,6 +542,9 @@ class GrandCanonicalMonteCarloSampler(object):
         context : simtk.openmm.Context
             Updated context after the move
         """
+        # Cannot carry out deletion if there are no GCMC waters on
+        if np.sum(self.gcmc_status) == 0:
+            return context
         # Select a water residue to delete
         gcmc_id = np.random.choice(np.where(self.gcmc_status == 1)[0])  # Position in list of GCMC waters
         delete_water = self.gcmc_resids[gcmc_id]
