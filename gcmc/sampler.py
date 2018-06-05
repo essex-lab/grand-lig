@@ -430,7 +430,7 @@ class GrandCanonicalMonteCarloSampler(object):
         # Read in positions
         state = context.getState(getPositions=True, enforcePeriodicBox=True, getEnergy=True)
         self.positions = deepcopy(state.getPositions(asNumpy=True))
-        self.energy = deecopy(state.getPotentialEnergy())
+        self.energy = state.getPotentialEnergy()
         # Update GCMC region based on current state
         self.sphere_centre = np.zeros(3) * unit.nanometers
         for atom in self.ref_atoms:
