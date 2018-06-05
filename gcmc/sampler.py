@@ -25,6 +25,7 @@ References
 
 import numpy as np
 from simtk import unit
+from simtk import openmm
 from copy import deepcopy
 
 
@@ -96,8 +97,18 @@ class GrandCanonicalMonteCarloSampler(object):
         self.kT = unit.BOLTZMANN_CONSTANT_kB * unit.AVOGADRO_CONSTANT_NA * temperature
         self.simulation_box = np.zeros(3) * unit.nanometer  # Set to zero for now
 
+        # Find nonbonded force - needs to be updated as appropriate
+        for f in range(system.getNumForces()):
+            force = system.getForce(f)
+            if force.__class__.__name__ == "NonbondedForce":
+                self.nonbonded_force = force
+            # Flag an error if not simulating at constant volume
+            elif "Barostat" in force.__class__.__name__:
+                raise Exception("GCMC must be used at constant volume!")
+        
         # Calculate GCMC-specific variables
         self.N = 0  # Initialise N as zero
+        # Read in box-specific parameters, if needed
         if method == "box":
             self.box_size = boxSize   # Size of the GCMC region
             volume = boxSize[0] * boxSize[1] * boxSize[2]
@@ -112,10 +123,26 @@ class GrandCanonicalMonteCarloSampler(object):
                 self.box_origin = np.zeros(3) * unit.nanometers  # Initialise the origin of the box
             else:
                 raise Exception("Either a set of atoms or coordinates must be used to define the GCMC box!")
+        # Read in sphere-specific parameters
         elif method == "sphere":
-            raise Exception("GCMC sphere not yet fully implemented!")
+            self.sphere_radius = sphereRadius
+            self.sphere_centre = None
+            volume = (4 * np.pi * sphereRadius ** 3) / 3
+            if referenceAtoms is not None:
+                self.ref_atoms = self.getReferenceAtomIndices(referenceAtoms)
+                force_constant = 100.0 # kJ mol^-1 nm^-2
+                # Define custom forces to keep GCMC waters in and non-GCMC waters out
+                self.exclude_bonds = []
+                self.exclude_force = None
+                self.include_bonds = []
+                self.include_force = None
+                self.createRestraintForces(force_constant)
+            else:
+                raise Exception("A set of atoms must be used to define the GCMC box!")
+            #raise Exception("GCMC sphere not yet fully implemented!")
         else:
             raise Exception("Either 'box' or 'sphere' must be set as the GCMC method!")
+        
         # Calculate Adams value, if needed
         if adams is None:
             if chemicalPotential is None:
@@ -126,22 +153,13 @@ class GrandCanonicalMonteCarloSampler(object):
                 mu = mu_dict[waterModel.lower()]
             else:
                 mu = chemicalPotential
-            self.adams = mu/self.kT + np.log(volume / 30.0 * unit.angstrom ** 3)
+            self.adams = mu/self.kT + np.log(volume / (30.0 * unit.angstrom ** 3))
         else:
             self.adams = adams
 
         # Other variables
         self.n_moves = 0
         self.n_accepted = 0
-        
-        # Find nonbonded force - needs to be updated when inserting/deleting
-        for f in range(system.getNumForces()):
-            force = system.getForce(f)
-            if force.__class__.__name__ == "NonbondedForce":
-                self.nonbonded_force = force
-            # Flag an error if not simulating at constant volume
-            elif "Barostat" in force.__class__.__name__:
-                raise Exception("GCMC must be used at constant volume!")
         
         # Get parameters for the water model
         self.water_params = self.getWaterParameters(waterName)
@@ -209,6 +227,87 @@ class GrandCanonicalMonteCarloSampler(object):
         if len(atom_indices) == 0:
             raise Exception("No GCMC reference atoms found")
         return atom_indices
+
+    def createRestraintForces(self, force_constant):
+        excluder = openmm.CustomCentroidBondForce(2, "k*min(0, distance(g1,g2)-r0)^2")
+        excluder.addPerBondParameter("k")
+        excluder.addPerBondParameter("r0")
+        # Add the reference atoms as a group
+        ref_group = excluder.addGroup(self.ref_atoms, list(np.ones_like(self.ref_atoms)))
+        for residue in self.topology.residues():
+            if residue.name != 'HOH':
+                continue
+            for atom in residue.atoms():
+                # Add a group containing the oxygen water atom
+                wat_group = excluder.addGroup([atom.index])
+                bond_id = excluder.addBond([ref_group, wat_group], [force_constant, self.sphere_radius / unit.nanometer])
+                self.exclude_bonds.append(bond_id)
+                break  # Only want the oxygen atom for each water
+        self.system.addForce(excluder)
+        self.exclude_force = excluder
+        # Similarly define a custom force to keep GCMC waters in
+        includer = openmm.CustomCentroidBondForce(2, "k*max(0, distance(g1,g2)-r0)^2")
+        includer.addPerBondParameter("k")
+        includer.addPerBondParameter("r0")
+        # Add the reference atoms as a group
+        ref_group = includer.addGroup(self.ref_atoms, list(np.ones_like(self.ref_atoms)))
+        for residue in self.topology.residues():
+            if residue.name != 'HOH':
+                continue
+            for atom in residue.atoms():
+                # Add a group containing the oxygen water atom
+                wat_group = includer.addGroup([atom.index])
+                bond_id = includer.addBond([ref_group, wat_group], [force_constant, self.sphere_radius / unit.nanometer])
+                self.include_bonds.append(bond_id)
+                break  # Only want the oxygen atom for each water
+        self.system.addForce(includer)
+        self.include_force = includer
+        return None
+
+    def prepareGCMCSphere(self, context, ghostResids):
+        # Delete ghost waters
+        context = self.deleteGhostWaters(context, ghostResids)
+        # Load in positions and box vectors from context
+        state = context.getState(getPositions=True, enforcePeriodicBox=True)
+        self.positions = state.getPositions(asNumpy=True)
+        box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
+        self.simulation_box = np.array([box_vectors[0,0]._value,
+                                        box_vectors[1,1]._value,
+                                        box_vectors[2,2]._value]) * unit.nanometer
+        # Calculate the centre of the GCMC sphere
+        self.sphere_centre = np.zeros(3) * unit.nanometers
+        for atom in self.ref_atoms:
+            self.sphere_centre += self.positions[atom]
+        self.sphere_centre /= len(self.ref_atoms)
+        # Loop over waters and check which are in/out of the GCMC sphere at the beginning
+        for resid, residue in enumerate(self.topology.residues()):
+            if resid not in self.water_resids:
+                continue
+            for atom in residue.atoms():
+                ox_index = atom.index
+                break
+            wat_id = np.where(np.array(self.water_resids) == resid)[0][0]
+            # Remove restraints on ghosts
+            if resid in ghostResids:
+                self.include_force.setBondParameters(self.include_bonds[wat_id], [0, wat_id+1], [0.0, self.sphere_radius/unit.nanometer])
+                self.exclude_force.setBondParameters(self.exclude_bonds[wat_id], [0, wat_id+1], [0.0, self.sphere_radius/unit.nanometer])
+                continue
+            # Remove inclusive or exclusive restraint, depending on water position
+            vector = self.positions[ox_index]-self.sphere_centre
+            # Correct PBCs of this vector - need to make this part cleaner
+            for i in range(3):
+                if vector[i] >= 0.5 * self.simulation_box[i]:
+                    vector[i] -= self.simulation_box[i]
+                elif vector[i] <= -0.5 * self.simulation_box[i]:
+                    vector[i] += self.simulation_box[i]
+            if np.linalg.norm(vector)*unit.nanometer <= self.sphere_radius:
+                self.include_force.setBondParameters(self.include_bonds[wat_id], [0, wat_id+1], [0.0, self.sphere_radius/unit.nanometer])
+            else:
+                self.exclude_force.setBondParameters(self.exclude_bonds[wat_id], [0, wat_id+1], [0.0, self.sphere_radius/unit.nanometer])
+        # Update parameters
+        self.include_force.updateParametersInContext(context)
+        self.exclude_force.updateParametersInContext(context)
+        return context
 
     def getWaterParameters(self, water_resname="HOH"):
         """
