@@ -121,9 +121,9 @@ class GrandCanonicalMonteCarloSampler(object):
                 mu = mu_dict[waterModel.lower()]
             else:
                 mu = chemicalPotential
-            self.adams = mu/self.kT + np.log(volume / (30.0 * unit.angstrom ** 3))
+            self.B = mu/self.kT + np.log(volume / (30.0 * unit.angstrom ** 3))
         else:
-            self.adams = adams
+            self.B = adams
 
         # Other variables
         self.n_moves = 0
@@ -508,7 +508,7 @@ class GrandCanonicalMonteCarloSampler(object):
         context.setPositions(new_positions)
         # Calculate new system energy and acceptance probability
         final_energy = context.getState(getEnergy=True).getPotentialEnergy()
-        acc_prob = np.exp(self.adams) * np.exp(-(final_energy - self.energy)/self.kT) / (self.N + 1)
+        acc_prob = np.exp(self.B) * np.exp(-(final_energy - self.energy)/self.kT) / (self.N + 1)
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             # Need to revert the changes made if the move is to be rejected
             # Switch off nonbonded interactions involving this water
@@ -526,7 +526,7 @@ class GrandCanonicalMonteCarloSampler(object):
             self.N += 1
             self.n_accepted += 1
             # Add in restraint to keep the water in the box
-            self.include_force.setBondParameters(self.include_bonds[wat_id], [0, wat_id+1], [100.0, self.sphere_radius/unit.nanometer])
+            self.include_force.setBondParameters(self.include_bonds[wat_id], [0, wat_id+1], [10000.0, self.sphere_radius/unit.nanometer])
             self.include_force.updateParametersInContext(context)
             # Update energy
             self.energy = final_energy
@@ -567,7 +567,7 @@ class GrandCanonicalMonteCarloSampler(object):
         self.nonbonded_force.updateParametersInContext(context)
         # Calculate energy of new state and acceptance probability
         final_energy = context.getState(getEnergy=True).getPotentialEnergy()
-        acc_prob = self.N * np.exp(-self.adams) * np.exp(-(final_energy - self.energy)/self.kT)
+        acc_prob = self.N * np.exp(-self.B) * np.exp(-(final_energy - self.energy)/self.kT)
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             # Switch the water back on if the move is rejected
             for i, index in enumerate(atom_indices):
