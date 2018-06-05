@@ -616,7 +616,7 @@ class GrandCanonicalMonteCarloSampler(object):
                                [xz*(1-cos_theta) - y*sin_theta, yz*(1-cos_theta) + x*sin_theta, cos_theta + z2*(1-cos_theta)  ]])
         return rot_matrix
 
-    def writeFrame(self):
+    def report(self):
         """
         Function to report any useful data
         """
@@ -633,7 +633,7 @@ class GrandCanonicalMonteCarloSampler(object):
         # Need to write this function
         with open(self.ghost_file, 'a') as f:
             gcmc_ids = np.where(self.gcmc_status == 0)[0]
-            ghost_resids = [self.gcmc_resids[id] for id in wat_ids]
+            ghost_resids = [self.gcmc_resids[id] for id in gcmc_ids]
             f.write("{}".format(ghost_resids[0]))
             for resid in ghost_resids[1:]:
                 f.write(",{}".format(resid))
