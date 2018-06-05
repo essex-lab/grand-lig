@@ -632,8 +632,8 @@ class GrandCanonicalMonteCarloSampler(object):
         """
         # Need to write this function
         with open(self.ghost_file, 'a') as f:
-            wat_ids = np.where(self.water_status == 0)[0]
-            ghost_resids = [self.water_resids[id] for id in wat_ids]
+            gcmc_ids = np.where(self.gcmc_status == 0)[0]
+            ghost_resids = [self.gcmc_resids[id] for id in wat_ids]
             f.write("{}".format(ghost_resids[0]))
             for resid in ghost_resids[1:]:
                 f.write(",{}".format(resid))
