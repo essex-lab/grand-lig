@@ -35,9 +35,7 @@ class GrandCanonicalMonteCarloSampler(object):
     """
     def __init__(self, system, topology, temperature, adams=None, chemicalPotential=None,
                  waterName="HOH", waterModel="tip3p", ghostFile="gcmc-ghost-wats.txt",
-                 method=None, referenceAtoms=None, centre=None,
-                 boxSize=None, boxFile="gcmc-box.pdb",
-                 sphereRadius=None):
+                 referenceAtoms=None, sphereRadius=None):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
 
@@ -71,22 +69,10 @@ class GrandCanonicalMonteCarloSampler(object):
             Name of a file to write out the residue IDs of ghost water molecules. This is
             useful if you want to visualise the sampling, as you can then remove these waters
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
-        method : str
-            Indicate which GCMC method to use. Current options are 'box' (use a cuboidal GCMC
-            region) or 'sphere' (use a spherical GCMC region).
         referenceAtoms : list
             List containing details of the atom to use as the centre of the GCMC region
             Must contain atom name, residue name and (optionally) residue ID,
             e.g. ['C1', 'LIG', 123] or just ['C1', 'LIG']
-        centre : simtk.unit.Quantity
-            Define coordinates for the centre of the GCMC region. Default is None. If not
-            None, this will override the reference atoms.
-        boxSize : simtk.unit.Quantity
-            Size of the GCMC region in all three dimensions. Must be a 3D
-            vector with appropriate units. Requires method='box'
-        boxFile : str
-            Name of the PDB file to which the GCMC box coordinates will be written. Default is
-            'gcmc-box.pdb'. Requires method='box'
         sphereRadius : simtk.unit.Quantity
             Radius of the spherical GCMC region. Requires method='sphere'
         """
@@ -108,40 +94,21 @@ class GrandCanonicalMonteCarloSampler(object):
         
         # Calculate GCMC-specific variables
         self.N = 0  # Initialise N as zero
-        # Read in box-specific parameters, if needed
-        if method == "box":
-            self.box_size = boxSize   # Size of the GCMC region
-            volume = boxSize[0] * boxSize[1] * boxSize[2]
-            # Check whether to use reference atoms for the GCMC box or not
-            if centre is not None:
-                self.box_atoms = None
-                self.box_centre = centre
-                self.box_origin = self.box_centre - 0.5 * self.box_size  # Store the box origin
-            elif referenceAtoms is not None:
-                self.box_atoms = self.getReferenceAtomIndices(referenceAtoms)  # Atoms around which the GCMC region is centred
-                self.box_centre = np.zeros(3) * unit.nanometers  # Store the coordinates of the box centre
-                self.box_origin = np.zeros(3) * unit.nanometers  # Initialise the origin of the box
-            else:
-                raise Exception("Either a set of atoms or coordinates must be used to define the GCMC box!")
         # Read in sphere-specific parameters
-        elif method == "sphere":
-            self.sphere_radius = sphereRadius
-            self.sphere_centre = None
-            volume = (4 * np.pi * sphereRadius ** 3) / 3
-            if referenceAtoms is not None:
-                self.ref_atoms = self.getReferenceAtomIndices(referenceAtoms)
-                force_constant = 100.0 # kJ mol^-1 nm^-2
-                # Define custom forces to keep GCMC waters in and non-GCMC waters out
-                self.exclude_bonds = []
-                self.exclude_force = None
-                self.include_bonds = []
-                self.include_force = None
-                self.createRestraintForces(force_constant)
-            else:
-                raise Exception("A set of atoms must be used to define the GCMC box!")
-            #raise Exception("GCMC sphere not yet fully implemented!")
+        self.sphere_radius = sphereRadius
+        self.sphere_centre = None
+        volume = (4 * np.pi * sphereRadius ** 3) / 3
+        if referenceAtoms is not None:
+            self.ref_atoms = self.getReferenceAtomIndices(referenceAtoms)
+            force_constant = 100.0 # kJ mol^-1 nm^-2
+            # Define custom forces to keep GCMC waters in and non-GCMC waters out
+            self.exclude_bonds = []
+            self.exclude_force = None
+            self.include_bonds = []
+            self.include_force = None
+            self.createRestraintForces(force_constant)
         else:
-            raise Exception("Either 'box' or 'sphere' must be set as the GCMC method!")
+            raise Exception("A set of atoms must be used to define the centre of the sphere!")
         
         # Calculate Adams value, if needed
         if adams is None:
@@ -165,21 +132,14 @@ class GrandCanonicalMonteCarloSampler(object):
         self.water_params = self.getWaterParameters(waterName)
 
         # Get water residue IDs & assign statuses to each
-        self.water_resids = self.getWaterResids(waterName)
-        self.water_status = np.ones(len(self.water_resids))  # 1 indicates on, 0 indicates off
-
-        # Need a list to store the IDs of waters in the GCMC region
-        self.waters_in_box = []  # Empty for now
+        self.water_resids = self.getWaterResids(waterName)  # All waters
+        self.gcmc_resids = []  # GCMC waters
+        self.gcmc_status = []  # 1 indicates on, 0 indicates off
 
         # Need to open the file to store ghost water IDs
         self.ghost_file = ghostFile
         with open(self.ghost_file, 'w') as f:
             pass
-
-        # Initialise the file to store the GCMC box
-        self.box_pdb = boxFile
-        with open(self.box_pdb, 'w') as f:
-            f.write("HEADER GCMC box file\n")
 
         return None
 
@@ -215,14 +175,14 @@ class GrandCanonicalMonteCarloSampler(object):
         if type(ref_atoms[0]) != list:
             ref_atoms = [ref_atoms]
         # Find atom index for each of the atoms used
-        for box_atom in ref_atoms:
+        for _atom in ref_atoms:
             for residue in self.topology.residues():
-                if residue.name != box_atom[1]:
+                if residue.name != _atom[1]:
                     continue
-                if len(box_atom) > 2 and residue.id != box_atom[2]:
+                if len(_atom) > 2 and residue.id != _atom[2]:
                     continue
                 for atom in residue.atoms():
-                    if atom.name == box_atom[0]:
+                    if atom.name == _atom[0]:
                         atom_indices.append(atom.index)
         if len(atom_indices) == 0:
             raise Exception("No GCMC reference atoms found")
@@ -265,11 +225,9 @@ class GrandCanonicalMonteCarloSampler(object):
         return None
 
     def prepareGCMCSphere(self, context, ghostResids):
-        # Delete ghost waters
-        context = self.deleteGhostWaters(context, ghostResids)
         # Load in positions and box vectors from context
         state = context.getState(getPositions=True, enforcePeriodicBox=True)
-        self.positions = state.getPositions(asNumpy=True)
+        self.positions = deepcopy(state.getPositions(asNumpy=True))
         box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
         self.simulation_box = np.array([box_vectors[0,0]._value,
                                         box_vectors[1,1]._value,
@@ -301,12 +259,15 @@ class GrandCanonicalMonteCarloSampler(object):
                 elif vector[i] <= -0.5 * self.simulation_box[i]:
                     vector[i] += self.simulation_box[i]
             if np.linalg.norm(vector)*unit.nanometer <= self.sphere_radius:
-                self.include_force.setBondParameters(self.include_bonds[wat_id], [0, wat_id+1], [0.0, self.sphere_radius/unit.nanometer])
-            else:
                 self.exclude_force.setBondParameters(self.exclude_bonds[wat_id], [0, wat_id+1], [0.0, self.sphere_radius/unit.nanometer])
+                self.gcmc_resids.append(resid)  # Add to list of GCMC waters
+            else:
+                self.include_force.setBondParameters(self.include_bonds[wat_id], [0, wat_id+1], [0.0, self.sphere_radius/unit.nanometer])
         # Update parameters
         self.include_force.updateParametersInContext(context)
         self.exclude_force.updateParametersInContext(context)
+        # Delete ghost waters
+        context = self.deleteGhostWaters(context, ghostResids)
         return context
 
     def getWaterParameters(self, water_resname="HOH"):
@@ -388,6 +349,10 @@ class GrandCanonicalMonteCarloSampler(object):
                 lines = f.readlines()
                 for resid in lines[-1].split(","):
                     ghost_resids.append(int(resid))
+        # Add ghost residues to list of GCMC residues
+        for resid in ghost_resids:
+            self.gcmc_resids.append(resid)
+        self.gcmc_status = np.ones_like(self.gcmc_resids)  # Store status of each GCMC water
         # Switch of the interactions involving ghost waters
         for resid, residue in enumerate(self.topology.residues()):
             if resid in ghost_resids:
@@ -398,15 +363,15 @@ class GrandCanonicalMonteCarloSampler(object):
                                                                sigma=0*unit.angstrom,
                                                                epsilon=0*unit.kilojoule_per_mole)
                 # Mark that this water has been switched off
-                for i in range(len(self.water_resids)):
-                    if resid == self.water_resids[i]:
-                        self.water_status[i] = 0
-                        break
+                gcmc_id = np.where(self.gcmc_resids == resid)[0]
+                self.gcmc_status[gcmc_id] = 0
+        # Calculate N
+        self.N = np.sum(self.gcmc_status)
         # Update the context with the new parameters and return it
         self.nonbonded_force.updateParametersInContext(context)
         return context
 
-    def deleteWatersInGCMCBox(self, context):
+    def deleteWatersInGCMCSphere(self, context):
         """
         Function to delete all of the waters currently present in the GCMC region
         This may be useful the plan is to generate a water distribution for this
@@ -426,76 +391,24 @@ class GrandCanonicalMonteCarloSampler(object):
         # Read in positions of the context and update GCMC box
         state = context.getState(getPositions=True, enforcePeriodicBox=True)
         self.positions = deepcopy(state.getPositions(asNumpy=True))
-        self.updateGCMCBox(context)
         # Loop over all residues to find those of interest
         for resid, residue in enumerate(self.topology.residues()):
-            if resid in self.waters_in_box:
+            if resid not in self.gcmc_resids:
+                continue  # Only concerned with GCMC waters
+            gcmc_id = np.where(self.gcmc_resids == resid)[0]
+            if self.gcmc_status[gcmc_id] == 1:
                 for atom in residue.atoms():
                     # Switch off interactions involving the atoms of this residue
                     self.nonbonded_force.setParticleParameters(atom.index,
                                                                charge=0*unit.elementary_charge,
                                                                sigma=0*unit.angstrom,
                                                                epsilon=0*unit.kilojoule_per_mole)
-                # Update relevant parametera
-                wat_id = np.where(np.array(self.water_resids) == resid)[0]
-                self.water_status[wat_id] = 0
+                # Update relevant parameters
+                self.gcmc_status[gcmc_id] = 0
                 self.N -= 1
-                self.waters_in_box = [i for i in self.waters_in_box if i != resid]
         # Update the context with the modified forces
         self.nonbonded_force.updateParametersInContext(context)
         return context
-
-    def updateGCMCBox(self, context):
-        """
-        Update the centre and origin of the GCMC box. Also count the number of
-        water molecules currently present in the box
-
-        Notes
-        -----
-        Need to double-check (and fix) any issues relating to periodic boundaries
-        and binning the waters
-
-        Parameters
-        ----------
-        context : simtk.openmm.Context
-            Current context of the simulation
-        """
-        # Update box centre and origin - if using reference atoms
-        if self.box_atoms is not None:
-            self.box_centre = self.positions[self.box_atoms[0]]
-            for i in range(1, len(self.box_atoms)):
-                self.box_centre += self.positions[self.box_atoms[i]]
-            self.box_centre /= len(self.box_atoms)
-            self.box_origin = self.box_centre - 0.5 * self.box_size
-        # Check which waters are on inside the GCMC box
-        # Need to add a PBC correction, but this will do for now
-        self.waters_in_box = []
-        for resid, residue in enumerate(self.topology.residues()):
-            if resid not in self.water_resids:
-                # Ignore anything that isn't water
-                continue
-            # Need the position of this water in the lists stored
-            wat_id = np.where(np.array(self.water_resids) == resid)[0]
-            if self.water_status[wat_id] != 1:
-                # Ignore waters which are switched off
-                continue
-            for atom in residue.atoms():
-                # Need the index of the oxygen atom
-                ox_index = atom.index
-                break
-            # Consider the distance of the water from the GCMC box centre
-            vector = self.positions[ox_index] - self.box_centre
-            # Correct PBCs of this vector - need to make this part cleaner
-            for i in range(3):
-                if vector[i] >= 0.5 * self.simulation_box[i]:
-                    vector[i] -= self.simulation_box[i]
-                elif vector[i] <= -0.5 * self.simulation_box[i]:
-                    vector[i] += self.simulation_box[i]
-            # Check if the water is sufficiently close to the box centre in each dimension
-            if np.all([abs(vector[i]) <= 0.5*self.box_size for i in range(3)]):
-                self.waters_in_box.append(resid)
-        self.N = len(self.waters_in_box)
-        return None
 
     def move(self, context, n=1):
         """
@@ -513,15 +426,15 @@ class GrandCanonicalMonteCarloSampler(object):
         n : int
             Number of moves to execute
         """
-        # Read in positions and box vectors
+        # Read in positions
         state = context.getState(getPositions=True, enforcePeriodicBox=True)
         self.positions = deepcopy(state.getPositions(asNumpy=True))
-        box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
-        self.simulation_box = np.array([box_vectors[0,0]._value,
-                                        box_vectors[1,1]._value,
-                                        box_vectors[2,2]._value]) * unit.nanometer
         # Update GCMC region based on current state
-        self.updateGCMCBox(context)
+        self.sphere_centre = np.zeros(3) * unit.nanometers
+        for atom in self.ref_atoms:
+            self.sphere_centre += self.positions[atom]
+        self.sphere_centre /= len(self.ref_atoms)
+        # Execute moves
         for i in range(n):
             # Get initial positions and energy
             state = context.getState(getPositions=True, enforcePeriodicBox=True, getEnergy=True)
@@ -559,19 +472,17 @@ class GrandCanonicalMonteCarloSampler(object):
             Updated context after the move
         """
         # Select a ghost water to insert
-        box_fractions = np.random.rand(3)
-        insert_point = self.box_origin + box_fractions * self.box_size
-        wat_id = np.random.choice(np.where(self.water_status == 0)[0])
-        insert_water = self.water_resids[wat_id]
-        if insert_water == 0: return context
+        gcmc_id = np.random.choice(np.where(self.gcmc_status == 0)[0])  # Position in list of GCMC waters
+        insert_water = self.gcmc_resids[gcmc_id]
+        wat_id = np.where(np.array(self.wat_resids) == insert_water)[0]  # Position in list of all waters
         atom_indices = []
         for resid, residue in enumerate(self.topology.residues()):
             if resid == insert_water:
                 for atom in residue.atoms():
                     atom_indices.append(atom.index)
         # Select a point to insert the water (based on O position)
-        box_fractions = np.random.rand(3)
-        insert_point = self.box_origin + box_fractions * self.box_size
+        rand_nums = np.random.randn(3)
+        insert_point = self.sphere_centre + (self.sphere_radius * np.power(np.random.rand(), 1.0/3) * rand_nums) / np.linalg.norm(rand_nums)
         # Generate a random rotation matrix
         R = self.getRandomRotationMatrix()
         new_positions = deepcopy(self.positions)
@@ -610,10 +521,12 @@ class GrandCanonicalMonteCarloSampler(object):
             context.setPositions(self.positions)
         else:
             # Update some variables if move is accepted
-            self.water_status[wat_id] = 1
+            self.gcmc_status[gcmc_id] = 1
             self.N += 1
             self.n_accepted += 1
-            self.waters_in_box.append(insert_water)
+            # Add in restraint to keep the water in the box
+            self.include_force.setBondParameters(self.include_bonds[wat_id], [0, wat_id+1], [100.0, self.sphere_radius/unit.nanometer])
+            self.include_force.updateParametersInContext(context)
         return context
 
     def deleteRandomWater(self, context, initial_energy):
@@ -633,11 +546,9 @@ class GrandCanonicalMonteCarloSampler(object):
             Updated context after the move
         """
         # Select a water residue to delete
-        if len(self.waters_in_box) == 0:
-            # No waters to delete
-            return context
-        delete_water = np.random.choice(self.waters_in_box)
-        wat_id = np.where(np.array(self.water_resids) == delete_water)[0]
+        gcmc_id = np.random.choice(np.where(self.gcmc_status == 1)[0])  # Position in list of GCMC waters
+        delete_water = self.gcmc_resids[gcmc_id]
+        wat_id = np.where(np.array(self.water_resids) == delete_water)[0]  # Position in list of all waters
         atom_indices = []
         for resid, residue in enumerate(self.topology.residues()):
             if resid == delete_water:
@@ -664,10 +575,12 @@ class GrandCanonicalMonteCarloSampler(object):
             self.nonbonded_force.updateParametersInContext(context)
         else:
             # Update some variables if move is accepted
-            self.water_status[wat_id] = 0
+            self.gcmc_status[gcmc_id] = 0
             self.N -= 1
             self.n_accepted += 1
-            self.waters_in_box = [resid for resid in self.waters_in_box if resid != delete_water]
+            # Remove the restraint, now that the water is non-interacting
+            self.include_force.setBondParameters(self.include_bonds[wat_id], [0, wat_id+1], [0.0, self.sphere_radius/unit.nanometer])
+            self.include_force.updateParametersInContext(context)
         return context
 
     def getRandomRotationMatrix(self):
@@ -707,7 +620,6 @@ class GrandCanonicalMonteCarloSampler(object):
         line - for easier use...
         """
         self.writeGhostWaterResids()
-        self.writeGCMCBox()
         return None
 
     def writeGhostWaterResids(self):
@@ -725,42 +637,5 @@ class GrandCanonicalMonteCarloSampler(object):
             for resid in ghost_resids[1:]:
                 f.write(",{}".format(resid))
             f.write("\n")
-        return None
-
-    def writeGCMCBox(self):
-        """
-        Write out the coordinates of the GCMC box at a given point in the simulation
-        Useful for visualising the GCMC region. Using the format used in the ProtoMS
-        software package (www.protoms.org)
-        """
-        # Get box dimensions in angstroms (dimensionless)
-        origin = self.box_origin.in_units_of(unit.angstroms)._value
-        boxsize = self.box_size.in_units_of(unit.angstroms)._value
-        # Calculate positions of each corner
-        a = origin.copy()
-        b = a + np.array([boxsize[0], 0, 0])
-        c = b + np.array([0, 0, boxsize[2]])
-        d = a + np.array([0, 0, boxsize[2]])
-        e = a + np.array([0, boxsize[1], 0])
-        f = b + np.array([0, boxsize[1], 0])
-        g = c + np.array([0, boxsize[1], 0])
-        h = d + np.array([0, boxsize[1], 0])
-        corners = [["A", a], ["B", b], ["C", c], ["D", d], ["E", e], ["F", f], ["G", g], ["H", h]]
-        # Write out data to PDB file
-        with open(self.box_pdb, 'a') as f:
-            f.write("MODEL\n")
-            for i, corner in enumerate(corners):
-                label, pos = corner
-                f.write("ATOM  {0:>5} {1:<4} {2:<4} {3:>4}    {4:>8.3f}{5:>8.3f}{6:>8.3f}\n".format(i+1, "DU"+label, "BOX", 1,
-                                                                                                    pos[0], pos[1], pos[2]))
-            f.write("CONECT    1    2    4    5\n")
-            f.write("CONECT    2    1    3    6\n")
-            f.write("CONECT    3    2    4    7\n")
-            f.write("CONECT    4    1    3    8\n")
-            f.write("CONECT    5    1    6    8\n")
-            f.write("CONECT    6    2    5    7\n")
-            f.write("CONECT    7    3    6    8\n")
-            f.write("CONECT    8    4    5    7\n")
-            f.write("ENDMDL\n")
         return None
 
