@@ -101,7 +101,7 @@ class GrandCanonicalMonteCarloSampler(object):
         volume = (4 * np.pi * sphereRadius ** 3) / 3
         if referenceAtoms is not None:
             self.ref_atoms = self.getReferenceAtomIndices(referenceAtoms)
-            force_constant = 100.0 # kJ mol^-1 nm^-2
+            force_constant = 10000.0 # kJ mol^-1 nm^-2
             # Define custom forces to keep GCMC waters in and non-GCMC waters out
             self.exclude_bonds = []
             self.exclude_force = None
@@ -396,7 +396,8 @@ class GrandCanonicalMonteCarloSampler(object):
         for resid, residue in enumerate(self.topology.residues()):
             if resid not in self.gcmc_resids:
                 continue  # Only concerned with GCMC waters
-            gcmc_id = np.where(np.array(self.gcmc_resids) == resid)[0]
+            gcmc_id = np.where(np.array(self.gcmc_resids) == resid)[0]   # Position in list of GCMC waters
+            wat_id = np.where(np.array(self.water_resids) == resid)[0][0]  # Position in list of all waters
             if self.gcmc_status[gcmc_id] == 1:
                 for atom in residue.atoms():
                     # Switch off interactions involving the atoms of this residue
@@ -404,6 +405,9 @@ class GrandCanonicalMonteCarloSampler(object):
                                                                charge=0*unit.elementary_charge,
                                                                sigma=0*unit.angstrom,
                                                                epsilon=0*unit.kilojoule_per_mole)
+                # Remove restraint on the water
+                self.include_force.setBondParameters(self.include_bonds[wat_id], [0, wat_id+1], [0.0, self.sphere_radius/unit.nanometer])
+                self.include_force.updateParametersInContext(context)
                 # Update relevant parameters
                 self.gcmc_status[gcmc_id] = 0
                 self.N -= 1
