@@ -439,8 +439,8 @@ class GrandCanonicalMonteCarloSampler(object):
         # Execute moves
         for i in range(n):
             # Get initial positions and energy
-            state = context.getState(getPositions=True, enforcePeriodicBox=True)
-            self.positions = deepcopy(state.getPositions(asNumpy=True))
+            #state = context.getState(getPositions=True, enforcePeriodicBox=True)
+            #self.positions = deepcopy(state.getPositions(asNumpy=True))
             # Insert or delete a water, based on random choice
             if np.random.randint(2) == 1:
                 # Attempt to insert a water
@@ -520,6 +520,7 @@ class GrandCanonicalMonteCarloSampler(object):
             context.setPositions(self.positions)
         else:
             # Update some variables if move is accepted
+            self.positions = deepcopy(new_positions)
             self.gcmc_status[gcmc_id] = 1
             self.N += 1
             self.n_accepted += 1
