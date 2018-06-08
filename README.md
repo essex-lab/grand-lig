@@ -2,49 +2,47 @@
 
 ## Intro
 
-This private repo repo stores my attempts to run GCMC sampling of water molecules in the OpenMM simulation engine.
-Currently have a basic framework to do this, but certain points need to be added/tweaked.
+This private repository stores my attempts to run GCMC sampling of water molecules in the OpenMM simulation engine.
+We currently have a basic framework to do this, but certain points need to be added/tweaked, and only very basic testing has been performed thus far.
+The idea is to make this framework as generally transferable as possible, so that it can be easily integrated with other work based in OpenMM.
 
-The idea is to make this as generally transferable as possible, so that it can be easily integrated with other work based in OpenMM.
-
-The current version of the code is not optimised for efficiency, so may not be as fast as possible.
+It should be noted that the current version of the code is not optimised for efficiency, so may not be as fast as possible.
 This will come at a later date - when I am sure that the code works and have built up some test cases, I will then start optimising.
 
 ## Usage
 
-The aim is for this code to be very simply incorporated into OpenMM scripts, with minimal extra knowledge/effort necessary.
+The aim is for this code to be very simply incorporated into OpenMM scripts, without entailing an extensive knowledge of the underlying fundamentals behind GCMC simulations.
 
-An example of how this code is shown in example.py, where much of the code is as would be used in a normal OpenMM simulation script.
+An example of how this code is shown in examples/bpti.py, where much of the code is as would be used in a normal OpenMM simulation script (though some parts are rearranged slightly, such as carrying out the MD portions in batches).
 However, there are a number of extra lines introduced, and those are discussed here.
 
-The first line we see is the use of the flood\_system() function:
+The first extra line we see is the use of the `add\_ghosts()` function:
 ```python
 pdb.topology, pdb.positions, ghosts = gcmc.utils.flood_system(pdb.topology, pdb.positions, n=25, pdb='bpti-gcmc.pdb')
 ```
-This function is used to add 'ghost' water molecules to the topology of the system, and should be called after loading the PDB data.
-This returns the list of residue IDs corresponding to ghost water molecules, whcih should be retained as these will need to be swtiched off before the simulation begins.
+This function is used to add 'ghost' water molecules to the topology of the system, and should be called after loading the PDB data (these are switched on/off with insertions & deletions, as this is much easier than actually adding and removing particles from the system on the fly).
+This returns the list of residue IDs corresponding to ghost water molecules, which should be retained as these will need to be swtiched off before the simulation begins.
 Additionally, the modified topology is written to a .pdb file, which may be useful in visualising the simulation data.
 
 Next, we have the following section:
 ```python
 ref_atoms = [['CA', 'TYR', '10'], ['C', 'ASN', '43']]
-gcmc_box = np.array([7.0, 7.0, 7.0])*angstroms
 gcmc_mover = gcmc.sampler.GrandCanonicalMonteCarloSampler(system=system, topology=pdb.topology, temperature=300*kelvin,
-                                                          boxSize=gcmc_box, boxAtoms=ref_atoms)
+                                                          referenceAtoms=ref_atoms, sphereRadius=4*angstroms)
 ```
-Where we first define the reference atoms for the GCMC box, which will take its centre from the centre of geometry of these atoms, and the size of the cubic GCMC region (it is important that units are specified).
-The reference atoms are defined by their atom name, residue name and, optionally, a residue number (this is important if there are more than one of the residue of interest), and it is important to include the units in the definition of the box size.
-We are then able to initialise the GrandCanonicalMonteCarloSampler object, which is used to carry out the GCMC portions of the simulation.
-In this example, we have minimally specified the system, topology, temperature, box size and reference atoms for the simulation, though there are many other options allowing finer control.
+Where we first define the reference atoms for the GCMC sphere, which will take its centre from the centre of geometry of these atoms.
+The reference atoms are defined by their atom name, residue name and, optionally, a residue number (this is important if there are more than one of the residue of interest).
+We are then able to initialise the `GrandCanonicalMonteCarloSampler` object, which is used to carry out the GCMC moves of the simulation, making sure to define the radius of the GCMC sphere.
+In this example, we have minimally specified the system, topology, temperature, box size and reference atoms for the simulation, though there are many other options allowing finer control (I'll add further documentation for this at a later date, though the docstring for the class `\_\_init\_\_()` function provides some extra description).
 
 The next GCMC-specific portion includes the lines:
 ```python
-simulation.context = gcmc_mover.deleteGhostWaters(simulation.context, ghosts)
-simulation.context = gcmc_mover.deleteWatersInGCMCBox(simulation.context)
+simulation.context = gcmc_mover.prepareGCMCSphere(simulation.context, ghosts)
+simulation.context = gcmc_mover.deleteWatersInGCMCSphere(simulation.context)
 ```
-These lines update the simulation context by deleting water molecules of interest.
-The first of these is very important, as the ghost water molecules are liking clashing with the environment, and must be deleted.
-However, the second line deletes the water molecules currently present in the GCMC region, and can be used to start from a clean slate in the region, if desired.
+These lines update the simulation context by deleting ghost water molecules of interest.
+The first of these is very important, as the ghost water molecules are liking clashing with the environment, and must be deleted, additionally, the `gcmc_mover.prepareGCMCSphere()` member function sets up the restraints to keep water molecules in/out of the GCMC sphere, as appropriate.
+The second line is not essential, and deletes the water molecules currently present in the GCMC region, and can be used to start from a clean slate in the region, if desired.
 
 Given that we have 'emptied' the GCMC region, here we want to equilibrate the system:
 ```python
@@ -66,11 +64,11 @@ for i in range(50):
     state = simulation.context.getState(getPositions=True, getVelocities=True)
     dcd.report(simulation, state)
     rst7.report(simulation, state)
-    gcmc_mover.writeFrame()
+    gcmc_mover.report()
     print("\t{} GCMC moves completed. N = {}".format(gcmc_mover.n_moves, gcmc_mover.N))
 print("{}/{} moves accepted".format(gcmc_mover.n_accepted, gcmc_mover.n_moves))
 ```
-Primarily, this includes the reporting of the current state to .dcd and .rst7 files, and importantly the use of the gcmc\_mover.writeFrame() method.
+Primarily, this includes the reporting of the current state to .dcd and .rst7 files, and importantly the use of the `gcmc\_mover.report()` method.
 This method writes out a list of ghost residues to file and also the coordinates of the GCMC box, to aid in visualisation, as discussed below.
 
 Finally, we use the line:
