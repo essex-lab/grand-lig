@@ -24,7 +24,7 @@ from simtk.openmm import app
 from copy import deepcopy
 
 
-def flood_system(topology, positions, ff='tip3p', n=100, pdb='gcmc-extra-wats.pdb'):
+def add_ghosts(topology, positions, ff='tip3p', n=100, pdb='gcmc-extra-wats.pdb'):
     """
     Function to add water molecules to a topology, as extras for GCMC
     This is to avoid changing the number of particles throughout a simulation
