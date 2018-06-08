@@ -82,9 +82,6 @@ This allows the user to visualise the water smapling in the region of interest w
 
 ## To Do (Development)
 - Make sure all parameters are correct (need to calculate hydration free energies for each model)
-- Add option to prevent water leaks when not simulating at equilibrium
-- Add support for spherical GCMC regions
 - Start generating some test results on previously used systems
-- Figure out a way to use AMBER input easily
 - Optimise code as far as possible
 
