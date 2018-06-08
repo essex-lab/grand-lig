@@ -17,9 +17,8 @@ system = ff.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=10.0
          constraints=HBonds)
 
 ref_atoms = [['CA', 'TYR', '10'], ['C', 'ASN', '43']]
-gcmc_box = np.array([7.0, 7.0, 7.0])*angstroms
 gcmc_mover = gcmc.sampler.GrandCanonicalMonteCarloSampler(system=system, topology=pdb.topology, temperature=300*kelvin,
-                                                          boxSize=gcmc_box, boxAtoms=ref_atoms)
+                                                          referenceAtoms=ref_atoms, sphereRadius=4*angstroms)
 
 # Langevin integrator
 integrator = LangevinIntegrator(300*kelvin, 1.0/picosecond, 0.002*picoseconds)
@@ -34,9 +33,9 @@ simulation.context.setPeriodicBoxVectors(*pdb.topology.getPeriodicBoxVectors())
 dcd = mdtraj.reporters.DCDReporter('bpti-gcmc.dcd', 0)
 rst7 = RestartReporter('bpti-gcmc.rst7', 0)
 
-# Switch off ghost waters and in box
-simulation.context = gcmc_mover.deleteGhostWaters(simulation.context, ghosts)
-simulation.context = gcmc_mover.deleteWatersInGCMCBox(simulation.context)
+# Switch off ghost waters and in sphere
+simulation.context = gcmc_mover.prepareGCMCSphere(simulation.context, ghosts)
+simulation.context = gcmc_mover.deleteWatersInGCMCSphere(simulation.context)
 
 # Equilibrate water distribution
 print("GCMC equilibration...")
@@ -60,7 +59,7 @@ for i in range(50):
     state = simulation.context.getState(getPositions=True, getVelocities=True)
     dcd.report(simulation, state)
     rst7.report(simulation, state)
-    gcmc_mover.writeFrame()
+    gcmc_mover.report()
     print("\t{} GCMC moves completed. N = {}".format(gcmc_mover.n_moves, gcmc_mover.N))
 print("{}/{} moves accepted".format(gcmc_mover.n_accepted, gcmc_mover.n_moves))
 
