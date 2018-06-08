@@ -10,7 +10,7 @@ from parmed.openmm.reporters import RestartReporter
 import gcmc
 
 pdb = PDBFile('bpti-equil.pdb')
-pdb.topology, pdb.positions, ghosts = gcmc.utils.flood_system(pdb.topology, pdb.positions, n=25, pdb='bpti-gcmc.pdb')
+pdb.topology, pdb.positions, ghosts = gcmc.utils.add_ghosts(pdb.topology, pdb.positions, n=25, pdb='bpti-gcmc.pdb')
 
 ff = ForceField('amber10.xml', 'tip3p.xml')
 system = ff.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=10.0*angstroms,
