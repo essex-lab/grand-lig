@@ -14,6 +14,7 @@ Notes
 -----
 To Do:
     - Double check all thermodynamic/GCMC parameters
+    - Fix explosion problem
 
 References
 ----------
