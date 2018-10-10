@@ -338,8 +338,11 @@ class GrandCanonicalMonteCarloSampler(object):
         Context object. Also activates any restraint forces and deletes all ghost
         water molecules.
         """
+        # Load context into sampler
+        self.context = context
+
         # Load in positions and box vectors from context
-        state = context.getState(getPositions=True, enforcePeriodicBox=True)
+        state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
         self.positions = deepcopy(state.getPositions(asNumpy=True))
         box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
         self.simulation_box = np.array([box_vectors[0,0]._value,
@@ -385,12 +388,12 @@ class GrandCanonicalMonteCarloSampler(object):
 
         # Update parameters for restraints, if necessary
         if self.use_restraint:
-            self.include_force.updateParametersInContext(context)
-            self.exclude_force.updateParametersInContext(context)
+            self.include_force.updateParametersInContext(self.context)
+            self.exclude_force.updateParametersInContext(self.context)
 
         # Delete ghost waters
-        context = self.deleteGhostWaters(context, ghostResids)
-        return context
+        self.deleteGhostWaters(ghostResids)
+        return None
 
     def getWaterParameters(self, water_resname="HOH"):
         """
@@ -438,7 +441,7 @@ class GrandCanonicalMonteCarloSampler(object):
                 resid_list.append(resid)
         return resid_list
 
-    def deleteGhostWaters(self, context, ghostResids=None, ghostFile=None):
+    def deleteGhostWaters(self, ghostResids=None, ghostFile=None):
         """
         Switch off nonbonded interactions involving the ghost molecules initially added
         This function should be executed before beginning the simulation, to prevent any
@@ -465,16 +468,19 @@ class GrandCanonicalMonteCarloSampler(object):
         if ghostResids is not None:
             for resid in ghostResids:
                 ghost_resids.append(resid)
+
         # Read residues from file if needed
         if ghostFile is not None:
             with open(ghostFile, 'r') as f:
                 lines = f.readlines()
                 for resid in lines[-1].split(","):
                     ghost_resids.append(int(resid))
+
         # Add ghost residues to list of GCMC residues
         for resid in ghost_resids:
             self.gcmc_resids.append(resid)
         self.gcmc_status = np.ones_like(self.gcmc_resids, dtype=np.int_)  # Store status of each GCMC water
+
         # Switch off the interactions involving ghost waters
         for resid, residue in enumerate(self.topology.residues()):
             if resid in ghost_resids:
@@ -482,17 +488,19 @@ class GrandCanonicalMonteCarloSampler(object):
                 atom_ids = []
                 for i, atom in enumerate(residue.atoms()):
                     atom_ids.append(atom.index)
-                context = self.decoupleSpecificWater(context, atom_ids)
+                self.decoupleSpecificWater(atom_ids)
                 # Mark that this water has been switched off
                 gcmc_id = np.where(np.array(self.gcmc_resids) == resid)[0]
                 wat_id = np.where(np.array(self.gcmc_resids) == resid)[0]
                 self.gcmc_status[gcmc_id] = 0
                 self.water_status[wat_id] = 0
+
         # Calculate N
         self.N = np.sum(self.gcmc_status)
-        return context
 
-    def deleteWatersInGCMCSphere(self, context):
+        return None
+
+    def deleteWatersInGCMCSphere(self, context=None):
         """
         Function to delete all of the waters currently present in the GCMC region
         This may be useful the plan is to generate a water distribution for this
@@ -502,7 +510,8 @@ class GrandCanonicalMonteCarloSampler(object):
         Parameters
         ----------
         context : simtk.openmm.Context
-            Current context of the system
+            Current context of the system. Only needs to be supplied if the context
+            has changed since the last update
         
         Returns
         -------
@@ -510,7 +519,7 @@ class GrandCanonicalMonteCarloSampler(object):
             Updated context after deleting the relevant waters
         """
         # Read in positions of the context and update GCMC box
-        state = context.getState(getPositions=True, enforcePeriodicBox=True)
+        state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
         self.positions = deepcopy(state.getPositions(asNumpy=True))
         # Loop over all residues to find those of interest
         for resid, residue in enumerate(self.topology.residues()):
@@ -523,17 +532,17 @@ class GrandCanonicalMonteCarloSampler(object):
                 for atom in residue.atoms():
                     # Switch off interactions involving the atoms of this residue
                     atom_ids.append(atom.index)
-                context = self.decoupleSpecificWater(context, atom_ids)
+                self.decoupleSpecificWater(atom_ids)
                 # Remove restraint on the water
                 if self.use_restraint:
                     self.include_force.setBondParameters(self.include_bonds[wat_id], [0, wat_id+1], [0.0, self.sphere_radius/unit.nanometer])
-                    self.include_force.updateParametersInContext(context)
+                    self.include_force.updateParametersInContext(self.context)
                 # Update relevant parameters
                 self.gcmc_status[gcmc_id] = 0
                 self.water_status[wat_id] = 0
                 self.N -= 1
 
-        return context
+        return None
 
     def updateGCMCSphere(self, state):
         """
@@ -587,12 +596,13 @@ class GrandCanonicalMonteCarloSampler(object):
             # Update lists
             self.gcmc_resids = gcmc_resids
             self.gcmc_status = np.array(gcmc_status)
+            self.N = np.sum(self.gcmc_status)
 
         return None
 
     def move(self, context, n=1):
         """
-        Execute one GCMC move on the current system
+        Execute a number of GCMC moves on the current system
         
         Parameters
         ----------
