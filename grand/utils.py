@@ -24,6 +24,27 @@ from simtk.openmm import app
 from copy import deepcopy
 
 
+def get_file(filename):
+    """
+    Get the absolute path of one of the data files included in the package
+
+    Parameters
+    ----------
+    filename : str
+        Name of the file
+
+    Returns
+    -------
+    filepath : str
+        Name of the file including the path
+    """
+    filepath = os.path.join(os.path.dirname(__file__), "data", filename)
+    if os.path.isfile(filepath):
+        return filepath
+    else:
+        raise Exception("{} does not exist. You may need to reinstall the code.".format(filepath))
+
+
 def add_ghosts(topology, positions, ff='tip3p', n=100, pdb='gcmc-extra-wats.pdb'):
     """
     Function to add water molecules to a topology, as extras for GCMC
@@ -69,9 +90,11 @@ def add_ghosts(topology, positions, ff='tip3p', n=100, pdb='gcmc-extra-wats.pdb'
     box_size = np.array([box_vectors[0][0]._value,
                          box_vectors[1][1]._value,
                          box_vectors[2][2]._value]) * unit.nanometer
+
     # Load topology of water model 
     assert ff.lower() in ['spce', 'tip3p', 'tip4pew'], "Water model must be SPCE, TIP3P or TIP4Pew!"
-    water = app.PDBFile(file='{}/../data/{}.pdb'.format(os.path.abspath(os.path.dirname(__file__)), ff.lower()))
+    water = app.PDBFile(file=get_file("{}.pdb".format(ff.lower())))
+
     # Add multiple copies of the same water, then write out a pdb (for visualisation)
     ghosts = []
     for i in range(n):
@@ -86,11 +109,13 @@ def add_ghosts(topology, positions, ff='tip3p', n=100, pdb='gcmc-extra-wats.pdb'
         # Add the water to the model and include the resid in a list
         modeller.add(addTopology=water.topology, addPositions=new_positions)
         ghosts.append(modeller.topology._numResidues - 1)
+
     # Write the new topology and positions to a PDB file
     if pdb is not None:
         pdbfile = open(pdb, 'w')
         water.writeFile(topology=modeller.topology, positions=modeller.positions, file=pdbfile)
         pdbfile.close()
+
     return modeller.topology, modeller.positions, ghosts
 
 
@@ -113,10 +138,12 @@ def write_ligand_xml(mol2, frcmod, gaff, xml="ligand.xml"):
     # Read in parameters
     ligand_parser = openmoltools.amber_parser.AmberParser()
     ligand_parser.parse_filenames([gaff, mol2, frcmod])
+
     # Generate .xml output and write to file
     stream = ligand_parser.generate_xml()
     with open(xml, 'w') as f:
         f.write(stream.read())
+
     return None
 
 
@@ -141,8 +168,10 @@ def remove_trajectory_ghosts(topology, trajectory, ghost_file, output="gcmc-traj
     with open(ghost_file, 'r') as f:
         for line in f.readlines():
             ghost_resids.append([int(resid) for resid in line.split(",")])
+
     # Read in trajectory data
     t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
+
     # Identify which atoms need to be moved out of sight
     ghost_atom_ids = []
     for frame in range(len(ghost_resids)):
@@ -152,10 +181,12 @@ def remove_trajectory_ghosts(topology, trajectory, ghost_file, output="gcmc-traj
                 for atom in residue.atoms:
                     atom_ids.append(atom.index)
         ghost_atom_ids.append(atom_ids)
+
     # Shift coordinates of ghost atoms by several unit cells and write out trajectory
     for frame, atom_ids in enumerate(ghost_atom_ids):
         for index in atom_ids:
             t.xyz[frame, index, :] += 3 * t.unitcell_lengths[frame, :]
     t.save(output)
+
     return None
 
