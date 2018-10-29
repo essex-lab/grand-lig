@@ -45,7 +45,7 @@ def get_file(filename):
         raise Exception("{} does not exist. You may need to reinstall the code.".format(filepath))
 
 
-def add_ghosts(topology, positions, ff='tip3p', n=100, pdb='gcmc-extra-wats.pdb'):
+def add_ghosts(topology, positions, ff='tip3p', n=10, pdb='gcmc-extra-wats.pdb'):
     """
     Function to add water molecules to a topology, as extras for GCMC
     This is to avoid changing the number of particles throughout a simulation
@@ -117,6 +117,71 @@ def add_ghosts(topology, positions, ff='tip3p', n=100, pdb='gcmc-extra-wats.pdb'
         pdbfile.close()
 
     return modeller.topology, modeller.positions, ghosts
+
+
+def write_amber_input(pdb, protein_ff="ff14SB", ligand_ff="gaff", water_ff="tip3p",
+                      prepi=None, frcmod=None):
+    """
+    Take a PDB file (with ghosts having been added) and create AMBER format prmtop
+    and inpcrd files, allowing the use of other forcefields and parameter sets
+
+    Parameters
+    ----------
+    pdb : str
+        Name of the PDB file
+    protein_ff : str
+        Name of the protein force field, e.g. 'ff14SB'
+    ligand_ff : str
+        Name of the ligand force field, e.g. 'gaff'
+    water_ff : str
+        Name of the water force field, e.g. 'tip3p'
+    prepi : str
+        Name of the ligand .prepi file
+    frcmod : str
+        Name of the ligand .frcmod file
+
+    Returns
+    -------
+    prmtop : str
+        Name of the .prmtop file written out
+    inpcrd : str
+        Name of the .inpcrd file written out
+    """
+    # Get stem of file name
+    file_stem = os.path.splitext(pdb)[0]
+    pdb_amber = "{}-amber.pdb".format(file_stem)
+    prmtop = "{}.prmtop".format(file_stem)
+    inpcrd = "{}.inpcrd".format(file_stem)
+
+    # Read in box dimensions from pdb file
+    with open(pdb, 'r') as f:
+        for line in f.readlines():
+            if line.startswith('CRYST'):
+                box = [float(line.split()[1]), float(line.split()[2]), float(line.split()[3])]
+
+    # Convert PDB to amber format
+    os.system("pdb4amber -i {} -o {} > pdb4amber.out".format(pdb, pdb_amber))
+
+    # Write an input file for tleap using the relevant settings
+    with open("tleap.in", "w") as f:
+        f.write("source leaprc.protein.{}\n".format(protein_ff))
+        f.write("source leaprc.{}\n".format(ligand_ff))
+        f.write("source leaprc.water.{}\n".format(water_ff))
+        if prepi is not None:
+            f.write("loadamberprep {}\n".format(prepi))
+        if frcmod is not None:
+            f.write("loadamberparams {}\n".format(frcmod))
+        f.write("addPdbAtomMap {{C CH3} {H1 HH31} {H2 HH32} {H3 HH33}}\n")
+        f.write("mol = loadpdb {}-amber.pdb\n".format(file_stem))
+        f.write("set mol box { %f %f %f }\n" % (box[0], box[1], box[2]))  # Have to use % due to {}
+        f.write("saveamberparm mol {} {}\n".format(prmtop, inpcrd))
+        f.write("quit\n")
+
+    # Pass the file into tleap to create the desired output
+    os.system("tleap -s -f tleap.in > tleap.out")
+
+    # Return names of the .prmtop and .inpcrd files
+    return prmtop, inpcrd
 
 
 def write_ligand_xml(mol2, frcmod, gaff, xml="ligand.xml"):
