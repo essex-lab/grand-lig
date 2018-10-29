@@ -8,7 +8,7 @@ from distutils.core import setup
 
 setup(name="grand",
       version="0.1.0",
-      description="OpenMM-based implementation of grand canonical Monte Carlo",
+      description="OpenMM-based implementation of grand canonical Monte Carlo (GCMC)",
       author="Marley L. Samways",
       author_email="mls2g13@soton.ac.uk",
       packages=["grand"],
