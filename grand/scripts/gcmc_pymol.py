@@ -12,7 +12,6 @@ This script can be used by typing:
 """
 
 import __main__
-import os
 import argparse
 import pymol
 from pymol import cmd
