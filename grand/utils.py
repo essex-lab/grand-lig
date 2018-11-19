@@ -255,3 +255,79 @@ def remove_trajectory_ghosts(topology, trajectory, ghost_file, output="gcmc-traj
 
     return None
 
+
+def write_sphere_traj(topology, trajectory, ref_atoms, radius, output='gcmc_sphere.pdb', initial_frame=False):
+    """
+    Write out a multi-frame PDB file containing the centre of the GCMC sphere
+
+    Parameters
+    ----------
+    topology : str
+        Topology of the system, such as a PDB file
+    trajectory : str
+        Trajectory file, such as DCD
+    ref_atoms : list
+        List of reference atoms for the GCMC sphere, as [['name', 'resname', 'resid']]
+    radius : float
+        Radius of the GCMC sphere in Angstroms
+    output : str
+        Name of the output PDB file
+    initial_frame : bool
+        Write an extra frame for the topology at the beginning of the trajectory.
+        Sometimes necessary when visualising a trajectory loaded onto a PDB
+    """
+
+
+    # Load trajectory
+    t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
+    n_frames, n_atoms, n_dims = t.xyz.shape
+
+    # Get reference atom IDs
+    ref_indices = []
+    for ref_atom in ref_atoms:
+        found = False
+        for residue in t.topology.residues:
+            if residue.name == ref_atom[1] and str(residue.resSeq) == ref_atom[2]:
+                for atom in residue.atoms:
+                    if atom.name == ref_atom[0]:
+                        ref_indices.append(atom.index)
+                        found = True
+        if not found:
+            raise Exception("Atom {} of residue {}{} not found!".format(ref_atom[0], ref_atom[1].capitalize(),
+                                                                        ref_atom[2]))
+
+    # Loop over all frames and write to PDB file
+    with open(output, 'w') as f:
+        f.write("HEADER GCMC SPHERE\n")
+        f.write("REMARK RADIUS = {} ANGSTROMS\n".format(radius))
+        # Figure out the initial coordinates if requested
+        if initial_frame:
+            t_i = mdtraj.load(topology, discard_overlapping_frames=False)
+            # Calculate centre
+            centre = np.zeros(3)
+            for idx in ref_indices:
+                centre += t_i.xyz[0, idx, :]
+            centre *= 10 / len(ref_indices)  # Also convert from nm to A
+            # Write to PDB file
+            f.write("MODEL\n")
+            f.write("HETATM{:>5d} {:<4s} {:<4s} {:>4d}    {:>8.3f}{:>8.3f}{:>8.3f}\n".format(1, 'CTR', 'SPH', 1,
+                                                                                             centre[0],
+                                                                                             centre[1],
+                                                                                             centre[2]))
+            f.write("ENDMDL\n")
+        # Loop over all frames
+        for frame in range(n_frames):
+            # Calculate sphere centre
+            centre = np.zeros(3)
+            for idx in ref_indices:
+                centre += t.xyz[frame, idx, :]
+            centre *= 10 / len(ref_indices)  # Also convert from nm to A
+            # Write to PDB file
+            f.write("MODEL {}\n".format(frame+1))
+            f.write("HETATM{:>5d} {:<4s} {:<4s} {:>4d}    {:>8.3f}{:>8.3f}{:>8.3f}\n".format(1, 'CTR', 'SPH', 1,
+                                                                                             centre[0],
+                                                                                             centre[1],
+                                                                                             centre[2]))
+            f.write("ENDMDL\n")
+
+    return None
