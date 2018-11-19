@@ -157,8 +157,6 @@ class GrandCanonicalMonteCarloSampler(object):
         with open(self.ghost_file, 'w') as f:
             pass
 
-        return None
-
     def customiseForces(self):
         """
         Create a CustomNonbondedForce to handle water-water interactions and modify the original NonbondedForce
