@@ -18,7 +18,6 @@ Need to think of what else will need to be added here (think what's useful)
 import os
 import numpy as np
 import mdtraj
-import openmoltools
 from simtk import unit
 from simtk.openmm import app
 from copy import deepcopy
@@ -184,49 +183,29 @@ def write_amber_input(pdb, protein_ff="ff14SB", ligand_ff="gaff", water_ff="tip3
     return prmtop, inpcrd
 
 
-def write_ligand_xml(mol2, frcmod, gaff, xml="ligand.xml"):
-    """
-    Create a .xml file for the ligand forcefield using openmoltools, from the .mol2,
-    .frcmod and gaff.dat files supplied
-
-    Parameters
-    ----------
-    mol2 : str
-        Name of the ligand .mol2 file (in AMBER format, with GAFF atom types)
-    frcmod : str
-        Name of the .frcmod file for the ligand
-    gaff : str
-        Name of the gaff.dat file (including path)
-    xml : str
-        Name of the .xml file to write. Default is 'ligand.xml'
-    """
-    # Read in parameters
-    ligand_parser = openmoltools.amber_parser.AmberParser()
-    ligand_parser.parse_filenames([gaff, mol2, frcmod])
-
-    # Generate .xml output and write to file
-    stream = ligand_parser.generate_xml()
-    with open(xml, 'w') as f:
-        f.write(stream.read())
-
-    return None
-
-
-def remove_trajectory_ghosts(topology, trajectory, ghost_file, output="gcmc-traj.dcd"):
+def shift_ghost_waters(ghost_file, topology=None, trajectory=None, t=None, output=None):
     """
     Translate all ghost waters in a trajectory out of the simulation box, to make
     visualisation clearer
 
     Parameters
     ----------
+    ghost_file : str
+        Name of the file containing the ghost water residue IDs at each frame
     topology : str
         Name of the topology/connectivity file (e.g. PDB, GRO, etc.)
     trajectory : str
         Name of the trajectory file (e.g. DCD, XTC, etc.)
-    ghost_file : str
-        Name of the file containing the ghost water residue IDs at each frame
+    t : mdtraj.Trajectory
+        Trajectory object, if already loaded
     output : str
-        Name of the file to which the new trajectory is written
+        Name of the file to which the new trajectory is written. If None, then a
+        Trajectory will be returned
+
+    Returns
+    -------
+    t : mdtraj.Trajectory
+        Will return a trajectory object, if no output file name is given
     """
     # Read in residue IDs for the ghost waters in each frame
     ghost_resids = []
@@ -235,7 +214,8 @@ def remove_trajectory_ghosts(topology, trajectory, ghost_file, output="gcmc-traj
             ghost_resids.append([int(resid) for resid in line.split(",")])
 
     # Read in trajectory data
-    t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
+    if t is None:
+        t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
 
     # Identify which atoms need to be moved out of sight
     ghost_atom_ids = []
@@ -251,9 +231,136 @@ def remove_trajectory_ghosts(topology, trajectory, ghost_file, output="gcmc-traj
     for frame, atom_ids in enumerate(ghost_atom_ids):
         for index in atom_ids:
             t.xyz[frame, index, :] += 3 * t.unitcell_lengths[frame, :]
-    t.save(output)
 
-    return None
+    # Either return the trajectory or save to file
+    if output is None:
+        return t
+    else:
+        t.save(output)
+        return None
+
+
+def align_traj(topology=None, trajectory=None, t=None, output=None):
+    """
+    Align a trajectory to the protein
+
+    Parameters
+    ----------
+    topology : str
+        Name of the topology/connectivity file (e.g. PDB, GRO, etc.)
+    trajectory : str
+        Name of the trajectory file (e.g. DCD, XTC, etc.)
+    t : mdtraj.Trajectory
+        Trajectory object, if already loaded
+    output : str
+        Name of the file to which the new trajectory is written. If None, then a
+        Trajectory will be returned
+
+    Returns
+    -------
+    t : mdtraj.Trajectory
+        Will return a trajectory object, if no output file name is given
+    """
+    # Load trajectory data, if not already
+    if t is None:
+        t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
+
+    # Align trajectory based on protein IDs
+    protein_ids = t.topology.select_expression('protein')
+    t.superpose(t, atom_indices=protein_ids)
+
+    # Return or save trajectory
+    if output is None:
+        return t
+    else:
+        t.save(output)
+        return None
+
+
+def recentre_traj(topology=None, trajectory=None, t=None, resname='ALA', resid=1, output=None):
+    """
+    Recentre a trajectory based on a specific protein residue. Assumes that the
+    protein has not been broken by periodic boundaries.
+    Would be best to do this step before aligning a trajectory
+
+    Parameters
+    ----------
+    topology : str
+        Name of the topology/connectivity file (e.g. PDB, GRO, etc.)
+    trajectory : str
+        Name of the trajectory file (e.g. DCD, XTC, etc.)
+    t : mdtraj.Trajectory
+        Trajectory object, if already loaded
+    resname : str
+        Name of the protein residue to centre the trajectory on. Should be a
+        binding site residue
+    resid : int
+        ID of the protein residue to centre the trajectory. Should be a binding
+        site residue
+    output : str
+        Name of the file to which the new trajectory is written. If None, then a
+        Trajectory will be returned
+
+    Returns
+    -------
+    t : mdtraj.Trajectory
+        Will return a trajectory object, if no output file name is given
+    """
+    # Load trajectory
+    if t is None:
+        t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
+    n_frames, n_atoms, n_dims = t.xyz.shape
+
+    # Get IDs of protein atoms
+    protein_ids = t.topology.select_expression('protein')
+
+    # Find the index of the C-alpha atom of this residue
+    ref_idx = None
+    for residue in t.topology.residues:
+        if residue.name == resname and residue.resSeq == resid:
+            for atom in residue.atoms:
+                if atom.name == 'CA':
+                    ref_idx = atom.index
+    if ref_idx is None:
+        raise Exception("Could not find residue {}{}!".format(resname.capitalize(), resid))
+
+    # Fix all frames
+    for f in range(n_frames):
+        for residue in t.topology.residues:
+            # Skip if this is a protein residue
+            if any([atom.index in protein_ids for atom in residue.atoms]):
+                continue
+
+            # Find the maximum and minimum distances between this residue and the reference atom
+            max_dists = [1e6, 1e6, 1e6]
+            min_dists = [-1e6, -1e6, -1e6]
+            for atom in residue.atoms:
+                vector = t.xyz[f, atom.index, :] - t.xyz[f, ref_idx, :]
+                for i in range(3):
+                    if vector[i] < min_dists[i]:
+                        min_dists[i] = vector[i]
+                    elif max_dists[i] > vector[i]:
+                        max_dists[i] = vector[i]
+
+            # Calculate the correction vector based on the separation
+            box = t.unitcell_lengths[f, :]
+            correction = np.zeros(3)
+            for i in range(3):
+                if -2 * box[i] < min_dists[i] < -0.5 * box[i]:
+                    correction[i] += box[i]
+                elif 0.5 * box[i] < max_dists[i] < 2 * box[i]:
+                    correction[i] -= box[i]
+
+            # Apply the correciton vector to each atom in the residue
+            for atom in residue.atoms:
+                t.xyz[f, atom.index, :] += correction
+
+    # Either return or save the trajectory
+    if output is None:
+        return t
+    else:
+        t.save(output)
+        return None
 
 
 def write_sphere_traj(topology, trajectory, ref_atoms, radius, output='gcmc_sphere.pdb', initial_frame=False):
@@ -276,8 +383,6 @@ def write_sphere_traj(topology, trajectory, ref_atoms, radius, output='gcmc_sphe
         Write an extra frame for the topology at the beginning of the trajectory.
         Sometimes necessary when visualising a trajectory loaded onto a PDB
     """
-
-
     # Load trajectory
     t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
     n_frames, n_atoms, n_dims = t.xyz.shape
@@ -300,6 +405,7 @@ def write_sphere_traj(topology, trajectory, ref_atoms, radius, output='gcmc_sphe
     with open(output, 'w') as f:
         f.write("HEADER GCMC SPHERE\n")
         f.write("REMARK RADIUS = {} ANGSTROMS\n".format(radius))
+
         # Figure out the initial coordinates if requested
         if initial_frame:
             t_i = mdtraj.load(topology, discard_overlapping_frames=False)
@@ -315,6 +421,7 @@ def write_sphere_traj(topology, trajectory, ref_atoms, radius, output='gcmc_sphe
                                                                                              centre[1],
                                                                                              centre[2]))
             f.write("ENDMDL\n")
+
         # Loop over all frames
         for frame in range(n_frames):
             # Calculate sphere centre
