@@ -270,6 +270,7 @@ class GrandCanonicalMonteCarloSampler(object):
 
         # Find atom index for each of the atoms used
         for _atom in ref_atoms:
+            found = False
             for residue in self.topology.residues():
                 if residue.name != _atom[1]:
                     continue
@@ -278,6 +279,9 @@ class GrandCanonicalMonteCarloSampler(object):
                 for atom in residue.atoms():
                     if atom.name == _atom[0]:
                         atom_indices.append(atom.index)
+                        found = True
+            if not found:
+                raise Exception("Atom {} of residue {}{} not found!".format(_atom[0], _atom[1].capitalize(), _atom[2]))
 
         if len(atom_indices) == 0:
             raise Exception("No GCMC reference atoms found")
