@@ -363,20 +363,23 @@ def recentre_traj(topology=None, trajectory=None, t=None, resname='ALA', resid=1
         return None
 
 
-def write_sphere_traj(topology, trajectory, ref_atoms, radius, output='gcmc_sphere.pdb', initial_frame=False):
+def write_sphere_traj(ref_atoms, radius, topology=None, trajectory=None, t=None, output='gcmc_sphere.pdb',
+                      initial_frame=False):
     """
     Write out a multi-frame PDB file containing the centre of the GCMC sphere
 
     Parameters
     ----------
-    topology : str
-        Topology of the system, such as a PDB file
-    trajectory : str
-        Trajectory file, such as DCD
     ref_atoms : list
         List of reference atoms for the GCMC sphere, as [['name', 'resname', 'resid']]
     radius : float
         Radius of the GCMC sphere in Angstroms
+    topology : str
+        Topology of the system, such as a PDB file
+    trajectory : str
+        Trajectory file, such as DCD
+    t : mdtraj.Trajectory
+        Trajectory object, if already loaded
     output : str
         Name of the output PDB file
     initial_frame : bool
@@ -384,7 +387,8 @@ def write_sphere_traj(topology, trajectory, ref_atoms, radius, output='gcmc_sphe
         Sometimes necessary when visualising a trajectory loaded onto a PDB
     """
     # Load trajectory
-    t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
+    if t is None:
+        t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
     n_frames, n_atoms, n_dims = t.xyz.shape
 
     # Get reference atom IDs
@@ -417,8 +421,7 @@ def write_sphere_traj(topology, trajectory, ref_atoms, radius, output='gcmc_sphe
             # Write to PDB file
             f.write("MODEL\n")
             f.write("HETATM{:>5d} {:<4s} {:<4s} {:>4d}    {:>8.3f}{:>8.3f}{:>8.3f}\n".format(1, 'CTR', 'SPH', 1,
-                                                                                             centre[0],
-                                                                                             centre[1],
+                                                                                             centre[0], centre[1],
                                                                                              centre[2]))
             f.write("ENDMDL\n")
 
@@ -432,8 +435,7 @@ def write_sphere_traj(topology, trajectory, ref_atoms, radius, output='gcmc_sphe
             # Write to PDB file
             f.write("MODEL {}\n".format(frame+1))
             f.write("HETATM{:>5d} {:<4s} {:<4s} {:>4d}    {:>8.3f}{:>8.3f}{:>8.3f}\n".format(1, 'CTR', 'SPH', 1,
-                                                                                             centre[0],
-                                                                                             centre[1],
+                                                                                             centre[0], centre[1],
                                                                                              centre[2]))
             f.write("ENDMDL\n")
 
