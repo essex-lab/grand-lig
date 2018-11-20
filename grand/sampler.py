@@ -32,11 +32,11 @@ from copy import deepcopy
 
 class GrandCanonicalMonteCarloSampler(object):
     """
-    Class to carry out the GCMC moves in OpenMM
+    Base class for carrying out GCMC moves in OpenMM
     """
-    def __init__(self, system, topology, temperature, adams=None, chemicalPotential=None,
-                 waterName="HOH", waterModel="tip3p", ghostFile="gcmc-ghost-wats.txt",
-                 referenceAtoms=None, sphereRadius=None, useRestraint=False):
+    def __init__(self, system, topology, temperature, adams=None, chemicalPotential=None, waterName="HOH",
+                 waterModel="tip3p", ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None,
+                 useRestraint=False):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
 
@@ -89,12 +89,12 @@ class GrandCanonicalMonteCarloSampler(object):
         self.kT = unit.BOLTZMANN_CONSTANT_kB * unit.AVOGADRO_CONSTANT_NA * temperature
         self.simulation_box = np.zeros(3) * unit.nanometer  # Set to zero for now
 
-        # Find nonbonded force - needs to be updated as appropriate
+        # Find NonbondedForce - needs to be updated to switch waters on/off
         for f in range(system.getNumForces()):
             force = system.getForce(f)
             if force.__class__.__name__ == "NonbondedForce":
                 self.nonbonded_force = force
-            # Flag an error if not simulating at constant volume
+            # Flag an error if not simulating at constant volume
             elif "Barostat" in force.__class__.__name__:
                 raise Exception("GCMC must be used at constant volume!")
         
@@ -106,10 +106,10 @@ class GrandCanonicalMonteCarloSampler(object):
         volume = (4 * np.pi * sphereRadius ** 3) / 3
         if referenceAtoms is not None:
             self.ref_atoms = self.getReferenceAtomIndices(referenceAtoms)
-            force_constant = 10000.0 # kJ mol^-1 nm^-2
             # Define custom forces to keep GCMC waters in and non-GCMC waters out, if required:
             if useRestraint:
                 self.use_restraint = True
+                force_constant = 10000.0  # kJ mol^-1 nm^-2
                 self.exclude_bonds = []
                 self.exclude_force = None
                 self.include_bonds = []
@@ -123,10 +123,11 @@ class GrandCanonicalMonteCarloSampler(object):
         # Calculate Adams value, if needed
         if adams is None:
             if chemicalPotential is None:
-                assert waterModel.lower() in ['spce', 'tip3p', 'tip4pew'], "Unsupported water model. Must define mu' manually"
-                mu_dict = {"spce" : -6.2 * unit.kilocalorie_per_mole,
-                           "tip3p" : -6.2 * unit.kilocalorie_per_mole,
-                           "tip4pew" : -6.2 * unit.kilocalorie_per_mole}
+                assert waterModel.lower() in ['spce', 'tip3p', 'tip4pew'],\
+                    "Unsupported water model. Must define mu' manually"
+                mu_dict = {"spce": -6.2 * unit.kilocalorie_per_mole,
+                           "tip3p": -6.2 * unit.kilocalorie_per_mole,
+                           "tip4pew": -6.2 * unit.kilocalorie_per_mole}
                 mu = mu_dict[waterModel.lower()]
             else:
                 mu = chemicalPotential
@@ -144,7 +145,7 @@ class GrandCanonicalMonteCarloSampler(object):
         # Get water residue IDs & assign statuses to each
         self.water_resids = self.getWaterResids(waterName)  # All waters
         self.water_status = np.ones_like(self.water_resids)  # 1 indicates on, 0 indicates off
-        self.gcmc_resids = []  # GCMC waters
+        self.gcmc_resids = []  # GCMC waters
         self.gcmc_status = []  # 1 indicates on, 0 indicates off
 
         # Need to create a customised force to handle softcore steric interactions of water molecules
@@ -167,7 +168,6 @@ class GrandCanonicalMonteCarloSampler(object):
             raise Exception("Currently only supporting PME for long range electrostatics")
 
         # Define the energy expression for the softcore sterics
-        #energy_expression = '1.0'
         energy_expression = ("U;"
                              "U = (lambda^soft_a) * 4 * epsilon * x * (x-1.0);"  # Softcore energy
                              "x = (sigma/reff)^6;"  # Define x as sigma/r(effective)
@@ -375,7 +375,7 @@ class GrandCanonicalMonteCarloSampler(object):
 
             # Remove inclusive or exclusive restraint, depending on water position
             vector = self.positions[ox_index]-self.sphere_centre
-            # Correct PBCs of this vector - need to make this part cleaner
+            # Correct PBCs of this vector - need to make this part cleaner
             for i in range(3):
                 if vector[i] >= 0.5 * self.simulation_box[i]:
                     vector[i] -= self.simulation_box[i]
@@ -384,7 +384,7 @@ class GrandCanonicalMonteCarloSampler(object):
             if np.linalg.norm(vector)*unit.nanometer <= self.sphere_radius:
                 if self.use_restraint:
                     self.exclude_force.setBondParameters(self.exclude_bonds[wat_id], [0, wat_id+1], [0.0, self.sphere_radius/unit.nanometer])
-                self.gcmc_resids.append(resid)  # Add to list of GCMC waters
+                self.gcmc_resids.append(resid)  # Add to list of GCMC waters
             elif self.use_restraint:
                 self.include_force.setBondParameters(self.include_bonds[wat_id], [0, wat_id+1], [0.0, self.sphere_radius/unit.nanometer])
 
@@ -490,7 +490,7 @@ class GrandCanonicalMonteCarloSampler(object):
                 atom_ids = []
                 for i, atom in enumerate(residue.atoms()):
                     atom_ids.append(atom.index)
-                self.decoupleSpecificWater(atom_ids)
+                self.adjustSpecificWater(atom_ids, 0.0)
                 # Mark that this water has been switched off
                 gcmc_id = np.where(np.array(self.gcmc_resids) == resid)[0]
                 wat_id = np.where(np.array(self.gcmc_resids) == resid)[0]
@@ -534,7 +534,7 @@ class GrandCanonicalMonteCarloSampler(object):
                 for atom in residue.atoms():
                     # Switch off interactions involving the atoms of this residue
                     atom_ids.append(atom.index)
-                self.decoupleSpecificWater(atom_ids)
+                self.adjustSpecificWater(atom_ids, 0.0)
                 # Remove restraint on the water
                 if self.use_restraint:
                     self.include_force.setBondParameters(self.include_bonds[wat_id], [0, wat_id+1], [0.0, self.sphere_radius/unit.nanometer])
@@ -602,152 +602,16 @@ class GrandCanonicalMonteCarloSampler(object):
 
         return None
 
-    def move(self, context, n=1):
+    def adjustSpecificWater(self, atoms, new_lambda):
         """
-        Execute a number of GCMC moves on the current system
-        
+        Adjust the coupling of a specific water molecule, by adjusting the lambda value
+
         Parameters
         ----------
-        context : simtk.openmm.Context
-            Current context of the simulation
-        n : int
-            Number of moves to execute
-        """
-        # Read in positions
-        self.context = context
-        state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getEnergy=True)
-        self.positions = deepcopy(state.getPositions(asNumpy=True))
-        self.energy = state.getPotentialEnergy()
-
-        # Update GCMC region based on current state
-        self.updateGCMCSphere(state)
-
-        # Execute moves
-        for i in range(n):
-            # Insert or delete a water, based on random choice
-            if np.random.randint(2) == 1:
-                # Attempt to insert a water
-                self.insertRandomWater()
-            else:
-                # Attempt to delete a water
-                self.deleteRandomWater()
-            self.n_moves += 1
-
-        return None
-
-    def insertRandomWater(self):
-        """
-        Carry out a random water insertion move on the current system
-
-        Notes
-        -----
-        Need to double-check (and fix) any issues relating to periodic boundaries
-        and the inserted coordinates
-        """
-        # Select a ghost water to insert
-        gcmc_id = np.random.choice(np.where(self.gcmc_status == 0)[0])  # Position in list of GCMC waters
-        insert_water = self.gcmc_resids[gcmc_id]
-        wat_id = np.where(np.array(self.water_resids) == insert_water)[0][0]  # Position in list of all waters
-        atom_indices = []
-        for resid, residue in enumerate(self.topology.residues()):
-            if resid == insert_water:
-                for atom in residue.atoms():
-                    atom_indices.append(atom.index)
-
-        # Select a point to insert the water (based on O position)
-        rand_nums = np.random.randn(3)
-        insert_point = self.sphere_centre + (self.sphere_radius * np.power(np.random.rand(), 1.0/3) * rand_nums) / np.linalg.norm(rand_nums)
-        # Generate a random rotation matrix
-        R = self.getRandomRotationMatrix()
-        new_positions = deepcopy(self.positions)
-        for i, index in enumerate(atom_indices):
-            # Translate coordinates to an origin defined by the oxygen atom, and normalise
-            atom_position = self.positions[index] - self.positions[atom_indices[0]]
-            # Rotate about the oxygen position
-            if i != 0:
-                vec_length = np.linalg.norm(atom_position)
-                atom_position = atom_position / vec_length
-                # Rotate coordinates & restore length
-                atom_position = vec_length * np.dot(R, atom_position) * unit.nanometer
-            # Translate to new position 
-            new_positions[index] = atom_position + insert_point
-
-        # Recouple this water
-        self.coupleSpecificWater(atom_indices)
-
-        self.context.setPositions(new_positions)
-        # Calculate new system energy and acceptance probability
-        final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
-        acc_prob = np.exp(self.B) * np.exp(-(final_energy - self.energy)/self.kT) / (self.N + 1)
-
-        if acc_prob < np.random.rand() or np.isnan(acc_prob):
-            # Need to revert the changes made if the move is to be rejected
-            # Switch off nonbonded interactions involving this water
-            self.decoupleSpecificWater(atom_indices)
-            self.context.setPositions(self.positions)
-        else:
-            # Update some variables if move is accepted
-            self.positions = deepcopy(new_positions)
-            self.gcmc_status[gcmc_id] = 1
-            self.water_status[wat_id] = 1
-            self.N += 1
-            self.n_accepted += 1
-            # Add in restraint to keep the water in the box
-            if self.use_restraint:
-                self.include_force.setBondParameters(self.include_bonds[wat_id], [0, wat_id+1],
-                                                     [10000.0, self.sphere_radius/unit.nanometer])
-                self.include_force.updateParametersInContext(self.context)
-            # Update energy
-            self.energy = final_energy
-
-        return None
-
-    def deleteRandomWater(self):
-        """
-        Carry out a random water deletion move on the current system
-        """
-        # Cannot carry out deletion if there are no GCMC waters on
-        if np.sum(self.gcmc_status) == 0:
-            return None
-
-        # Select a water residue to delete
-        gcmc_id = np.random.choice(np.where(self.gcmc_status == 1)[0])  # Position in list of GCMC waters
-        delete_water = self.gcmc_resids[gcmc_id]
-        wat_id = np.where(np.array(self.water_resids) == delete_water)[0][0]  # Position in list of all waters
-        atom_indices = []
-        for resid, residue in enumerate(self.topology.residues()):
-            if resid == delete_water:
-                for atom in residue.atoms():
-                    atom_indices.append(atom.index)
-
-        # Switch water off
-        self.decoupleSpecificWater(atom_indices)
-        # Calculate energy of new state and acceptance probability
-        final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
-        acc_prob = self.N * np.exp(-self.B) * np.exp(-(final_energy - self.energy)/self.kT)
-
-        if acc_prob < np.random.rand() or np.isnan(acc_prob):
-            # Switch the water back on if the move is rejected
-            self.coupleSpecificWater(atom_indices)
-        else:
-            # Update some variables if move is accepted
-            self.gcmc_status[gcmc_id] = 0
-            self.water_status[wat_id] = 0
-            self.N -= 1
-            self.n_accepted += 1
-            # Remove the restraint, now that the water is non-interacting
-            if self.use_restraint:
-                self.include_force.setBondParameters(self.include_bonds[wat_id], [0, wat_id+1],
-                                                     [0.0, self.sphere_radius/unit.nanometer])
-                self.include_force.updateParametersInContext(self.context)
-            # Update energy
-            self.energy = final_energy
-
-        return None
-
-    def coupleSpecificWater(self, atoms):
-        """
-        Function to recouple the interactions of a particular water
+        atoms : list
+            List of the atom indices of the water to be adjusted
+        new_lambda : float
+            Value to set lambda to for this particle
         """
         # Loop over parameters
         for i, atom_idx in enumerate(atoms):
@@ -755,40 +619,17 @@ class GrandCanonicalMonteCarloSampler(object):
             atom_params = self.water_params[i]
             # Update charge in NonbondedForce
             self.nonbonded_force.setParticleParameters(atom_idx,
-                                                       charge=atom_params["charge"],
+                                                       charge=(new_lambda * atom_params["charge"]),
                                                        sigma=atom_params["sigma"],
                                                        epsilon=abs(0.0))
             # Update lambda in CustomNonbondedForce
             self.custom_nb_force.setParticleParameters(atom_idx,
-                                                       [atom_params["sigma"], atom_params["epsilon"], 1.0])
+                                                       [atom_params["sigma"], atom_params["epsilon"], new_lambda])
 
         # Update context with new parameters
         self.nonbonded_force.updateParametersInContext(self.context)
         self.custom_nb_force.updateParametersInContext(self.context)
-
-        return None
-
-    def decoupleSpecificWater(self, atoms):
-        """
-        Function to recouple the interactions of a particular water
-        """
-        # Loop over parameters
-        for i, atom_idx in enumerate(atoms):
-            # Obtain original parameters
-            atom_params = self.water_params[i]
-            # Update charge in NonbondedForce
-            self.nonbonded_force.setParticleParameters(atom_idx,
-                                                       charge=abs(0.0),
-                                                       sigma=atom_params["sigma"],
-                                                       epsilon=abs(0.0))
-            # Update lambda in CustomNonbondedForce
-            self.custom_nb_force.setParticleParameters(atom_idx,
-                                                       [atom_params["sigma"], atom_params["epsilon"], 0.0])
-
-        # Update context with new parameters
-        self.nonbonded_force.updateParametersInContext(self.context)
-        self.custom_nb_force.updateParametersInContext(self.context)
-
+        
         return None
 
     def getRandomRotationMatrix(self):
@@ -802,7 +643,7 @@ class GrandCanonicalMonteCarloSampler(object):
         rot_matrix : numpy.ndarray
             Rotation matrix generated
         """
-        # First generate a random axis about which the rotation will occur
+        # First generate a random axis about which the rotation will occur
         rand1 = rand2 = 2.0
 
         while (rand1**2 + rand2**2) >= 1.0:
@@ -851,3 +692,199 @@ class GrandCanonicalMonteCarloSampler(object):
 
         return None
 
+
+class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
+    """
+    Class to carry out instantaneous GCMC moves in OpenMM
+    """
+    def __init__(self, system, topology, temperature, adams=None, chemicalPotential=None, waterName="HOH",
+                 waterModel="tip3p", ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None,
+                 useRestraint=False):
+        """
+        Initialise the object to be used for sampling instantaneous water insertion/deletion moves
+
+        Parameters
+        ----------
+        system : simtk.openmm.System
+            System object to be used for the simulation
+        topology : simtk.openmm.app.Topology
+            Topology object for the system to be simulated
+        temperature : simtk.unit.Quantity
+            Temperature of the simulation, must be in appropriate units
+        adams : float
+            Adams B value for the simulation (dimensionless). Default is None,
+            if None, the B value is calculated from the box volume and chemical
+            potential
+        chemicalPotential : simtk.unit.Quantity
+            Chemical potential of the simulation, default is None. This is to be used
+            if you don't want to use the equilibrium value or if using a water model
+            other than SPCE, TIP3P, TIP4Pew (need to add others).
+        waterName : str
+            Name of the water residues. Default is 'HOH'
+        waterModel : str
+            Name of the water model being used. This is used to identify the equilibrium chemical
+            potential to use. Default: TIP3P. Accepted: SPCE, TIP3P, TIP4Pew
+        ghostFile : str
+            Name of a file to write out the residue IDs of ghost water molecules. This is
+            useful if you want to visualise the sampling, as you can then remove these waters
+            from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
+        referenceAtoms : list
+            List containing details of the atom to use as the centre of the GCMC region
+            Must contain atom name, residue name and (optionally) residue ID,
+            e.g. ['C1', 'LIG', 123] or just ['C1', 'LIG']
+        sphereRadius : simtk.unit.Quantity
+            Radius of the spherical GCMC region
+        useRestraint : bool
+            Indicates whether or not to use half-harmonic restraints to keep the GCMC region
+            impermeable
+        """
+        # Initialise base class - don't need any more for the instantaneous sampler
+        GrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, adams=adams,
+                                                 chemicalPotential=chemicalPotential, waterName=waterName,
+                                                 waterModel=waterModel, ghostFile=ghostFile,
+                                                 referenceAtoms=referenceAtoms, sphereRadius=sphereRadius,
+                                                 useRestraint=useRestraint)
+
+    def move(self, context, n=1):
+        """
+        Execute a number of GCMC moves on the current system
+
+        Parameters
+        ----------
+        context : simtk.openmm.Context
+            Current context of the simulation
+        n : int
+            Number of moves to execute
+        """
+        # Read in positions
+        self.context = context
+        state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getEnergy=True)
+        self.positions = deepcopy(state.getPositions(asNumpy=True))
+        self.energy = state.getPotentialEnergy()
+
+        # Update GCMC region based on current state
+        self.updateGCMCSphere(state)
+
+        #  Execute moves
+        for i in range(n):
+            # Insert or delete a water, based on random choice
+            if np.random.randint(2) == 1:
+                # Attempt to insert a water
+                self.insertRandomWater()
+            else:
+                # Attempt to delete a water
+                self.deleteRandomWater()
+            self.n_moves += 1
+
+        return None
+
+    def insertRandomWater(self):
+        """
+        Carry out a random water insertion move on the current system
+
+        Notes
+        -----
+        Need to double-check (and fix) any issues relating to periodic boundaries
+        and the inserted coordinates
+        """
+        # Select a ghost water to insert
+        gcmc_id = np.random.choice(np.where(self.gcmc_status == 0)[0])  # Position in list of GCMC waters
+        insert_water = self.gcmc_resids[gcmc_id]
+        wat_id = np.where(np.array(self.water_resids) == insert_water)[0][0]  # Position in list of all waters
+        atom_indices = []
+        for resid, residue in enumerate(self.topology.residues()):
+            if resid == insert_water:
+                for atom in residue.atoms():
+                    atom_indices.append(atom.index)
+
+        # Select a point to insert the water (based on O position)
+        rand_nums = np.random.randn(3)
+        insert_point = self.sphere_centre + (
+                    self.sphere_radius * np.power(np.random.rand(), 1.0 / 3) * rand_nums) / np.linalg.norm(rand_nums)
+        #  Generate a random rotation matrix
+        R = self.getRandomRotationMatrix()
+        new_positions = deepcopy(self.positions)
+        for i, index in enumerate(atom_indices):
+            #  Translate coordinates to an origin defined by the oxygen atom, and normalise
+            atom_position = self.positions[index] - self.positions[atom_indices[0]]
+            # Rotate about the oxygen position
+            if i != 0:
+                vec_length = np.linalg.norm(atom_position)
+                atom_position = atom_position / vec_length
+                # Rotate coordinates & restore length
+                atom_position = vec_length * np.dot(R, atom_position) * unit.nanometer
+            # Translate to new position
+            new_positions[index] = atom_position + insert_point
+
+        # Recouple this water
+        self.adjustSpecificWater(atom_indices, 1.0)
+
+        self.context.setPositions(new_positions)
+        # Calculate new system energy and acceptance probability
+        final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
+        acc_prob = np.exp(self.B) * np.exp(-(final_energy - self.energy) / self.kT) / (self.N + 1)
+
+        if acc_prob < np.random.rand() or np.isnan(acc_prob):
+            # Need to revert the changes made if the move is to be rejected
+            # Switch off nonbonded interactions involving this water
+            self.adjustSpecificWater(atom_indices, 0.0)
+            self.context.setPositions(self.positions)
+        else:
+            # Update some variables if move is accepted
+            self.positions = deepcopy(new_positions)
+            self.gcmc_status[gcmc_id] = 1
+            self.water_status[wat_id] = 1
+            self.N += 1
+            self.n_accepted += 1
+            # Add in restraint to keep the water in the box
+            if self.use_restraint:
+                self.include_force.setBondParameters(self.include_bonds[wat_id], [0, wat_id + 1],
+                                                     [10000.0, self.sphere_radius / unit.nanometer])
+                self.include_force.updateParametersInContext(self.context)
+            # Update energy
+            self.energy = final_energy
+
+        return None
+
+    def deleteRandomWater(self):
+        """
+        Carry out a random water deletion move on the current system
+        """
+        # Cannot carry out deletion if there are no GCMC waters on
+        if np.sum(self.gcmc_status) == 0:
+            return None
+
+        # Select a water residue to delete
+        gcmc_id = np.random.choice(np.where(self.gcmc_status == 1)[0])  # Position in list of GCMC waters
+        delete_water = self.gcmc_resids[gcmc_id]
+        wat_id = np.where(np.array(self.water_resids) == delete_water)[0][0]  # Position in list of all waters
+        atom_indices = []
+        for resid, residue in enumerate(self.topology.residues()):
+            if resid == delete_water:
+                for atom in residue.atoms():
+                    atom_indices.append(atom.index)
+
+        # Switch water off
+        self.adjustSpecificWater(atom_indices, 0.0)
+        # Calculate energy of new state and acceptance probability
+        final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
+        acc_prob = self.N * np.exp(-self.B) * np.exp(-(final_energy - self.energy) / self.kT)
+
+        if acc_prob < np.random.rand() or np.isnan(acc_prob):
+            # Switch the water back on if the move is rejected
+            self.adjustSpecificWater(atom_indices, 1.0)
+        else:
+            # Update some variables if move is accepted
+            self.gcmc_status[gcmc_id] = 0
+            self.water_status[wat_id] = 0
+            self.N -= 1
+            self.n_accepted += 1
+            # Remove the restraint, now that the water is non-interacting
+            if self.use_restraint:
+                self.include_force.setBondParameters(self.include_bonds[wat_id], [0, wat_id + 1],
+                                                     [0.0, self.sphere_radius / unit.nanometer])
+                self.include_force.updateParametersInContext(self.context)
+            # Update energy
+            self.energy = final_energy
+
+        return None
