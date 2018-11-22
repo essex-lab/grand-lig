@@ -8,6 +8,7 @@ Marley L. Samways
 
 __version__ = "0.1.0"
 
+import potential
 import samplers
 import utils
 

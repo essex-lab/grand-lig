@@ -12,29 +12,53 @@ a specific system setup
 
 import numpy as np
 import pymbar
+import openmmtools
 from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
-from openmmtools import alchemy
 
 
-def calc_mu(model, topology, positions, box_vectors, system_args, temperature=300*kelvin, sample_time=50*picoseconds,
-            n_lambdas=16, n_samples=50, equil_time=1*nanosecond, dt=2*femtoseconds, integrator=None, platform=None):
+def get_lambda_values(lambda_in):
+    """
+    Calculate the lambda_sterics and lambda_electrostatics values for a given lambda.
+    Electrostatics are decoupled from lambda=1 to 0.5, and sterics are decoupled from
+    lambda=0.5 to 0.
+
+    Parameters
+    ----------
+    lambda_in : float
+        Input lambda value
+
+    Returns
+    -------
+    lambda_sterics : float
+        Lambda value for steric interactions
+    lambda_ele : float
+        Lambda value for electrostatic interactions
+    """
+    lambda_sterics = min([1.0, 2.0*lambda_in])
+    lambda_ele = max([0.0, 2.0*(lambda_in-0.5)])
+    return lambda_sterics, lambda_ele
+
+
+def calc_mu(model, box_len, cutoff, switch_dist, nb_method=PME, temperature=300*kelvin, sample_time=50*picoseconds,
+            n_lambdas=16, n_samples=50, equil_time=1*nanosecond, dt=2*femtoseconds, integrator=None, platform=None,
+            args={}):
     """
     Calculate the hydration free energy of water for a particular set of parameters
 
     Parameters
     ----------
     model : str
-        Water model to use. Must be a model for which OpenMM has an XML file
-    topology : simtk.openmm.app.Topology
-        Topology of the water box
-    positions : simtk.unit.Quantity
-        Positions of the atoms in the system
-    box_vectors :
-        Periodic box vectors for the simulation
-    system_args : dict
-        Arguments (beyond topology) to use to create the System object
+        Name of the water model to be simulated
+    box_len : simtk.unit.Quantity
+        Length of the water box
+    cutoff : simtk.unit.Quantity
+        Cutoff to be used
+    switch_dist : simtk.unit.Quantity
+        Distance at which to start switching Lennard-Jones interactions
+    nb_method : (any suitable long-range nonbonded method)
+        Method to use for long range interactions, default is PME
     temperature : simtk.unit.Quantity
         Temperature to run the simulation at, if None, will run at 300 K
     sample_time : simtk.unit.Quantity
@@ -53,6 +77,8 @@ def calc_mu(model, topology, positions, box_vectors, system_args, temperature=30
         plain LangevinIntegrator
     platform : simtk.openmm.Platform
         OpenMM Platform object to use for the simulation, if None, will use CPU
+    args : dict
+        Any additional arguments to pass into creating the WaterBox object
 
     Returns
     -------
@@ -60,36 +86,43 @@ def calc_mu(model, topology, positions, box_vectors, system_args, temperature=30
     """
     kT = AVOGADRO_CONSTANT_NA * BOLTZMANN_CONSTANT_kB * temperature
 
-    # Load force field and create System
-    ff = ForceField('{}.xml'.format(model))
-    system = ff.createSystem(topology, **system_args)
-    system.addForce(MonteCarloBarostat(1*bar, temperature, 25))
+    # Load water box from openmmtools.testsystems
+    water_box = openmmtools.testsystems.WaterBox(box_edge=box_len, cutoff=cutoff, model=model,
+                                                 switch_width=cutoff-switch_dist, nonbondedMethod=nb_method,
+                                                 dispersion_correction=False, **args)
+    # Add a barostat to the system
+    water_box.system.addForce(MonteCarloBarostat(1*bar, temperature, 25))
 
     # Get the atom IDs of one water residue
     alchemical_ids = []
-    for water in topology.residues():
+    for water in water_box.topology.residues():
         for atom in water.atoms():
             alchemical_ids.append(atom.index)
 
     # Create alchemical system
-    alchemical_region = alchemy.AlchemicalRegion(alchemical_atoms=alchemical_ids)
-    factory = alchemy.AbsoluteAlchemicalFactory()
-    alchemical_system = factory.create_alchemical_system(system, alchemical_region)
+    alchemical_region = openmmtools.alchemy.AlchemicalRegion(alchemical_atoms=alchemical_ids)
+    factory = openmmtools.alchemy.AbsoluteAlchemicalFactory()
+    alchemical_system = factory.create_alchemical_system(water_box.system, alchemical_region)
+    alchemical_state = openmmtools.alchemy.AlchemicalState.from_system(alchemical_system)
 
     # Check integrator and platform, then create Simulation object
     if integrator is None:
         integrator = LangevinIntegrator(temperature, 1.0/picosecond, dt)
     if platform is None:
         platform = Platform.getPlatformByName('CPU')
-    simulation = Simulation(topology, system, integrator, platform)
+    #simulation = Simulation(water_box.topology, alchemical_system, integrator, platform)
+    context = Context(alchemical_system, integrator)
 
     # Update context
-    simulation.context.setPositions(positions)
-    simulation.context.setVelocitiesToTemperature(temperature)
-    simulation.context.setPeriodicBoxVectors(box_vectors)
+    #simulation.context.setPositions(water_box.positions)
+    #simulation.context.setVelocitiesToTemperature(temperature)
+    #simulation.context.setPeriodicBoxVectors(box_vectors)
+    context.setPositions(water_box.positions)
+    context.setVelocitiesToTemperature(temperature)
 
     # Minimise system
-    simulation.minimizeEnergy(0.01*kilojoule_per_mole, 10000)
+    print("Minimising system...")
+    LocalEnergyMinimizer.minimize(context)
 
     # Get all variables for the free energy calculation ready
     equil_steps = int(round(equil_time / dt))  # Number of equilibration steps
@@ -99,27 +132,35 @@ def calc_mu(model, topology, positions, box_vectors, system_args, temperature=30
 
     # Simulate the system at each lambda window
     for i in range(n_lambdas):
-        # Set lambda value
-        simulation.context.setParameter('lambda', lambdas[i])
+        # Set lambda values
+        print("Simulating lambda = {}".format(np.round(lambdas[i], 4)))
+        alchemical_state.lambda_sterics, alchemical_state.lambda_electrostatics = get_lambda_values(lambdas[i])
+        alchemical_state.apply_to_context(context)
         # Equilibrate system at this window
-        simulation.step(equil_steps)
+        integrator.step(equil_steps)
         for k in range(n_samples):
             # Run production MD
-            simulation.step(sample_steps)
+            integrator.step(sample_steps)
             # Calculate energy at each lambda value
             for j in range(n_lambdas):
-                simulation.context.setParameter('lambda', lambdas[j])
-                U[i, j, k] = simulation.context.getState(getEnergy=True).getPotentialEnergy() / kT
+                # Set lambda value
+                alchemical_state.lambda_sterics, alchemical_state.lambda_electrostatics = get_lambda_values(lambdas[i])
+                alchemical_state.apply_to_context(context)
+                # Calculate energy
+                U[i, j, k] = context.getState(getEnergy=True).getPotentialEnergy() / kT
             # Reset lambda value
-            simulation.context.setParameter('lambda', lambdas[i])
+            alchemical_state.lambda_sterics, alchemical_state.lambda_electrostatics = get_lambda_values(lambdas[i])
+            alchemical_state.apply_to_context(context)
 
     # Calculate equilibration & number of uncorrelated samples
-    N_k = np.zeros(n_lambdas)
+    N_k = np.zeros(n_lambdas, np.int32)
     for i in range(n_lambdas):
         n_equil, g, neff_max = pymbar.timeseries.detectEquilibration(U[i, i, :])
         indices = pymbar.timeseries.subsampleCorrelatedData(U[i, i, :], g=g)
         N_k[i] = len(indices)
         U[i, :, 0:N_k[i]] = U[i, :, indices].T
+
+    print(N_k)
 
     # Calculate free energy differences
     mbar = pymbar.MBAR(U, N_k)
