@@ -25,9 +25,10 @@ References
 """
 
 import numpy as np
+from copy import deepcopy
 from simtk import unit
 from simtk import openmm
-from copy import deepcopy
+from openmmtools.integrators import NonequilibriumLangevinIntegrator
 
 
 class GrandCanonicalMonteCarloSampler(object):
@@ -888,3 +889,97 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
             self.energy = final_energy
 
         return None
+
+
+class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
+    """
+    Class to carry out GCMC moves in OpenMM, using nonequilibrium candidate Monte Carlo (NCMC)
+    to boost acceptance rates
+    """
+    def __init__(self, system, topology, temperature, integrator, adams=None, chemicalPotential=None, nPertSteps=1,
+                 nPropSteps=1, waterName="HOH", waterModel="tip3p", ghostFile="gcmc-ghost-wats.txt",
+                 referenceAtoms=None, sphereRadius=None, useRestraint=False):
+        """
+        Initialise the object to be used for sampling NCMC-enhanced water insertion/deletion moves
+
+        Parameters
+        ----------
+        system : simtk.openmm.System
+            System object to be used for the simulation
+        topology : simtk.openmm.app.Topology
+            Topology object for the system to be simulated
+        temperature : simtk.unit.Quantity
+            Temperature of the simulation, must be in appropriate units
+        integrator : simtk.openmm.CustomIntegrator
+            Integrator to use to propagate the dynamics of the system. Currently want to make sure that this
+            is the customised Langevin integrator found in openmmtools which uses BAOAB (VRORV) splitting.
+        adams : float
+            Adams B value for the simulation (dimensionless). Default is None,
+            if None, the B value is calculated from the box volume and chemical
+            potential
+        chemicalPotential : simtk.unit.Quantity
+            Chemical potential of the simulation, default is None. This is to be used
+            if you don't want to use the equilibrium value or if using a water model
+            other than SPCE, TIP3P, TIP4Pew (need to add others).
+        nPertSteps : int
+            Number of pertubation steps over which to shift lambda between 0 and 1 (or vice versa).
+        nPropSteps : int
+            Number of propagation steps to carry out for
+        waterName : str
+            Name of the water residues. Default is 'HOH'
+        waterModel : str
+            Name of the water model being used. This is used to identify the equilibrium chemical
+            potential to use. Default: TIP3P. Accepted: SPCE, TIP3P, TIP4Pew
+        ghostFile : str
+            Name of a file to write out the residue IDs of ghost water molecules. This is
+            useful if you want to visualise the sampling, as you can then remove these waters
+            from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
+        referenceAtoms : list
+            List containing details of the atom to use as the centre of the GCMC region
+            Must contain atom name, residue name and (optionally) residue ID,
+            e.g. ['C1', 'LIG', 123] or just ['C1', 'LIG']
+        sphereRadius : simtk.unit.Quantity
+            Radius of the spherical GCMC region
+        useRestraint : bool
+            Indicates whether or not to use half-harmonic restraints to keep the GCMC region
+            impermeable
+        """
+        # Initialise base class
+        GrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, adams=adams,
+                                                 chemicalPotential=chemicalPotential, waterName=waterName,
+                                                 waterModel=waterModel, ghostFile=ghostFile,
+                                                 referenceAtoms=referenceAtoms, sphereRadius=sphereRadius,
+                                                 useRestraint=useRestraint)
+
+        # Load in extra NCMC variables
+        self.integrator = integrator
+        self.n_pert_steps = nPertSteps
+        self.n_prop_steps = nPropSteps
+
+        # Need to make sure that the integrator is a Nonequilibrium Langevin integrator
+        assert isinstance(self.integrator, NonequilibriumLangevinIntegrator),\
+            "Must use a NonequilibriumLangevinIntegrator for nonquilibrium GCMC moves!"
+
+        def move(self, context):
+            """
+            Carry out a nonequilibrium GCMC move
+
+            Need to write this function...
+            """
+            return None
+
+        def insertRandomWater(self):
+            """
+            Carry out a nonequilibrium insertion move for a random water molecule
+
+            Need to write this function...
+            """
+            return None
+
+        def deleteRandomWater(self):
+            """
+            Carry out a nonequilibrium deletion move for a random water molecule
+
+            Need to write this function...
+            """
+            return None
