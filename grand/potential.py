@@ -86,6 +86,7 @@ def calc_mu(model, box_len, cutoff, switch_dist, nb_method=PME, temperature=300*
     """
     kT = AVOGADRO_CONSTANT_NA * BOLTZMANN_CONSTANT_kB * temperature
 
+    print('Building water box...')
     # Load water box from openmmtools.testsystems
     water_box = openmmtools.testsystems.WaterBox(box_edge=box_len, cutoff=cutoff, model=model,
                                                  switch_width=cutoff-switch_dist, nonbondedMethod=nb_method,
@@ -98,6 +99,8 @@ def calc_mu(model, box_len, cutoff, switch_dist, nb_method=PME, temperature=300*
     for water in water_box.topology.residues():
         for atom in water.atoms():
             alchemical_ids.append(atom.index)
+        break
+    print('Alchemical atoms: {}'.format(alchemical_ids))
 
     # Create alchemical system
     alchemical_region = openmmtools.alchemy.AlchemicalRegion(alchemical_atoms=alchemical_ids)
@@ -136,6 +139,8 @@ def calc_mu(model, box_len, cutoff, switch_dist, nb_method=PME, temperature=300*
         print("Simulating lambda = {}".format(np.round(lambdas[i], 4)))
         alchemical_state.lambda_sterics, alchemical_state.lambda_electrostatics = get_lambda_values(lambdas[i])
         alchemical_state.apply_to_context(context)
+        print('vdW = {:.3f},  Ele = {:.3f}'.format(alchemical_state.lambda_sterics,
+                                                   alchemical_state.lambda_electrostatics))
         # Equilibrate system at this window
         integrator.step(equil_steps)
         for k in range(n_samples):
@@ -144,13 +149,18 @@ def calc_mu(model, box_len, cutoff, switch_dist, nb_method=PME, temperature=300*
             # Calculate energy at each lambda value
             for j in range(n_lambdas):
                 # Set lambda value
-                alchemical_state.lambda_sterics, alchemical_state.lambda_electrostatics = get_lambda_values(lambdas[i])
+                alchemical_state.lambda_sterics = get_lambda_values(lambdas[j])[0]
+                alchemical_state.lambda_electrostatics = get_lambda_values(lambdas[j])[1]
                 alchemical_state.apply_to_context(context)
                 # Calculate energy
                 U[i, j, k] = context.getState(getEnergy=True).getPotentialEnergy() / kT
             # Reset lambda value
-            alchemical_state.lambda_sterics, alchemical_state.lambda_electrostatics = get_lambda_values(lambdas[i])
+            alchemical_state.lambda_sterics = get_lambda_values(lambdas[i])[0]
+            alchemical_state.lambda_electrostatics = get_lambda_values(lambdas[i])[1]
+            #print('vdW = {}'.format(alchemical_state.lambda_sterics))
+            #print('Ele = {}'.format(alchemical_state.lambda_electrostatics))
             alchemical_state.apply_to_context(context)
+    print('U = {}'.format(U))
 
     # Calculate equilibration & number of uncorrelated samples
     N_k = np.zeros(n_lambdas, np.int32)
@@ -160,11 +170,14 @@ def calc_mu(model, box_len, cutoff, switch_dist, nb_method=PME, temperature=300*
         N_k[i] = len(indices)
         U[i, :, 0:N_k[i]] = U[i, :, indices].T
 
-    print(N_k)
+    print('N = {}'.format(N_k))
 
     # Calculate free energy differences
     mbar = pymbar.MBAR(U, N_k)
     [deltaG_ij, ddeltaG_ij, theta_ij] = mbar.getFreeEnergyDifferences()
+    dG = -deltaG_ij[0, -1]
 
-    # Return the matrix for now, need to extract the total free energy
-    return deltaG_ij
+    # Convert free energy to kcal/mol
+    dG = (dG * kT).in_units_of(kilocalorie_per_mole)
+
+    return dG
