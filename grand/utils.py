@@ -230,9 +230,58 @@ def shift_ghost_waters(ghost_file, topology=None, trajectory=None, t=None, outpu
     # Shift coordinates of ghost atoms by several unit cells and write out trajectory
     for frame, atom_ids in enumerate(ghost_atom_ids):
         for index in atom_ids:
-            t.xyz[frame, index, :] += 3 * t.unitcell_lengths[frame, :]
+            t.xyz[frame, index, :] += 5 * t.unitcell_lengths[frame, :]
 
     # Either return the trajectory or save to file
+    if output is None:
+        return t
+    else:
+        t.save(output)
+        return None
+
+
+def fix_leaks(t, output=None):
+    """
+    Fix water leaks
+    """
+    n_frames, n_atoms, n_dims = t.xyz.shape
+
+    # Fix all frames
+    for f in range(n_frames):
+        for residue in t.topology.residues:
+            # Skip if this is a protein residue
+            if residue.name not in ['WAT', 'HOH']:
+                continue
+            #print(residue.name)
+
+            # Find the maximum and minimum distances between this residue and the reference atom
+            max_dists = [-1e6, -1e6, -1e6]
+            min_dists = [1e6, 1e6, 1e6]
+            for atom in residue.atoms:
+                if 'O' in atom.name:
+                    pos = t.xyz[f, atom.index, :]
+
+            # Calculate the correction vector based on the separation
+            box = t.unitcell_lengths[f, :]
+            print(box)
+            new_pos = deepcopy(pos)
+            for i in range(3):
+                while new_pos[i] >= box[i]:
+                    new_pos[i] -= box[i]
+                while new_pos[i] <= 0:
+                    new_pos[i] += box[i]
+
+            correction = new_pos - pos
+
+            # Apply the correction vector to each atom in the residue
+            for atom in residue.atoms:
+                t.xyz[f, atom.index, :] += correction
+
+            #print("{} : {}".format(residue.name, correction > 0))
+            #if np.any(correction > 0) or np.any(correction < 0):
+            #    print(residue.name)
+
+    # Either return or save the trajectory
     if output is None:
         return t
     else:
@@ -266,7 +315,7 @@ def align_traj(topology=None, trajectory=None, t=None, output=None):
         t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
 
     # Align trajectory based on protein IDs
-    protein_ids = t.topology.select_expression('protein')
+    protein_ids = [atom.index for atom in t.topology.atoms if atom.residue.is_protein]
     t.superpose(t, atom_indices=protein_ids)
 
     # Return or save trajectory
@@ -312,7 +361,7 @@ def recentre_traj(topology=None, trajectory=None, t=None, resname='ALA', resid=1
     n_frames, n_atoms, n_dims = t.xyz.shape
 
     # Get IDs of protein atoms
-    protein_ids = t.topology.select_expression('protein')
+    protein_ids = [atom.index for atom in t.topology.atoms if atom.residue.is_protein]
 
     # Find the index of the C-alpha atom of this residue
     ref_idx = None
@@ -330,16 +379,17 @@ def recentre_traj(topology=None, trajectory=None, t=None, resname='ALA', resid=1
             # Skip if this is a protein residue
             if any([atom.index in protein_ids for atom in residue.atoms]):
                 continue
+            #print(residue.name)
 
             # Find the maximum and minimum distances between this residue and the reference atom
-            max_dists = [1e6, 1e6, 1e6]
-            min_dists = [-1e6, -1e6, -1e6]
+            max_dists = [-1e6, -1e6, -1e6]
+            min_dists = [1e6, 1e6, 1e6]
             for atom in residue.atoms:
                 vector = t.xyz[f, atom.index, :] - t.xyz[f, ref_idx, :]
                 for i in range(3):
                     if vector[i] < min_dists[i]:
                         min_dists[i] = vector[i]
-                    elif max_dists[i] > vector[i]:
+                    elif vector[i] > max_dists[i]:
                         max_dists[i] = vector[i]
 
             # Calculate the correction vector based on the separation
@@ -351,9 +401,13 @@ def recentre_traj(topology=None, trajectory=None, t=None, resname='ALA', resid=1
                 elif 0.5 * box[i] < max_dists[i] < 2 * box[i]:
                     correction[i] -= box[i]
 
-            # Apply the correciton vector to each atom in the residue
+            # Apply the correction vector to each atom in the residue
             for atom in residue.atoms:
                 t.xyz[f, atom.index, :] += correction
+
+            #print("{} : {}".format(residue.name, correction > 0))
+            #if np.any(correction > 0) or np.any(correction < 0):
+            #    print(residue.name)
 
     # Either return or save the trajectory
     if output is None:
