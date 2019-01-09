@@ -45,6 +45,9 @@ if args.ligands is not None:
     for resname in args.ligands:
         cmd.show('sticks', 'resn {}'.format(resname))
         #cmd.hide('(h. and (e. c extend 1))', 'resn {}'.format(resname))
+        #cmd.hide('h. and (e. c extend 1)', 'resn {}'.format(resname))
+        cmd.hide('h. and (e. c extend 1)')
+        #cmd.hide('(h. and (e. c extend 1))')
 
 # Load GCMC sphere, if given
 if args.sphere is not None:
@@ -64,3 +67,4 @@ if args.sphere is not None:
     cmd.rebuild()
     cmd.set('sphere_color', 'grey90', 'sphere')
     cmd.set('sphere_transparency', '0.5', 'sphere')
+
