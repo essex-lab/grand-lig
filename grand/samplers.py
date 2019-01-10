@@ -139,6 +139,7 @@ class GrandCanonicalMonteCarloSampler(object):
         # Other variables
         self.n_moves = 0
         self.n_accepted = 0
+        self.Ns = []  # Store all observed values of N
         
         # Get parameters for the water model
         self.water_params = self.getWaterParameters(waterName)
@@ -240,6 +241,7 @@ class GrandCanonicalMonteCarloSampler(object):
         """
         self.n_accepted = 0
         self.n_moves = 0
+        self.Ns = []
 
         return None
 
@@ -776,6 +778,7 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
                 # Attempt to delete a water
                 self.deleteRandomWater()
             self.n_moves += 1
+            self.Ns.append(self.N)
 
         return None
 
