@@ -29,6 +29,8 @@ parser.add_argument('-l', '--ligands', default=None, nargs='+',
                     help='Ligand residue names')
 parser.add_argument('-s', '--sphere', default=None,
                     help='GCMC sphere PDB file.')
+parser.add_argument('-r', '--residues', default=None, nargs='+', type=int,
+                    help='Specific residues to show.')
 args = parser.parse_args()
 
 # Basic formatting
@@ -44,10 +46,14 @@ cmd.show('cartoon', 'system')
 if args.ligands is not None:
     for resname in args.ligands:
         cmd.show('sticks', 'resn {}'.format(resname))
-        #cmd.hide('(h. and (e. c extend 1))', 'resn {}'.format(resname))
-        #cmd.hide('h. and (e. c extend 1)', 'resn {}'.format(resname))
-        cmd.hide('h. and (e. c extend 1)')
-        #cmd.hide('(h. and (e. c extend 1))')
+
+# Show any residues the user might be interested in
+if args.residues is not None:
+    for resid in args.residues:
+        cmd.show('sticks', 'polymer.protein and resi {}'.format(resid))
+
+# Hide nonpolar hydrogen atoms - syntax can vary for some reason (may need brackets)
+cmd.hide('h. and (e. c extend 1)')
 
 # Load GCMC sphere, if given
 if args.sphere is not None:
@@ -58,13 +64,26 @@ if args.sphere is not None:
             if line.startswith('REMARK RADIUS'):
                 radius = float(line.split()[3])
                 break
+
     # Load the sphere
     cmd.load(args.sphere, 'sphere')
-    # Format the size of the sphere
+
+    # Format the size of the sphere - may need to adjust settings later
     cmd.hide('everything', 'sphere')
     cmd.show('spheres', 'sphere')
     cmd.alter('sphere', 'vdw={}'.format(radius))
     cmd.rebuild()
     cmd.set('sphere_color', 'grey90', 'sphere')
     cmd.set('sphere_transparency', '0.5', 'sphere')
+
+    # Format the trajectory to show the waters within the GCMC sphere as sticks
+    cmd.hide('everything', 'resn HOH')  # Hide waters first...
+    n_frames = cmd.count_states()
+    cmd.mset('1 -{}'.format(n_frames))
+    for f in range(1, n_frames+1):
+        # Need to write a command to update the movie to show GCMC waters as sticks
+        movie_command = ("hide sticks, resn HOH;"
+                         "sele gcmcwats, resn SPH around {} and resn HOH, state={};"
+                         "show sticks, gcmcwats").format(radius, f)
+        cmd.mdo(f, movie_command)
 
