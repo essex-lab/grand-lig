@@ -16,9 +16,6 @@ import argparse
 import pymol
 from pymol import cmd
 
-import numpy as np
-import mdtraj
-
 
 __main__.pymol_argv = ['pymol']
 pymol.finish_launching()
@@ -61,17 +58,12 @@ cmd.hide('h. and (e. c extend 1)')
 # Load GCMC sphere, if given
 if args.sphere is not None:
     # Read in the sphere radius
-    sphere_coords = []
     with open(args.sphere, 'r') as f:
         for line in f.readlines():
             # Read in radius
             if line.startswith('REMARK RADIUS'):
                 radius = float(line.split()[3])
-            # Read in sphere coordinates for each frame
-            if line.startswith('HETATM'):
-                sphere_coords.append(np.array([float(line[30:38]),
-                                               float(line[38:46]),
-                                               float(line[46:54])]))
+                break
 
     # Load the sphere
     cmd.load(args.sphere, 'sphere')
@@ -88,45 +80,10 @@ if args.sphere is not None:
     cmd.hide('everything', 'resn HOH')  # Hide waters first...
     n_frames = cmd.count_states()
     cmd.mset('1 -{}'.format(n_frames))
-
-    # Need to read in water positions for each frame to check which are within the GCMC region
-    t_pdb = mdtraj.load(args.topology)
-    t_traj = mdtraj.load(args.trajectory, top=args.topology)
-
-    # Analyse each frame
-    for f in range(n_frames):
-        sphere_wats = []
-        if f == 0:
-            t = t_pdb
-        else:
-            t = t_traj
-        for residue in t.topology.residues:
-            if residue.name != 'HOH':
-                continue
-            for atom in residue.atoms:
-                if atom.name == 'O':
-                    if f == 0:
-                        pos = t.xyz[f, atom.index, :]
-                    else:
-                        pos = t.xyz[f-1, atom.index, :]
-            if np.linalg.norm(pos-sphere_coords[f]) < radius:
-                sphere_wats.append(residue.resSeq)
-        # Set visualisation for this first frame
-        command = "hide sticks, resn HOH"
-        if len(sphere_wats) > 0:
-            command += "; sele gcmcwats, resn HOH and resi {} and not chain A".format(sphere_wats[0])
-            if len(sphere_wats) > 1:
-                for i in range(1, len(sphere_wats)):
-                    command += "; sele gcmcwats, gcmcwats or (resn HOH and resi {} and not chain A)".format(sphere_wats[i])
-        command += "; show sticks, gcmcwats"
-        cmd.mdo(f+1, command)
-
-    '''
     for f in range(1, n_frames+1):
         # Need to write a command to update the movie to show GCMC waters as sticks
         movie_command = ("hide sticks, resn HOH;"
                          "sele gcmcwats, resn SPH around {} and resn HOH, state={};"
                          "show sticks, gcmcwats").format(radius, f)
         cmd.mdo(f, movie_command)
-    '''
 
