@@ -240,58 +240,9 @@ def shift_ghost_waters(ghost_file, topology=None, trajectory=None, t=None, outpu
         return None
 
 
-def fix_leaks(t, output=None):
+def wrap_waters(topology=None, trajectory=None, t=None, output=None):
     """
-    Fix water leaks
-    """
-    n_frames, n_atoms, n_dims = t.xyz.shape
-
-    # Fix all frames
-    for f in range(n_frames):
-        for residue in t.topology.residues:
-            # Skip if this is a protein residue
-            if residue.name not in ['WAT', 'HOH']:
-                continue
-            #print(residue.name)
-
-            # Find the maximum and minimum distances between this residue and the reference atom
-            max_dists = [-1e6, -1e6, -1e6]
-            min_dists = [1e6, 1e6, 1e6]
-            for atom in residue.atoms:
-                if 'O' in atom.name:
-                    pos = t.xyz[f, atom.index, :]
-
-            # Calculate the correction vector based on the separation
-            box = t.unitcell_lengths[f, :]
-            print(box)
-            new_pos = deepcopy(pos)
-            for i in range(3):
-                while new_pos[i] >= box[i]:
-                    new_pos[i] -= box[i]
-                while new_pos[i] <= 0:
-                    new_pos[i] += box[i]
-
-            correction = new_pos - pos
-
-            # Apply the correction vector to each atom in the residue
-            for atom in residue.atoms:
-                t.xyz[f, atom.index, :] += correction
-
-            #print("{} : {}".format(residue.name, correction > 0))
-            #if np.any(correction > 0) or np.any(correction < 0):
-            #    print(residue.name)
-
-    # Either return or save the trajectory
-    if output is None:
-        return t
-    else:
-        t.save(output)
-        return None
-
-
-def align_traj(topology=None, trajectory=None, t=None, output=None):
-    """
-    Align a trajectory to the protein
+    Wrap water molecules if the coordinates haven't been wrapped by the DCDReporter
 
     Parameters
     ----------
@@ -314,9 +265,80 @@ def align_traj(topology=None, trajectory=None, t=None, output=None):
     if t is None:
         t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
 
+    n_frames, n_atoms, n_dims = t.xyz.shape
+
+    # Fix all frames
+    for f in range(n_frames):
+        for residue in t.topology.residues:
+            # Skip if this is a protein residue
+            if residue.name not in ['WAT', 'HOH']:
+                continue
+
+            # Find the maximum and minimum distances between this residue and the reference atom
+            for atom in residue.atoms:
+                if 'O' in atom.name:
+                    pos = t.xyz[f, atom.index, :]
+
+            # Calculate the correction vector based on the separation
+            box = t.unitcell_lengths[f, :]
+
+            new_pos = deepcopy(pos)
+            for i in range(3):
+                while new_pos[i] >= box[i]:
+                    new_pos[i] -= box[i]
+                while new_pos[i] <= 0:
+                    new_pos[i] += box[i]
+
+            correction = new_pos - pos
+
+            # Apply the correction vector to each atom in the residue
+            for atom in residue.atoms:
+                t.xyz[f, atom.index, :] += correction
+
+    # Either return or save the trajectory
+    if output is None:
+        return t
+    else:
+        t.save(output)
+        return None
+
+
+def align_traj(topology=None, trajectory=None, t=None, reference=None, output=None):
+    """
+    Align a trajectory to the protein
+
+    Parameters
+    ----------
+    topology : str
+        Name of the topology/connectivity file (e.g. PDB, GRO, etc.)
+    trajectory : str
+        Name of the trajectory file (e.g. DCD, XTC, etc.)
+    t : mdtraj.Trajectory
+        Trajectory object, if already loaded
+    reference : str
+        Name of a PDB file to align the protein to. May be better to visualise
+    output : str
+        Name of the file to which the new trajectory is written. If None, then a
+        Trajectory will be returned
+
+    Returns
+    -------
+    t : mdtraj.Trajectory
+        Will return a trajectory object, if no output file name is given
+    """
+    # Load trajectory data, if not already
+    if t is None:
+        t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
+
     # Align trajectory based on protein IDs
     protein_ids = [atom.index for atom in t.topology.atoms if atom.residue.is_protein]
-    t.superpose(t, atom_indices=protein_ids)
+    if reference is None:
+        # If there is no reference then align to the first frame in the trajectory
+        t.superpose(t, atom_indices=protein_ids)
+    else:
+        # Load a reference PDB to align the structure to
+        t_ref = mdtraj.load(reference)
+        t.superpose(t_ref, atom_indices=protein_ids)
 
     # Return or save trajectory
     if output is None:
@@ -379,35 +401,27 @@ def recentre_traj(topology=None, trajectory=None, t=None, resname='ALA', resid=1
             # Skip if this is a protein residue
             if any([atom.index in protein_ids for atom in residue.atoms]):
                 continue
-            #print(residue.name)
-
-            # Find the maximum and minimum distances between this residue and the reference atom
-            max_dists = [-1e6, -1e6, -1e6]
-            min_dists = [1e6, 1e6, 1e6]
-            for atom in residue.atoms:
-                vector = t.xyz[f, atom.index, :] - t.xyz[f, ref_idx, :]
-                for i in range(3):
-                    if vector[i] < min_dists[i]:
-                        min_dists[i] = vector[i]
-                    elif vector[i] > max_dists[i]:
-                        max_dists[i] = vector[i]
 
             # Calculate the correction vector based on the separation
             box = t.unitcell_lengths[f, :]
             correction = np.zeros(3)
+
+            cog = np.zeros(3)
+            for atom in residue.atoms:
+                cog += t.xyz[f, atom.index, :]
+            cog /= residue.n_atoms
+
+            vector = cog - t.xyz[f, ref_idx, :]
+
             for i in range(3):
-                if -2 * box[i] < min_dists[i] < -0.5 * box[i]:
+                if -2 * box[i] < vector[i] < -0.5 * box[i]:
                     correction[i] += box[i]
-                elif 0.5 * box[i] < max_dists[i] < 2 * box[i]:
+                elif 0.5 * box[i] < vector[i] < 2 * box[i]:
                     correction[i] -= box[i]
 
             # Apply the correction vector to each atom in the residue
             for atom in residue.atoms:
                 t.xyz[f, atom.index, :] += correction
-
-            #print("{} : {}".format(residue.name, correction > 0))
-            #if np.any(correction > 0) or np.any(correction < 0):
-            #    print(residue.name)
 
     # Either return or save the trajectory
     if output is None:
