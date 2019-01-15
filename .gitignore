@@ -2,6 +2,7 @@
 build
 .idea
 .cache
-.eggs/
-dist/
-grand.egg-info/
+.eggs
+dist
+grand.egg-info
+.coverage
