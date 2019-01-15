@@ -1,3 +1,7 @@
 *pyc
 build
 .idea
+.cache
+.eggs/
+dist/
+grand.egg-info/
