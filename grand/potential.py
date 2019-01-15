@@ -31,14 +31,24 @@ def get_lambda_values(lambda_in):
 
     Returns
     -------
-    lambda_sterics : float
+    lambda_vdw : float
         Lambda value for steric interactions
     lambda_ele : float
         Lambda value for electrostatic interactions
     """
-    lambda_sterics = min([1.0, 2.0*lambda_in])
-    lambda_ele = max([0.0, 2.0*(lambda_in-0.5)])
-    return lambda_sterics, lambda_ele
+    if lambda_in > 1.0:
+        # Set both values to 1.0 if lambda > 1
+        lambda_vdw = 1.0
+        lambda_ele = 1.0
+    elif lambda_in < 0.0:
+        # Set both values to 0.0 if lambda < 0
+        lambda_vdw = 0.0
+        lambda_ele = 0.0
+    else:
+        # Scale values between 0 and 1
+        lambda_vdw = min([1.0, 2.0*lambda_in])
+        lambda_ele = max([0.0, 2.0*(lambda_in-0.5)])
+    return lambda_vdw, lambda_ele
 
 
 def calc_mu(model, box_len, cutoff, switch_dist, nb_method=PME, temperature=300*kelvin, sample_time=50*picoseconds,
