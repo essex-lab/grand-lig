@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-sampler.py
+samplers.py
 Marley Samways
 
 Description
@@ -13,7 +13,6 @@ methods, with minimal extra effort.
 TODO
 ----
     * Double check all thermodynamic/GCMC parameters
-    * Fix explosion problem
     * Decide if restraints are necessary
 
 References
