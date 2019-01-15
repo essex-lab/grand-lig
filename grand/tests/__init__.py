@@ -1,1 +1,3 @@
-import test_test
+import test_utils
+import test_potential
+import test_samplers
