@@ -183,6 +183,42 @@ def write_amber_input(pdb, protein_ff="ff14SB", ligand_ff="gaff", water_ff="tip3
     return prmtop, inpcrd
 
 
+def random_rotation_matrix():
+    """
+    Generate a random axis and angle for rotation of the water coordinates (using the
+    method used for this in the ProtoMS source code (www.protoms.org), and then return
+    a rotation matrix produced from these
+
+    Returns
+    -------
+    rot_matrix : numpy.ndarray
+        Rotation matrix generated
+    """
+    # First generate a random axis about which the rotation will occur
+    rand1 = rand2 = 2.0
+
+    while (rand1**2 + rand2**2) >= 1.0:
+        rand1 = np.random.rand()
+        rand2 = np.random.rand()
+    rand_h = 2 * np.sqrt(1.0 - (rand1**2 + rand2**2))
+    axis = np.array([rand1 * rand_h, rand2 * rand_h, 1 - 2*(rand1**2 + rand2**2)])
+    axis /= np.linalg.norm(axis)
+
+    # Get a random angle
+    theta = np.pi * (2*np.random.rand() - 1.0)
+
+    # Simplify products & generate matrix
+    x, y, z = axis[0], axis[1], axis[2]
+    x2, y2, z2 = axis[0]*axis[0], axis[1]*axis[1], axis[2]*axis[2]
+    xy, xz, yz = axis[0]*axis[1], axis[0]*axis[2], axis[1]*axis[2]
+    cos_theta, sin_theta = np.cos(theta), np.sin(theta)
+    rot_matrix = np.array([[cos_theta + x2*(1-cos_theta),   xy*(1-cos_theta) - z*sin_theta, xz*(1-cos_theta) + y*sin_theta],
+                           [xy*(1-cos_theta) + z*sin_theta, cos_theta + y2*(1-cos_theta),   yz*(1-cos_theta) - x*sin_theta],
+                           [xz*(1-cos_theta) - y*sin_theta, yz*(1-cos_theta) + x*sin_theta, cos_theta + z2*(1-cos_theta)  ]])
+
+    return rot_matrix
+
+
 def shift_ghost_waters(ghost_file, topology=None, trajectory=None, t=None, output=None):
     """
     Translate all ghost waters in a trajectory out of the simulation box, to make
