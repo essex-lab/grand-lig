@@ -660,6 +660,13 @@ class GrandCanonicalMonteCarloSampler(object):
 
         return None
 
+    def move(self):
+        """
+        Returns an error if someone attempts to execute a move with the parent object
+        """
+        error_msg = "This object is not designed to sample! Use StandardGCMCSampler or NonequilibriumGCMCSampler"
+        raise NotImplementedError(error_msg)
+
 
 class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
     """
