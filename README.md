@@ -1,5 +1,7 @@
 # gcmc-openmm
 
+NOTE: This README is seriously out of date, so don't read it at the moment. It's on my to-do list to update this.
+
 ## Introduction
 
 This private repository stores my attempts to run GCMC sampling of water molecules in the OpenMM simulation engine.
