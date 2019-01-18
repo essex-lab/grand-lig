@@ -6,3 +6,4 @@ build
 dist
 grand.egg-info
 .coverage
+grand/tests/output/*

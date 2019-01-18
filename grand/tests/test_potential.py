@@ -34,6 +34,8 @@ class TestPotential(unittest.TestCase):
         assert all(np.isclose(potential.get_lambda_values(-0.50), [0.0, 0.0]))
         assert all(np.isclose(potential.get_lambda_values(-1.00), [0.0, 0.0]))
 
+        return None
+
     def test_calc_mu(self):
         """
         Test that the calc_mu function performs sensibly
@@ -87,3 +89,5 @@ class TestPotential(unittest.TestCase):
                 assert isinstance(dG, Quantity)
                 # Make sure that the value has units of energy
                 assert dG.unit.is_compatible(kilocalorie_per_mole)
+
+        return None
