@@ -147,10 +147,10 @@ def write_amber_input(pdb, protein_ff="ff14SB", ligand_ff="gaff", water_ff="tip3
         Name of the .inpcrd file written out
     """
     # Get stem of file name
-    file_stem = os.path.splitext(os.path.basename(pdb))[0]
-    pdb_amber = os.path.join(outdir, "{}-amber.pdb".format(file_stem))
-    prmtop = os.path.join(outdir, "{}.prmtop".format(file_stem))
-    inpcrd = os.path.join("{}.inpcrd".format(file_stem))
+    file_stem = os.path.join(outdir, os.path.splitext(os.path.basename(pdb))[0])
+    pdb_amber = "{}-amber.pdb".format(file_stem)
+    prmtop = "{}.prmtop".format(file_stem)
+    inpcrd = "{}.inpcrd".format(file_stem)
 
     # Read in box dimensions from pdb file
     with open(pdb, 'r') as f:
@@ -159,7 +159,7 @@ def write_amber_input(pdb, protein_ff="ff14SB", ligand_ff="gaff", water_ff="tip3
                 box = [float(line.split()[1]), float(line.split()[2]), float(line.split()[3])]
 
     # Convert PDB to amber format
-    os.system("pdb4amber -i {} -o {} > pdb4amber.out".format(pdb, pdb_amber))
+    os.system("pdb4amber -i {} -o {}".format(pdb, pdb_amber))
 
     # Write an input file for tleap using the relevant settings
     with open("tleap.in", "w") as f:
@@ -177,7 +177,7 @@ def write_amber_input(pdb, protein_ff="ff14SB", ligand_ff="gaff", water_ff="tip3
         f.write("quit\n")
 
     # Pass the file into tleap to create the desired output
-    os.system("tleap -s -f tleap.in > tleap.out")
+    os.system("tleap -s -f {0}.in > {0}.out".format(os.path.join(outdir, "tleap")))
 
     # Return names of the .prmtop and .inpcrd files
     return prmtop, inpcrd
