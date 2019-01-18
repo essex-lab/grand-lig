@@ -23,7 +23,7 @@ from simtk.openmm import app
 from copy import deepcopy
 
 
-def get_file(filename):
+def get_data_file(filename):
     """
     Get the absolute path of one of the data files included in the package
 
@@ -92,7 +92,7 @@ def add_ghosts(topology, positions, ff='tip3p', n=10, pdb='gcmc-extra-wats.pdb')
 
     # Load topology of water model 
     assert ff.lower() in ['spce', 'tip3p', 'tip4pew'], "Water model must be SPCE, TIP3P or TIP4Pew!"
-    water = app.PDBFile(file=get_file("{}.pdb".format(ff.lower())))
+    water = app.PDBFile(file=get_data_file("{}.pdb".format(ff.lower())))
 
     # Add multiple copies of the same water, then write out a pdb (for visualisation)
     ghosts = []
@@ -119,7 +119,7 @@ def add_ghosts(topology, positions, ff='tip3p', n=10, pdb='gcmc-extra-wats.pdb')
 
 
 def write_amber_input(pdb, protein_ff="ff14SB", ligand_ff="gaff", water_ff="tip3p",
-                      prepi=None, frcmod=None):
+                      prepi=None, frcmod=None, outdir="."):
     """
     Take a PDB file (with ghosts having been added) and create AMBER format prmtop
     and inpcrd files, allowing the use of other forcefields and parameter sets
@@ -147,10 +147,10 @@ def write_amber_input(pdb, protein_ff="ff14SB", ligand_ff="gaff", water_ff="tip3
         Name of the .inpcrd file written out
     """
     # Get stem of file name
-    file_stem = os.path.splitext(pdb)[0]
-    pdb_amber = "{}-amber.pdb".format(file_stem)
-    prmtop = "{}.prmtop".format(file_stem)
-    inpcrd = "{}.inpcrd".format(file_stem)
+    file_stem = os.path.splitext(os.path.basename(pdb))[0]
+    pdb_amber = os.path.join(outdir, "{}-amber.pdb".format(file_stem))
+    prmtop = os.path.join(outdir, "{}.prmtop".format(file_stem))
+    inpcrd = os.path.join("{}.inpcrd".format(file_stem))
 
     # Read in box dimensions from pdb file
     with open(pdb, 'r') as f:
