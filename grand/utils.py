@@ -151,6 +151,7 @@ def write_amber_input(pdb, protein_ff="ff14SB", ligand_ff="gaff", water_ff="tip3
     pdb_amber = "{}-amber.pdb".format(file_stem)
     prmtop = "{}.prmtop".format(file_stem)
     inpcrd = "{}.inpcrd".format(file_stem)
+    tleap = "{}-tleap".format(file_stem)
 
     # Read in box dimensions from pdb file
     with open(pdb, 'r') as f:
@@ -162,7 +163,7 @@ def write_amber_input(pdb, protein_ff="ff14SB", ligand_ff="gaff", water_ff="tip3
     os.system("pdb4amber -i {} -o {}".format(pdb, pdb_amber))
 
     # Write an input file for tleap using the relevant settings
-    with open("tleap.in", "w") as f:
+    with open("{}.in".format(tleap), "w") as f:
         f.write("source leaprc.protein.{}\n".format(protein_ff))
         f.write("source leaprc.{}\n".format(ligand_ff))
         f.write("source leaprc.water.{}\n".format(water_ff))
@@ -176,8 +177,26 @@ def write_amber_input(pdb, protein_ff="ff14SB", ligand_ff="gaff", water_ff="tip3
         f.write("saveamberparm mol {} {}\n".format(prmtop, inpcrd))
         f.write("quit\n")
 
-    # Pass the file into tleap to create the desired output
-    os.system("tleap -s -f {0}.in > {0}.out".format(os.path.join(outdir, "tleap")))
+    # Pass the file into tleap to create the desired output - check if there is an error
+    err = os.system("tleap -s -f {0}.in > {0}.out".format(tleap))
+
+    # The above tleap file doesn't always work, so sometimes the addPdbAtomMap has to be reversed
+    if err != 0:
+        with open("{}.in".format(tleap), "w") as f:
+            f.write("source leaprc.protein.{}\n".format(protein_ff))
+            f.write("source leaprc.{}\n".format(ligand_ff))
+            f.write("source leaprc.water.{}\n".format(water_ff))
+            if prepi is not None:
+                f.write("loadamberprep {}\n".format(prepi))
+            if frcmod is not None:
+                f.write("loadamberparams {}\n".format(frcmod))
+            f.write("addPdbAtomMap {{CH3 C} {HH31 H1} {HH32 H2} {HH33 H3}}\n")
+            f.write("mol = loadpdb {}-amber.pdb\n".format(file_stem))
+            f.write("set mol box { %f %f %f }\n" % (box[0], box[1], box[2]))  # Have to use % due to {}
+            f.write("saveamberparm mol {} {}\n".format(prmtop, inpcrd))
+            f.write("quit\n")
+        # Re-run tleap
+        os.system("tleap -s -f {0}.in > {0}.out".format(tleap))
 
     # Return names of the .prmtop and .inpcrd files
     return prmtop, inpcrd
