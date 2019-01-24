@@ -496,7 +496,7 @@ class GrandCanonicalMonteCarloSampler(object):
                 self.adjustSpecificWater(atom_ids, 0.0)
                 # Mark that this water has been switched off
                 gcmc_id = np.where(np.array(self.gcmc_resids) == resid)[0]
-                wat_id = np.where(np.array(self.gcmc_resids) == resid)[0]
+                wat_id = np.where(np.array(self.water_resids) == resid)[0]
                 self.gcmc_status[gcmc_id] = 0
                 self.water_status[wat_id] = 0
 
@@ -530,7 +530,7 @@ class GrandCanonicalMonteCarloSampler(object):
         for resid, residue in enumerate(self.topology.residues()):
             if resid not in self.gcmc_resids:
                 continue  # Only concerned with GCMC waters
-            gcmc_id = np.where(np.array(self.gcmc_resids) == resid)[0]   # Position in list of GCMC waters
+            gcmc_id = np.where(np.array(self.gcmc_resids) == resid)[0][0]   # Position in list of GCMC waters
             wat_id = np.where(np.array(self.water_resids) == resid)[0][0]  # Position in list of all waters
             if self.gcmc_status[gcmc_id] == 1:
                 atom_ids = []
@@ -599,7 +599,7 @@ class GrandCanonicalMonteCarloSampler(object):
                     gcmc_status.append(self.water_status[wat_id])
 
             # Update lists
-            self.gcmc_resids = gcmc_resids
+            self.gcmc_resids = deepcopy(gcmc_resids)
             self.gcmc_status = np.array(gcmc_status)
             self.N = np.sum(self.gcmc_status)
 
@@ -639,6 +639,17 @@ class GrandCanonicalMonteCarloSampler(object):
         """
         Function to report any useful data
         """
+        # Calculate rounded acceptance rate and mean N
+        acc_rate = np.round(self.n_accepted * 100.0 / self.n_moves, 3)
+        mean_N = np.round(np.mean(self.Ns), 3)
+        # Print out a line describing the acceptance rate and sampling of N
+        msg = "{} move(s) completed ({:.3f} % accepted). Current N = {}. Average N = {:.3f}".format(self.n_moves,
+                                                                                                    acc_rate,
+                                                                                                    self.N,
+                                                                                                    mean_N)
+        print(msg)
+        
+        # Write to the file describing which waters are ghosts through the trajectory
         self.writeGhostWaterResids()
         return None
 
