@@ -342,7 +342,16 @@ class GrandCanonicalMonteCarloSampler(object):
         Prepare the GCMC sphere for simulation by loading the coordinates from a
         Context object. Also activates any restraint forces and deletes all ghost
         water molecules.
+
+        Parameters
+        ----------
+        context : simtk.openmm.Context
+            Current context of the simulation
+        ghostResids : list
+            List of residue IDs corresponding to the ghost waters added
         """
+        if len(ghostResids) == 0 or ghostResids is None:
+            raise Exception("No ghost waters given! Cannot insert waters without any ghosts!")
         # Load context into sampler
         self.context = context
 
@@ -648,7 +657,7 @@ class GrandCanonicalMonteCarloSampler(object):
                                                                                                     self.N,
                                                                                                     mean_N)
         print(msg)
-        
+
         # Write to the file describing which waters are ghosts through the trajectory
         self.writeGhostWaterResids()
         return None
@@ -671,9 +680,10 @@ class GrandCanonicalMonteCarloSampler(object):
 
         return None
 
-    def move(self):
+    def move(self, context=None, n=None):
         """
         Returns an error if someone attempts to execute a move with the parent object
+        Parameters are designed to match the signature of the inheriting classes
         """
         error_msg = "This object is not designed to sample! Use StandardGCMCSampler or NonequilibriumGCMCSampler"
         raise NotImplementedError(error_msg)
