@@ -443,9 +443,9 @@ def recentre_traj(topology=None, trajectory=None, t=None, resname='ALA', resid=1
     # Find the index of the C-alpha atom of this residue
     ref_idx = None
     for residue in t.topology.residues:
-        if residue.name == resname and residue.resSeq == resid:
+        if residue.name.lower() == resname.lower() and residue.resSeq == resid:
             for atom in residue.atoms:
-                if atom.name == 'CA':
+                if atom.name.lower() == 'ca':
                     ref_idx = atom.index
     if ref_idx is None:
         raise Exception("Could not find residue {}{}!".format(resname.capitalize(), resid))
