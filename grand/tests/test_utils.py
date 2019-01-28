@@ -5,6 +5,7 @@ Marley Samways
 This file contains functions written to test the functions in the grand.utils sub-module
 """
 
+import os
 import unittest
 import numpy as np
 import mdtraj
