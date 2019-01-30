@@ -13,6 +13,7 @@ Notes
 import os
 import unittest
 import numpy as np
+from copy import deepcopy
 from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
@@ -117,6 +118,25 @@ class TestGrandCanonicalMonteCarloSampler(unittest.TestCase):
         """
         Make sure the GrandCanonicalMonteCarloSampler.updateGCMCSphere() method works correctly
         """
+        # Prepare GCMC sphere first
+        ghosts = [3054, 3055, 3056, 3057, 3058]
+        self.sampler.prepareGCMCSphere(self.simulation.context, ghosts)
+
+        # Get initial gcmc_resids and status
+        gcmc_resids = deepcopy(self.sampler.gcmc_resids)
+        gcmc_status = deepcopy(self.sampler.gcmc_status)
+        sphere_centre = deepcopy(self.sampler.sphere_centre)
+        N = self.sampler.N
+
+        # Update the GCMC sphere (shouldn't change as the system won't have moved)
+        state = self.simulation.context.getState(getPositions=True, getVelocities=True)
+        self.sampler.updateGCMCSphere(state)
+
+        # Make sure that these values are all still the same
+        assert all(np.isclose(gcmc_resids, self.sampler.gcmc_resids))
+        assert all(np.isclose(gcmc_status, self.sampler.gcmc_status))
+        assert all(np.isclose(sphere_centre._value, self.sampler.sphere_centre._value))
+        assert N == self.sampler.N
 
         return None
 
@@ -133,6 +153,27 @@ class TestGrandCanonicalMonteCarloSampler(unittest.TestCase):
         """
         Make sure the GrandCanonicalMonteCarloSampler.report() method works correctly
         """
+        # Prepare GCMC sphere
+        self.sampler.prepareGCMCSphere(self.simulation.context, [3054, 3055, 3056, 3057, 3058])
+
+        # Get the list of ghost resids
+        ghosts = [self.sampler.gcmc_resids[id] for id in np.where(self.sampler.gcmc_status == 0)[0]]
+
+        # Report
+        self.sampler.report()
+
+        # Check the output to the ghost file
+        assert os.path.isfile(os.path.join(outdir, 'bpti-ghost-wats.txt'))
+        # Read which ghosts were written
+        with open(os.path.join(outdir, 'bpti-ghost-wats.txt'), 'r') as f:
+            n_lines = 0
+            lines = f.readlines()
+            for line in lines:
+                if len(line.split()) > 0:
+                    n_lines += 1
+        assert n_lines == 1
+        ghosts_read = [int(resid) for resid in lines[0].split(',')]
+        assert all(np.isclose(ghosts, ghosts_read))
 
         return None
 
@@ -160,6 +201,68 @@ class TestStandardGCMCSampler(unittest.TestCase):
 
         return None
 
+    def setUp(self):
+        """
+        Create necessary variables for each test
+        """
+        pdb = PDBFile(utils.get_data_file(os.path.join('tests', 'bpti-ghosts.pdb')))
+        ff = ForceField('amber10.xml', 'tip3p.xml')
+        system = ff.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=12*angstroms,
+                                 constraints=HBonds)
+
+        self.sampler = samplers.StandardGCMCSampler(system=system, topology=pdb.topology,
+                                                    temperature=300*kelvin,
+                                                    ghostFile=os.path.join(outdir, 'bpti-ghost-wats.txt'),
+                                                    referenceAtoms=[['CA', 'TYR', '10'],
+                                                                    ['CA', 'ASN', '43']],
+                                                    sphereRadius=4*angstrom)
+
+        # Define a simulation
+        integrator = LangevinIntegrator(300*kelvin, 1.0/picosecond, 0.002*picoseconds)
+
+        try:
+            platform = Platform.getPlatformByName('OpenCL')
+        except:
+            platform = Platform.getPlatformByName('CPU')
+
+        self.simulation = Simulation(pdb.topology, system, integrator, platform)
+        self.simulation.context.setPositions(pdb.positions)
+        self.simulation.context.setVelocitiesToTemperature(300 * kelvin)
+        self.simulation.context.setPeriodicBoxVectors(*pdb.topology.getPeriodicBoxVectors())
+
+        # Prepare GCMC sphere
+        ghosts = [3054, 3055, 3056, 3057, 3058]
+        self.sampler.prepareGCMCSphere(self.simulation.context, ghosts)
+
+        return None
+
+    def test_move(self):
+        """
+        Make sure the GrandCanonicalMonteCarloSampler.move() method works correctly
+        """
+        # Attempt a single move
+        self.sampler.move(self.simulation.context)
+        # Make sure that one move appears to have been carried out
+        assert self.sampler.n_moves == 1
+        assert len(self.sampler.Ns) == 1
+        assert self.sampler.n_accepted <= self.sampler.n_moves
+
+        # Make sure that the values above can be reset
+        self.sampler.reset()
+        assert self.sampler.n_moves == 0
+        assert len(self.sampler.Ns) == 0
+        assert self.sampler.n_accepted == 0
+
+        # Try to run multiple moves and check that it works fine
+        moves = 10
+        self.sampler.move(self.simulation.context, n=moves)
+        # Make sure that the right number of moves seem to have been carried out
+        assert self.sampler.n_moves == moves
+        assert len(self.sampler.Ns) == moves
+        assert self.sampler.n_accepted <= self.sampler.n_moves
+
+        return None
+
 
 class TestNonequilibriumGCMCSampler(unittest.TestCase):
     """
@@ -182,3 +285,6 @@ class TestNonequilibriumGCMCSampler(unittest.TestCase):
                 os.remove(os.path.join(outdir, file))
 
         return None
+
+
+

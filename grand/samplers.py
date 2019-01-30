@@ -649,7 +649,10 @@ class GrandCanonicalMonteCarloSampler(object):
         Function to report any useful data
         """
         # Calculate rounded acceptance rate and mean N
-        acc_rate = np.round(self.n_accepted * 100.0 / self.n_moves, 3)
+        if self.n_moves > 0:
+            acc_rate = np.round(self.n_accepted * 100.0 / self.n_moves, 3)
+        else:
+            acc_rate = np.nan
         mean_N = np.round(np.mean(self.Ns), 3)
         # Print out a line describing the acceptance rate and sampling of N
         msg = "{} move(s) completed ({:.3f} % accepted). Current N = {}. Average N = {:.3f}".format(self.n_moves,
@@ -673,9 +676,11 @@ class GrandCanonicalMonteCarloSampler(object):
         with open(self.ghost_file, 'a') as f:
             gcmc_ids = np.where(self.gcmc_status == 0)[0]
             ghost_resids = [self.gcmc_resids[id] for id in gcmc_ids]
-            f.write("{}".format(ghost_resids[0]))
-            for resid in ghost_resids[1:]:
-                f.write(",{}".format(resid))
+            if len(ghost_resids) > 0:
+                f.write("{}".format(ghost_resids[0]))
+                if len(ghost_resids) > 1:
+                    for resid in ghost_resids[1:]:
+                        f.write(",{}".format(resid))
             f.write("\n")
 
         return None
@@ -962,6 +967,8 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
 
             Need to write this function...
             """
+            raise NotImplementedError("Haven't yet implemented nonequilibrium GCMC moves!")
+
             return None
 
         def insertRandomWater(self):
