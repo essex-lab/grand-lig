@@ -13,7 +13,6 @@ methods, with minimal extra effort.
 TODO
 ----
     * Double check all thermodynamic/GCMC parameters
-    * Decide if restraints are necessary
 
 References
 ----------
@@ -36,8 +35,7 @@ class GrandCanonicalMonteCarloSampler(object):
     Base class for carrying out GCMC moves in OpenMM
     """
     def __init__(self, system, topology, temperature, adams=None, chemicalPotential=None, waterName="HOH",
-                 waterModel="tip3p", ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None,
-                 useRestraint=False):
+                 waterModel="tip3p", ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
 
@@ -77,9 +75,6 @@ class GrandCanonicalMonteCarloSampler(object):
             e.g. ['C1', 'LIG', 123] or just ['C1', 'LIG']
         sphereRadius : simtk.unit.Quantity
             Radius of the spherical GCMC region
-        useRestraint : bool
-            Indicates whether or not to use half-harmonic restraints to keep the GCMC region
-            impermeable
         """
         # Set important variables here
         self.system = system
@@ -107,17 +102,6 @@ class GrandCanonicalMonteCarloSampler(object):
         volume = (4 * np.pi * sphereRadius ** 3) / 3
         if referenceAtoms is not None:
             self.ref_atoms = self.getReferenceAtomIndices(referenceAtoms)
-            # Define custom forces to keep GCMC waters in and non-GCMC waters out, if required:
-            if useRestraint:
-                self.use_restraint = True
-                force_constant = 10000.0  # kJ mol^-1 nm^-2
-                self.exclude_bonds = []
-                self.exclude_force = None
-                self.include_bonds = []
-                self.include_force = None
-                self.createRestraintForces(force_constant)
-            else:
-                self.use_restraint = False
         else:
             raise Exception("A set of atoms must be used to define the centre of the sphere!")
         
@@ -289,59 +273,10 @@ class GrandCanonicalMonteCarloSampler(object):
 
         return atom_indices
 
-    def createRestraintForces(self, force_constant):
-        """
-        Create a set of restraints to keep the GCMC sphere impermeable
-        This uses two CustomCentroidBondForce objects, one to keep the bulk
-        water out, and one to keep the GCMC water in.
-
-        Parameters
-        ----------
-        force_constant : float
-            Force constant for the half-harmonic restraint, in units of kJ/mol/nm^2
-        """
-        excluder = openmm.CustomCentroidBondForce(2, "k*min(0, distance(g1,g2)-r0)^2")
-        excluder.addPerBondParameter("k")
-        excluder.addPerBondParameter("r0")
-        # Add the reference atoms as a group
-        ref_group = excluder.addGroup(self.ref_atoms, list(np.ones_like(self.ref_atoms)))
-        for residue in self.topology.residues():
-            if residue.name != 'HOH':
-                continue
-            for atom in residue.atoms():
-                # Add a group containing the oxygen water atom
-                wat_group = excluder.addGroup([atom.index])
-                bond_id = excluder.addBond([ref_group, wat_group], [force_constant, self.sphere_radius / unit.nanometer])
-                self.exclude_bonds.append(bond_id)
-                break  # Only want the oxygen atom for each water
-        self.system.addForce(excluder)
-        self.exclude_force = excluder
-
-        # Similarly define a custom force to keep GCMC waters in
-        includer = openmm.CustomCentroidBondForce(2, "k*max(0, distance(g1,g2)-r0)^2")
-        includer.addPerBondParameter("k")
-        includer.addPerBondParameter("r0")
-        # Add the reference atoms as a group
-        ref_group = includer.addGroup(self.ref_atoms, list(np.ones_like(self.ref_atoms)))
-        for residue in self.topology.residues():
-            if residue.name != 'HOH':
-                continue
-            for atom in residue.atoms():
-                # Add a group containing the oxygen water atom
-                wat_group = includer.addGroup([atom.index])
-                bond_id = includer.addBond([ref_group, wat_group], [force_constant, self.sphere_radius / unit.nanometer])
-                self.include_bonds.append(bond_id)
-                break  # Only want the oxygen atom for each water
-        self.system.addForce(includer)
-        self.include_force = includer
-
-        return None
-
     def prepareGCMCSphere(self, context, ghostResids):
         """
         Prepare the GCMC sphere for simulation by loading the coordinates from a
-        Context object. Also activates any restraint forces and deletes all ghost
-        water molecules.
+        Context object.
 
         Parameters
         ----------
@@ -376,16 +311,7 @@ class GrandCanonicalMonteCarloSampler(object):
             for atom in residue.atoms():
                 ox_index = atom.index
                 break
-            wat_id = np.where(np.array(self.water_resids) == resid)[0][0]
 
-            # Remove restraints on ghosts
-            if resid in ghostResids:
-                if self.use_restraint:
-                    self.include_force.setBondParameters(self.include_bonds[wat_id], [0, wat_id+1], [0.0, self.sphere_radius/unit.nanometer])
-                    self.exclude_force.setBondParameters(self.exclude_bonds[wat_id], [0, wat_id+1], [0.0, self.sphere_radius/unit.nanometer])
-                continue
-
-            # Remove inclusive or exclusive restraint, depending on water position
             vector = self.positions[ox_index]-self.sphere_centre
             # Correct PBCs of this vector - need to make this part cleaner
             for i in range(3):
@@ -394,16 +320,7 @@ class GrandCanonicalMonteCarloSampler(object):
                 elif vector[i] <= -0.5 * self.simulation_box[i]:
                     vector[i] += self.simulation_box[i]
             if np.linalg.norm(vector)*unit.nanometer <= self.sphere_radius:
-                if self.use_restraint:
-                    self.exclude_force.setBondParameters(self.exclude_bonds[wat_id], [0, wat_id+1], [0.0, self.sphere_radius/unit.nanometer])
                 self.gcmc_resids.append(resid)  # Add to list of GCMC waters
-            elif self.use_restraint:
-                self.include_force.setBondParameters(self.include_bonds[wat_id], [0, wat_id+1], [0.0, self.sphere_radius/unit.nanometer])
-
-        # Update parameters for restraints, if necessary
-        if self.use_restraint:
-            self.include_force.updateParametersInContext(self.context)
-            self.exclude_force.updateParametersInContext(self.context)
 
         # Delete ghost waters
         self.deleteGhostWaters(ghostResids)
@@ -547,10 +464,6 @@ class GrandCanonicalMonteCarloSampler(object):
                     # Switch off interactions involving the atoms of this residue
                     atom_ids.append(atom.index)
                 self.adjustSpecificWater(atom_ids, 0.0)
-                # Remove restraint on the water
-                if self.use_restraint:
-                    self.include_force.setBondParameters(self.include_bonds[wat_id], [0, wat_id+1], [0.0, self.sphere_radius/unit.nanometer])
-                    self.include_force.updateParametersInContext(self.context)
                 # Update relevant parameters
                 self.gcmc_status[gcmc_id] = 0
                 self.water_status[wat_id] = 0
@@ -561,56 +474,54 @@ class GrandCanonicalMonteCarloSampler(object):
     def updateGCMCSphere(self, state):
         """
         Update the relevant GCMC-sphere related parameters. This also involves monitoring
-        which water molecules are in/out of the region when not using restraints
+        which water molecules are in/out of the region
         """
         self.sphere_centre = np.zeros(3) * unit.nanometers
         for atom in self.ref_atoms:
             self.sphere_centre += self.positions[atom]
         self.sphere_centre /= len(self.ref_atoms)
 
-        # If not using restraints, we need to check which waters are in the region or not
-        if not self.use_restraint:
-            # Update gcmc_resids and gcmc_status
-            gcmc_resids = []
-            gcmc_status = []
+        # Update gcmc_resids and gcmc_status
+        gcmc_resids = []
+        gcmc_status = []
 
-            box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
-            self.simulation_box = np.array([box_vectors[0, 0]._value,
-                                            box_vectors[1, 1]._value,
-                                            box_vectors[2, 2]._value]) * unit.nanometer
+        box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
+        self.simulation_box = np.array([box_vectors[0, 0]._value,
+                                        box_vectors[1, 1]._value,
+                                        box_vectors[2, 2]._value]) * unit.nanometer
 
-            # Check which waters are in the GCMC region
-            for resid, residue in enumerate(self.topology.residues()):
-                if resid not in self.water_resids:
-                    continue
-                for atom in residue.atoms():
-                    ox_index = atom.index
-                    break
-                wat_id = np.where(np.array(self.water_resids) == resid)[0][0]
+        # Check which waters are in the GCMC region
+        for resid, residue in enumerate(self.topology.residues()):
+            if resid not in self.water_resids:
+                continue
+            for atom in residue.atoms():
+                ox_index = atom.index
+                break
+            wat_id = np.where(np.array(self.water_resids) == resid)[0][0]
 
-                # Ghost waters automatically count as GCMC waters
-                if self.water_status[wat_id] == 0:
-                    gcmc_resids.append(resid)
-                    gcmc_status.append(0)
-                    continue
+            # Ghost waters automatically count as GCMC waters
+            if self.water_status[wat_id] == 0:
+                gcmc_resids.append(resid)
+                gcmc_status.append(0)
+                continue
 
-                # Check if the water is within the sphere
-                vector = self.positions[ox_index] - self.sphere_centre
-                #  Correct PBCs of this vector - need to make this part cleaner
-                for i in range(3):
-                    if vector[i] >= 0.5 * self.simulation_box[i]:
-                        vector[i] -= self.simulation_box[i]
-                    elif vector[i] <= -0.5 * self.simulation_box[i]:
-                        vector[i] += self.simulation_box[i]
-                # Update lists if this water is in the sphere
-                if np.linalg.norm(vector)*unit.nanometer <= self.sphere_radius:
-                    gcmc_resids.append(resid)  # Add to list of GCMC waters
-                    gcmc_status.append(self.water_status[wat_id])
+            # Check if the water is within the sphere
+            vector = self.positions[ox_index] - self.sphere_centre
+            #  Correct PBCs of this vector - need to make this part cleaner
+            for i in range(3):
+                if vector[i] >= 0.5 * self.simulation_box[i]:
+                    vector[i] -= self.simulation_box[i]
+                elif vector[i] <= -0.5 * self.simulation_box[i]:
+                    vector[i] += self.simulation_box[i]
+            # Update lists if this water is in the sphere
+            if np.linalg.norm(vector)*unit.nanometer <= self.sphere_radius:
+                gcmc_resids.append(resid)  # Add to list of GCMC waters
+                gcmc_status.append(self.water_status[wat_id])
 
-            # Update lists
-            self.gcmc_resids = deepcopy(gcmc_resids)
-            self.gcmc_status = np.array(gcmc_status)
-            self.N = np.sum(self.gcmc_status)
+        # Update lists
+        self.gcmc_resids = deepcopy(gcmc_resids)
+        self.gcmc_status = np.array(gcmc_status)
+        self.N = np.sum(self.gcmc_status)
 
         return None
 
@@ -699,8 +610,7 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
     Class to carry out instantaneous GCMC moves in OpenMM
     """
     def __init__(self, system, topology, temperature, adams=None, chemicalPotential=None, waterName="HOH",
-                 waterModel="tip3p", ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None,
-                 useRestraint=False):
+                 waterModel="tip3p", ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None):
         """
         Initialise the object to be used for sampling instantaneous water insertion/deletion moves
 
@@ -735,16 +645,12 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
             e.g. ['C1', 'LIG', 123] or just ['C1', 'LIG']
         sphereRadius : simtk.unit.Quantity
             Radius of the spherical GCMC region
-        useRestraint : bool
-            Indicates whether or not to use half-harmonic restraints to keep the GCMC region
-            impermeable
         """
         # Initialise base class - don't need any more for the instantaneous sampler
         GrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, adams=adams,
                                                  chemicalPotential=chemicalPotential, waterName=waterName,
                                                  waterModel=waterModel, ghostFile=ghostFile,
-                                                 referenceAtoms=referenceAtoms, sphereRadius=sphereRadius,
-                                                 useRestraint=useRestraint)
+                                                 referenceAtoms=referenceAtoms, sphereRadius=sphereRadius)
 
     def move(self, context, n=1):
         """
@@ -838,11 +744,6 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
             self.water_status[wat_id] = 1
             self.N += 1
             self.n_accepted += 1
-            # Add in restraint to keep the water in the box
-            if self.use_restraint:
-                self.include_force.setBondParameters(self.include_bonds[wat_id], [0, wat_id + 1],
-                                                     [10000.0, self.sphere_radius / unit.nanometer])
-                self.include_force.updateParametersInContext(self.context)
             # Update energy
             self.energy = final_energy
 
@@ -881,11 +782,6 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
             self.water_status[wat_id] = 0
             self.N -= 1
             self.n_accepted += 1
-            # Remove the restraint, now that the water is non-interacting
-            if self.use_restraint:
-                self.include_force.setBondParameters(self.include_bonds[wat_id], [0, wat_id + 1],
-                                                     [0.0, self.sphere_radius / unit.nanometer])
-                self.include_force.updateParametersInContext(self.context)
             # Update energy
             self.energy = final_energy
 
@@ -899,7 +795,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
     """
     def __init__(self, system, topology, temperature, integrator, adams=None, chemicalPotential=None, nPertSteps=1,
                  nPropSteps=1, waterName="HOH", waterModel="tip3p", ghostFile="gcmc-ghost-wats.txt",
-                 referenceAtoms=None, sphereRadius=None, useRestraint=False):
+                 referenceAtoms=None, sphereRadius=None):
         """
         Initialise the object to be used for sampling NCMC-enhanced water insertion/deletion moves
 
@@ -941,16 +837,12 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             e.g. ['C1', 'LIG', 123] or just ['C1', 'LIG']
         sphereRadius : simtk.unit.Quantity
             Radius of the spherical GCMC region
-        useRestraint : bool
-            Indicates whether or not to use half-harmonic restraints to keep the GCMC region
-            impermeable
         """
         # Initialise base class
         GrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, adams=adams,
                                                  chemicalPotential=chemicalPotential, waterName=waterName,
                                                  waterModel=waterModel, ghostFile=ghostFile,
-                                                 referenceAtoms=referenceAtoms, sphereRadius=sphereRadius,
-                                                 useRestraint=useRestraint)
+                                                 referenceAtoms=referenceAtoms, sphereRadius=sphereRadius)
 
         # Load in extra NCMC variables
         self.integrator = integrator
