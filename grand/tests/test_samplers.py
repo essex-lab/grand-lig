@@ -46,38 +46,6 @@ class TestGrandCanonicalMonteCarloSampler(unittest.TestCase):
 
         return None
 
-    def setUp(self):
-        """
-        Create necessary variables for each test
-        """
-        return None
-        pdb = PDBFile(utils.get_data_file(os.path.join('tests', 'bpti-ghosts.pdb')))
-        ff = ForceField('amber10.xml', 'tip3p.xml')
-        system = ff.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=12*angstroms,
-                                 constraints=HBonds)
-
-        self.sampler = samplers.GrandCanonicalMonteCarloSampler(system=system, topology=pdb.topology,
-                                                                temperature=300*kelvin,
-                                                                ghostFile=os.path.join(outdir, 'bpti-ghost-wats.txt'),
-                                                                referenceAtoms=[['CA', 'TYR', '10'],
-                                                                                ['CA', 'ASN', '43']],
-                                                                sphereRadius=4*angstrom)
-
-        # Define a simulation
-        integrator = LangevinIntegrator(300*kelvin, 1.0/picosecond, 0.002*picoseconds)
-
-        try:
-            platform = Platform.getPlatformByName('OpenCL')
-        except:
-            platform = Platform.getPlatformByName('CPU')
-
-        self.simulation = Simulation(pdb.topology, system, integrator, platform)
-        self.simulation.context.setPositions(pdb.positions)
-        self.simulation.context.setVelocitiesToTemperature(300 * kelvin)
-        self.simulation.context.setPeriodicBoxVectors(*pdb.topology.getPeriodicBoxVectors())
-
-        return None
-
     def test_prepareGCMCSphere(self):
         """
         Make sure the GrandCanonicalMonteCarloSampler.prepareGCMCSphere() method works correctly

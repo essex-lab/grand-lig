@@ -26,7 +26,7 @@ system = ff.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=10.0
 
 ref_atoms = [['CA', 'TYR', '10'], ['C', 'ASN', '43']]
 gcmc_mover = grand.samplers.StandardGCMCSampler(system=system, topology=pdb.topology, temperature=300*kelvin,
-                                                referenceAtoms=ref_atoms, sphereRadius=4*angstroms, useRestraint=False)
+                                                referenceAtoms=ref_atoms, sphereRadius=4*angstroms)
 
 # Langevin integrator
 integrator = LangevinIntegrator(300*kelvin, 1.0/picosecond, 0.002*picoseconds)
