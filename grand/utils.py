@@ -41,7 +41,7 @@ def get_data_file(filename):
     if os.path.isfile(filepath):
         return filepath
     else:
-        raise Exception("{} does not exist. You may need to reinstall the code.".format(filepath))
+        raise Exception("{} does not exist!".format(filepath))
 
 
 def add_ghosts(topology, positions, ff='tip3p', n=10, pdb='gcmc-extra-wats.pdb'):

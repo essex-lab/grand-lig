@@ -23,9 +23,11 @@ References
 """
 
 import numpy as np
+import mdtraj
 from copy import deepcopy
 from simtk import unit
 from simtk import openmm
+from parmed.openmm.reporters import RestartReporter
 from openmmtools.integrators import NonequilibriumLangevinIntegrator
 from utils import random_rotation_matrix
 
@@ -35,7 +37,8 @@ class GrandCanonicalMonteCarloSampler(object):
     Base class for carrying out GCMC moves in OpenMM
     """
     def __init__(self, system, topology, temperature, adams=None, chemicalPotential=None, waterName="HOH",
-                 waterModel="tip3p", ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None):
+                 waterModel="tip3p", ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None,
+                 dcd=None, rst7=None):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
 
@@ -75,6 +78,10 @@ class GrandCanonicalMonteCarloSampler(object):
             e.g. ['C1', 'LIG', 123] or just ['C1', 'LIG']
         sphereRadius : simtk.unit.Quantity
             Radius of the spherical GCMC region
+        dcd : str
+            Name of the DCD file to write the system out to
+        rst7 : str
+            Name of the AMBER restart file to write out
         """
         # Set important variables here
         self.system = system
@@ -143,6 +150,17 @@ class GrandCanonicalMonteCarloSampler(object):
         self.ghost_file = ghostFile
         with open(self.ghost_file, 'w') as f:
             pass
+
+        # Store reporters for DCD and restart output
+        if dcd is not None:
+            self.dcd = mdtraj.reporters.DCDReporter(dcd, 0)
+        else:
+            self.dcd = None
+
+        if dcd is not None:
+            self.rst = RestartReporter(rst7, 0)
+        else:
+            self.rst = None
 
     def customiseForces(self):
         """
@@ -555,9 +573,14 @@ class GrandCanonicalMonteCarloSampler(object):
         
         return None
 
-    def report(self):
+    def report(self, simulation):
         """
         Function to report any useful data
+
+        Parameters
+        ----------
+        simulation : simtk.openmm.app.Simulation
+            Simulation object being used
         """
         # Calculate rounded acceptance rate and mean N
         if self.n_moves > 0:
@@ -574,6 +597,14 @@ class GrandCanonicalMonteCarloSampler(object):
 
         # Write to the file describing which waters are ghosts through the trajectory
         self.writeGhostWaterResids()
+
+        # Append to the DCD and update the restart file
+        state = simulation.context.getState(getPositions=True, getVelocities=True)
+        if self.dcd is not None:
+            self.dcd.report(simulation, state)
+        if self.rst is not None:
+            self.rst.report(simulation, state)
+
         return None
 
     def writeGhostWaterResids(self):
@@ -596,10 +627,17 @@ class GrandCanonicalMonteCarloSampler(object):
 
         return None
 
-    def move(self, context=None, n=None):
+    def move(self, context, n=1):
         """
         Returns an error if someone attempts to execute a move with the parent object
         Parameters are designed to match the signature of the inheriting classes
+
+        Parameters
+        ----------
+        context : simtk.openmm.Context
+            Current context of the simulation
+        n : int
+            Number of moves to execute
         """
         error_msg = "This object is not designed to sample! Use StandardGCMCSampler or NonequilibriumGCMCSampler"
         raise NotImplementedError(error_msg)
@@ -610,7 +648,8 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
     Class to carry out instantaneous GCMC moves in OpenMM
     """
     def __init__(self, system, topology, temperature, adams=None, chemicalPotential=None, waterName="HOH",
-                 waterModel="tip3p", ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None):
+                 waterModel="tip3p", ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None,
+                 dcd=None, rst7=None):
         """
         Initialise the object to be used for sampling instantaneous water insertion/deletion moves
 
@@ -645,12 +684,17 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
             e.g. ['C1', 'LIG', 123] or just ['C1', 'LIG']
         sphereRadius : simtk.unit.Quantity
             Radius of the spherical GCMC region
+        dcd : str
+            Name of the DCD file to write the system out to
+        rst7 : str
+            Name of the AMBER restart file to write out
         """
         # Initialise base class - don't need any more for the instantaneous sampler
         GrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, adams=adams,
                                                  chemicalPotential=chemicalPotential, waterName=waterName,
                                                  waterModel=waterModel, ghostFile=ghostFile,
-                                                 referenceAtoms=referenceAtoms, sphereRadius=sphereRadius)
+                                                 referenceAtoms=referenceAtoms, sphereRadius=sphereRadius,
+                                                 dcd=dcd, rst7=rst7)
 
     def move(self, context, n=1):
         """
@@ -795,7 +839,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
     """
     def __init__(self, system, topology, temperature, integrator, adams=None, chemicalPotential=None, nPertSteps=1,
                  nPropSteps=1, waterName="HOH", waterModel="tip3p", ghostFile="gcmc-ghost-wats.txt",
-                 referenceAtoms=None, sphereRadius=None):
+                 referenceAtoms=None, sphereRadius=None, dcd=None, rst7=None):
         """
         Initialise the object to be used for sampling NCMC-enhanced water insertion/deletion moves
 
@@ -837,12 +881,17 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             e.g. ['C1', 'LIG', 123] or just ['C1', 'LIG']
         sphereRadius : simtk.unit.Quantity
             Radius of the spherical GCMC region
+        dcd : str
+            Name of the DCD file to write the system out to
+        rst7 : str
+            Name of the AMBER restart file to write out
         """
         # Initialise base class
         GrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, adams=adams,
                                                  chemicalPotential=chemicalPotential, waterName=waterName,
                                                  waterModel=waterModel, ghostFile=ghostFile,
-                                                 referenceAtoms=referenceAtoms, sphereRadius=sphereRadius)
+                                                 referenceAtoms=referenceAtoms, sphereRadius=sphereRadius,
+                                                 dcd=dcd, rst7=rst7)
 
         # Load in extra NCMC variables
         self.integrator = integrator
@@ -853,11 +902,16 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         assert isinstance(self.integrator, NonequilibriumLangevinIntegrator),\
             "Must use a NonequilibriumLangevinIntegrator for nonquilibrium GCMC moves!"
 
-        def move(self, context):
+        def move(self, context, n=1):
             """
             Carry out a nonequilibrium GCMC move
 
-            Need to write this function...
+            Parameters
+            ----------
+            context : simtk.openmm.Context
+                Current context of the simulation
+            n : int
+                Number of moves to execute
             """
             raise NotImplementedError("Haven't yet implemented nonequilibrium GCMC moves!")
 
