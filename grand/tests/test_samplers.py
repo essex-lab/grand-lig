@@ -24,6 +24,43 @@ from grand import utils
 outdir = os.path.join(os.path.dirname(__file__), 'output', 'samplers')
 
 
+def setup_GrandCanonicalMonteCarloSampler():
+    """
+    Set up variables for the GrandCanonicalMonteCarloSampler
+    """
+    # Make variables global so that they can be used
+    global sampler1
+    global simulation1
+
+    pdb1 = PDBFile(utils.get_data_file(os.path.join('tests', 'bpti-ghosts.pdb')))
+    ff = ForceField('amber10.xml', 'tip3p.xml')
+    system1 = ff.createSystem(pdb1.topology, nonbondedMethod=PME, nonbondedCutoff=12 * angstroms,
+                              constraints=HBonds)
+
+    sampler1 = samplers.GrandCanonicalMonteCarloSampler(system=system1, topology=pdb1.topology,
+                                                        temperature=300 * kelvin,
+                                                        ghostFile=os.path.join(outdir, 'bpti-ghost-wats.txt'),
+                                                        referenceAtoms=[['CA', 'TYR', '10'],
+                                                                        ['CA', 'ASN', '43']],
+                                                        sphereRadius=4 * angstrom)
+
+    # Define a simulation
+    integrator1 = LangevinIntegrator(300 * kelvin, 1.0 / picosecond, 0.002 * picoseconds)
+
+    try:
+        platform1 = Platform.getPlatformByName('OpenCL')
+    except:
+        platform1 = Platform.getPlatformByName('CPU')
+
+    simulation1 = Simulation(pdb1.topology, system1, integrator1, platform1)
+    simulation1.context.setPositions(pdb1.positions)
+    simulation1.context.setVelocitiesToTemperature(300 * kelvin)
+    simulation1.context.setPeriodicBoxVectors(*pdb1.topology.getPeriodicBoxVectors())
+    sampler1.prepareGCMCSphere(simulation1.context, [3054, 3055, 3056, 3057, 3058])
+
+    return None
+
+
 class TestGrandCanonicalMonteCarloSampler(unittest.TestCase):
     """
     Class to store the tests for the GrandCanonicalMonteCarloSampler class
@@ -43,6 +80,9 @@ class TestGrandCanonicalMonteCarloSampler(unittest.TestCase):
         else:
             for file in os.listdir(outdir):
                 os.remove(os.path.join(outdir, file))
+
+        # Need to create the sampler
+        setup_GrandCanonicalMonteCarloSampler()
 
         return None
 
@@ -102,7 +142,7 @@ class TestGrandCanonicalMonteCarloSampler(unittest.TestCase):
         Make sure the GrandCanonicalMonteCarloSampler.move() method works correctly
         """
         # Shouldn't be able to run a move with this sampler
-        self.assertRaises(NotImplementedError, lambda: sampler1.move(simulation1.context, n=1))
+        self.assertRaises(NotImplementedError, lambda: sampler1.move(simulation1.context))
 
         return None
 
@@ -114,7 +154,7 @@ class TestGrandCanonicalMonteCarloSampler(unittest.TestCase):
         ghosts = [sampler1.gcmc_resids[id] for id in np.where(sampler1.gcmc_status == 0)[0]]
 
         # Report
-        sampler1.report()
+        sampler1.report(simulation1)
 
         # Check the output to the ghost file
         assert os.path.isfile(os.path.join(outdir, 'bpti-ghost-wats.txt'))
@@ -130,6 +170,42 @@ class TestGrandCanonicalMonteCarloSampler(unittest.TestCase):
         assert all(np.isclose(ghosts, ghosts_read))
 
         return None
+
+
+def setup_StandardGCMCSampler():
+    """
+    Set up variables for the StandardGCMCSampler
+    """
+    # Need variables to be global so that they can be accessed outside the function
+    global sampler2
+    global simulation2
+
+    pdb2 = PDBFile(utils.get_data_file(os.path.join('tests', 'bpti-ghosts.pdb')))
+    ff = ForceField('amber10.xml', 'tip3p.xml')
+    system2 = ff.createSystem(pdb2.topology, nonbondedMethod=PME, nonbondedCutoff=12 * angstroms,
+                              constraints=HBonds)
+
+    sampler2 = samplers.StandardGCMCSampler(system=system2, topology=pdb2.topology, temperature=300 * kelvin,
+                                            ghostFile=os.path.join(outdir, 'bpti-ghost-wats.txt'),
+                                            referenceAtoms=[['CA', 'TYR', '10'],
+                                                            ['CA', 'ASN', '43']],
+                                            sphereRadius=4 * angstrom)
+
+    # Define a simulation
+    integrator2 = LangevinIntegrator(300 * kelvin, 1.0 / picosecond, 0.002 * picoseconds)
+
+    try:
+        platform2 = Platform.getPlatformByName('OpenCL')
+    except:
+        platform2 = Platform.getPlatformByName('CPU')
+
+    simulation2 = Simulation(pdb2.topology, system2, integrator2, platform2)
+    simulation2.context.setPositions(pdb2.positions)
+    simulation2.context.setVelocitiesToTemperature(300 * kelvin)
+    simulation2.context.setPeriodicBoxVectors(*pdb2.topology.getPeriodicBoxVectors())
+    sampler2.prepareGCMCSphere(simulation2.context, [3054, 3055, 3056, 3057, 3058])
+
+    return None
 
 
 class TestStandardGCMCSampler(unittest.TestCase):
@@ -151,6 +227,9 @@ class TestStandardGCMCSampler(unittest.TestCase):
         else:
             for file in os.listdir(outdir):
                 os.remove(os.path.join(outdir, file))
+
+        # Create sampler
+        setup_StandardGCMCSampler()
 
         return None
 
@@ -203,59 +282,3 @@ class TestNonequilibriumGCMCSampler(unittest.TestCase):
                 os.remove(os.path.join(outdir, file))
 
         return None
-
-
-############
-
-# Set up variables for the GrandCanonicalMonteCarloSampler
-pdb1 = PDBFile(utils.get_data_file(os.path.join('tests', 'bpti-ghosts.pdb')))
-ff = ForceField('amber10.xml', 'tip3p.xml')
-system1 = ff.createSystem(pdb1.topology, nonbondedMethod=PME, nonbondedCutoff=12*angstroms,
-                         constraints=HBonds)
-
-sampler1 = samplers.GrandCanonicalMonteCarloSampler(system=system1, topology=pdb1.topology,
-                                                    temperature=300*kelvin,
-                                                    ghostFile=os.path.join(outdir, 'bpti-ghost-wats.txt'),
-                                                    referenceAtoms=[['CA', 'TYR', '10'],
-                                                                    ['CA', 'ASN', '43']],
-                                                    sphereRadius=4*angstrom)
-
-# Define a simulation
-integrator1 = LangevinIntegrator(300*kelvin, 1.0/picosecond, 0.002*picoseconds)
-
-try:
-    platform1 = Platform.getPlatformByName('OpenCL')
-except:
-    platform1 = Platform.getPlatformByName('CPU')
-
-simulation1 = Simulation(pdb1.topology, system1, integrator1, platform1)
-simulation1.context.setPositions(pdb1.positions)
-simulation1.context.setVelocitiesToTemperature(300 * kelvin)
-simulation1.context.setPeriodicBoxVectors(*pdb1.topology.getPeriodicBoxVectors())
-sampler1.prepareGCMCSphere(simulation1.context, [3054, 3055, 3056, 3057, 3058])
-
-
-# Set up variables for the StandardGCMCSampler
-pdb2 = PDBFile(utils.get_data_file(os.path.join('tests', 'bpti-ghosts.pdb')))
-system2 = ff.createSystem(pdb2.topology, nonbondedMethod=PME, nonbondedCutoff=12*angstroms,
-                         constraints=HBonds)
-
-sampler2 = samplers.StandardGCMCSampler(system=system2, topology=pdb2.topology, temperature=300*kelvin,
-                                        ghostFile=os.path.join(outdir, 'bpti-ghost-wats.txt'),
-                                        referenceAtoms=[['CA', 'TYR', '10'],
-                                                        ['CA', 'ASN', '43']],
-                                        sphereRadius=4*angstrom)
-
-# Define a simulation
-integrator2 = LangevinIntegrator(300*kelvin, 1.0/picosecond, 0.002*picoseconds)
-
-try:
-    platform2 = Platform.getPlatformByName('OpenCL')
-except:
-    platform2 = Platform.getPlatformByName('CPU')
-
-simulation2 = Simulation(pdb2.topology, system2, integrator2, platform2)
-simulation2.context.setPositions(pdb2.positions)
-simulation2.context.setVelocitiesToTemperature(300 * kelvin)
-simulation2.context.setPeriodicBoxVectors(*pdb2.topology.getPeriodicBoxVectors())
-sampler2.prepareGCMCSphere(simulation2.context, [3054, 3055, 3056, 3057, 3058])
