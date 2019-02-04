@@ -1,12 +1,16 @@
+"""
+scytalone.py
+Marley Samways
+
+Description
+-----------
+Example script of how to run GCMC in OpenMM for a scytalone dehydratase (SD) system
+"""
+
 from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
 from sys import stdout
-import os
-
-import mdtraj
-import numpy as np
-from parmed.openmm.reporters import RestartReporter
 
 import grand
 
