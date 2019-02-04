@@ -26,7 +26,8 @@ system = ff.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=10.0
 
 ref_atoms = [['CA', 'TYR', '10'], ['C', 'ASN', '43']]
 gcmc_mover = grand.samplers.StandardGCMCSampler(system=system, topology=pdb.topology, temperature=300*kelvin,
-                                                referenceAtoms=ref_atoms, sphereRadius=4*angstroms)
+                                                referenceAtoms=ref_atoms, sphereRadius=4*angstroms,
+                                                dcd='bpti-raw.dcd', rst7='bpti-gcmc.rst7')
 
 # Langevin integrator
 integrator = LangevinIntegrator(300*kelvin, 1.0/picosecond, 0.002*picoseconds)
@@ -37,10 +38,6 @@ simulation.context.setPositions(pdb.positions)
 simulation.context.setVelocitiesToTemperature(300*kelvin)
 simulation.context.setPeriodicBoxVectors(*pdb.topology.getPeriodicBoxVectors())
 
-# reporters
-dcd = mdtraj.reporters.DCDReporter('bpti-raw.dcd', 0)
-rst7 = RestartReporter('bpti-gcmc.rst7', 0)
-
 # Switch off ghost waters and in sphere
 gcmc_mover.prepareGCMCSphere(simulation.context, ghosts)
 gcmc_mover.deleteWatersInGCMCSphere()
@@ -50,9 +47,8 @@ print("GCMC equilibration...")
 for i in range(75):
     gcmc_mover.move(simulation.context, 200)  # 200 GCMC moves
     simulation.step(50)  # 100 fs propagation between moves
-    print("\t{} GCMC moves completed. N = {}".format(gcmc_mover.n_moves, gcmc_mover.N))
 
-print("{}/{} moves accepted".format(gcmc_mover.n_accepted, gcmc_mover.n_moves))
+print("{}/{} equilibration GCMC moves accepted. N = {}".format(gcmc_mover.n_accepted, gcmc_mover.n_moves, gcmc_mover.N))
 simulation.reporters.append(StateDataReporter(stdout, 1000, step=True,
                             potentialEnergy=True, temperature=True, volume=True))
 gcmc_mover.reset()
@@ -64,12 +60,7 @@ for i in range(50):
     simulation.step(500)
     gcmc_mover.move(simulation.context, 100)
     # Write data out
-    state = simulation.context.getState(getPositions=True, getVelocities=True)
-    dcd.report(simulation, state)
-    rst7.report(simulation, state)
-    gcmc_mover.report()
-    print("\t{} GCMC moves completed. N = {}".format(gcmc_mover.n_moves, gcmc_mover.N))
-print("{}/{} moves accepted".format(gcmc_mover.n_accepted, gcmc_mover.n_moves))
+    gcmc_mover.report(simulation)
 
 # Format the trajectory
 trj = grand.utils.shift_ghost_waters(ghost_file='gcmc-ghost-wats.txt', topology='bpti-gcmc.pdb',
