@@ -12,9 +12,6 @@ from simtk.openmm import *
 from simtk.unit import *
 from sys import stdout
 
-import mdtraj
-from parmed.openmm.reporters import RestartReporter
-
 import grand
 
 pdb = PDBFile('bpti-equil.pdb')
