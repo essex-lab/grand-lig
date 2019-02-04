@@ -47,10 +47,12 @@ print("GCMC equilibration...")
 for i in range(75):
     gcmc_mover.move(simulation.context, 200)  # 200 GCMC moves
     simulation.step(50)  # 100 fs propagation between moves
-
 print("{}/{} equilibration GCMC moves accepted. N = {}".format(gcmc_mover.n_accepted, gcmc_mover.n_moves, gcmc_mover.N))
-simulation.reporters.append(StateDataReporter(stdout, 1000, step=True,
-                            potentialEnergy=True, temperature=True, volume=True))
+
+# Add StateDataReporter for production
+simulation.reporters.append(StateDataReporter(stdout, 1000, step=True, potentialEnergy=True, temperature=True,
+                                              volume=True))
+# Reset GCMC statistics
 gcmc_mover.reset()
 
 # Run simulation
