@@ -92,7 +92,8 @@ def calc_mu(model, box_len, cutoff, switch_dist, nb_method=PME, temperature=300*
 
     Returns
     -------
-
+    dG : simtk.unit.Quantity
+        Calculated hydration free energy of water
     """
     kT = AVOGADRO_CONSTANT_NA * BOLTZMANN_CONSTANT_kB * temperature
 
