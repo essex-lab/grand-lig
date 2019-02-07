@@ -887,41 +887,228 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
                                                  rst7=rst7)
 
         # Load in extra NCMC variables
-        self.integrator = integrator
         self.n_pert_steps = nPertSteps
         self.n_prop_steps = nPropSteps
 
-        # Need to make sure that the integrator is a Nonequilibrium Langevin integrator
-        assert isinstance(self.integrator, NonequilibriumLangevinIntegrator),\
-            "Must use a NonequilibriumLangevinIntegrator for nonquilibrium GCMC moves!"
+        # Define a compound integrator
+        self.integrator = openmm.CompoundIntegrator()
+        # Add the MD integrator
+        self.integrator.addIntegrator(integrator)
+        # Create and add the nonequilibrium integrator
+        self. ncmc_integrator = NonequilibriumLangevinIntegrator(temperature=temperature,
+                                                                 collision_rate=1.0/unit.picosecond,
+                                                                 timestep=2*unit.femtoseconds, splitting="V R O R V")
+        self.integrator.addIntegrator(self.ncmc_integrator)
+        # Set the compound integrator to the MD integrator
+        self.integrator.setCurrentIntegrator(0)
 
-        def move(self, context, n=1):
-            """
-            Carry out a nonequilibrium GCMC move
+    def move(self, context, n=1):
+        """
+        Carry out a nonequilibrium GCMC move
 
-            Parameters
-            ----------
-            context : simtk.openmm.Context
-                Current context of the simulation
-            n : int
-                Number of moves to execute
-            """
-            raise NotImplementedError("Haven't yet implemented nonequilibrium GCMC moves!")
+        Parameters
+        ----------
+        context : simtk.openmm.Context
+            Current context of the simulation
+        n : int
+            Number of moves to execute
+        """
+        # Read in positions
+        self.context = context
+        state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
+        self.positions = deepcopy(state.getPositions(asNumpy=True))
+        self.velocities = deepcopy(state.getVelocities(asNumpy=True))
 
+        # Update GCMC region based on current state
+        self.updateGCMCSphere(state)
+
+        # Set to NCMC integrator
+        self.integrator.setCurrentIntegrator(1)
+
+        #  Execute moves
+        for i in range(n):
+            # Insert or delete a water, based on random choice
+            if np.random.randint(2) == 1:
+                # Attempt to insert a water
+                self.insertRandomWater()
+            else:
+                # Attempt to delete a water
+                self.deleteRandomWater()
+            self.n_moves += 1
+            self.Ns.append(self.N)
+
+        # Set to MD integrator
+        self.integrator.setCurrentIntegrator(0)
+
+        return None
+
+    def insertRandomWater(self):
+        """
+        Carry out a nonequilibrium insertion move for a random water molecule
+        """
+        print("Inserting a water...")
+        # Get a list of what the GCMC waters are prior to the move
+        gcmc_wats = [wat for i, wat in enumerate(self.gcmc_resids) if self.gcmc_status[i] == 1]
+
+        # Select a ghost water to insert
+        gcmc_id = np.random.choice(np.where(self.gcmc_status == 0)[0])  # Position in list of GCMC waters
+        insert_water = self.gcmc_resids[gcmc_id]
+        wat_id = np.where(np.array(self.water_resids) == insert_water)[0][0]  # Position in list of all waters
+        atom_indices = []
+        for resid, residue in enumerate(self.topology.residues()):
+            if resid == insert_water:
+                for atom in residue.atoms():
+                    atom_indices.append(atom.index)
+
+        # Select a point to insert the water (based on O position)
+        rand_nums = np.random.randn(3)
+        insert_point = self.sphere_centre + (
+                self.sphere_radius * np.power(np.random.rand(), 1.0 / 3) * rand_nums) / np.linalg.norm(rand_nums)
+        #  Generate a random rotation matrix
+        R = random_rotation_matrix()
+        new_positions = deepcopy(self.positions)
+        for i, index in enumerate(atom_indices):
+            #  Translate coordinates to an origin defined by the oxygen atom, and normalise
+            atom_position = self.positions[index] - self.positions[atom_indices[0]]
+            # Rotate about the oxygen position
+            if i != 0:
+                vec_length = np.linalg.norm(atom_position)
+                atom_position = atom_position / vec_length
+                # Rotate coordinates & restore length
+                atom_position = vec_length * np.dot(R, atom_position) * unit.nanometer
+            # Translate to new position
+            new_positions[index] = atom_position + insert_point
+
+        # Need to update the context positions
+        self.context.setPositions(new_positions)
+
+        # Set lambda values for each perturbation
+        lambdas = np.linspace(0.0, 1.0, self.n_pert_steps)
+
+        # Start running perturbation and propagation kernels
+        self.integrator.step(self.n_prop_steps)
+        for i in range(self.n_pert_steps):
+            print("\tlambda = {}".format(lambdas[i + 1]))
+            # Adjust interactions of this water
+            self.adjustSpecificWater(atom_indices, lambdas[i+1])
+            # Propagate the system
+            self.integrator.step(self.n_pert_steps)
+
+        # Get the protocol work (in units of kT)
+        protocol_work = self.ncmc_integrator.get_protocol_work(dimensionless=True)
+        print("\tw = {} kT".format(protocol_work))
+
+        # Update variables and GCMC sphere
+        self.gcmc_status[gcmc_id] = 1
+        self.water_status[wat_id] = 1
+        state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getEnergy=True)
+        self.updateGCMCSphere(state)
+
+        # Check which waters are still in the GCMC sphere
+        gcmc_wats_new = [wat for i, wat in enumerate(self.gcmc_resids) if self.gcmc_status[i] == 1]
+
+        # Calculate acceptance probability
+        if insert_water not in gcmc_wats_new:
+            # If the inserted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
+            acc_prob = 0
+        else:
+            # Calculate acceptance probability based on protocol work
+            acc_prob = np.exp(self.B) * np.exp(-protocol_work) / self.N  # Here N is the new value
+
+        print("Probability = {}".format(acc_prob))
+
+        # Update or reset the system, depending on whether the move is accepted or rejected
+        if acc_prob < np.random.rand() or np.isnan(acc_prob):
+            # Need to revert the changes made if the move is to be rejected
+            self.adjustSpecificWater(atom_indices, 0.0)
+            self.context.setPositions(self.positions)
+            self.context.Velocities(-self.velocities)  # Reverse velocities on rejection
+            state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
+            self.gcmc_status[gcmc_id] = 0
+            self.water_status[wat_id] = 0
+            self.updateGCMCSphere(state)
+        else:
+            # Update some variables if move is accepted
+            self.N = len(gcmc_wats_new)
+            self.n_accepted += 1
+            state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
+            self.positions = deepcopy(state.getPositions(asNumpy=True))
+            self.velocities = deepcopy(state.getVelocities(asNumpy=True))
+            self.updateGCMCSphere(state)
+
+        return None
+
+    def deleteRandomWater(self):
+        """
+        Carry out a nonequilibrium deletion move for a random water molecule
+        """
+        print("Deleting a water...")
+        # Cannot carry out deletion if there are no GCMC waters on
+        if np.sum(self.gcmc_status) == 0:
             return None
 
-        def insertRandomWater(self):
-            """
-            Carry out a nonequilibrium insertion move for a random water molecule
+        # Select a water residue to delete
+        gcmc_id = np.random.choice(np.where(self.gcmc_status == 1)[0])  # Position in list of GCMC waters
+        delete_water = self.gcmc_resids[gcmc_id]
+        wat_id = np.where(np.array(self.water_resids) == delete_water)[0][0]  # Position in list of all waters
+        atom_indices = []
+        for resid, residue in enumerate(self.topology.residues()):
+            if resid == delete_water:
+                for atom in residue.atoms():
+                    atom_indices.append(atom.index)
 
-            Need to write this function...
-            """
-            return None
+        # Set lambda values for each perturbation
+        lambdas = np.linspace(1.0, 0.0, self.n_pert_steps)
 
-        def deleteRandomWater(self):
-            """
-            Carry out a nonequilibrium deletion move for a random water molecule
+        # Start running perturbation and propagation kernels
+        self.integrator.step(self.n_prop_steps)
+        for i in range(self.n_pert_steps):
+            # Adjust interactions of this water
+            print("\tlambda = {}".format(lambdas[i+1]))
+            self.adjustSpecificWater(atom_indices, lambdas[i + 1])
+            # Propagate the system
+            self.integrator.step(self.n_pert_steps)
 
-            Need to write this function...
-            """
-            return None
+        # Get the protocol work (in units of kT)
+        protocol_work = self.ncmc_integrator.get_protocol_work(dimensionless=True)
+        print("\tw = {} kT".format(protocol_work))
+
+        # Update variables and GCMC sphere
+        self.gcmc_status[gcmc_id] = 1  # Leaving the water as 'on' here to check
+        self.water_status[wat_id] = 1  # that the deleted water doesn't leave
+        state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getEnergy=True)
+        self.updateGCMCSphere(state)
+
+        # Check which waters are still in the GCMC sphere
+        gcmc_wats_new = [wat for i, wat in enumerate(self.gcmc_resids) if self.gcmc_status[i] == 1]
+
+        # Calculate acceptance probability
+        if delete_water not in gcmc_wats_new:
+            # If the deleted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
+            acc_prob = 0
+        else:
+            # Calculate acceptance probability based on protocol work
+            acc_prob = self.N * np.exp(-self.B) * np.exp(-protocol_work)  # N is the old value
+
+        print("Probability = {}".format(acc_prob))
+
+        # Update or reset the system, depending on whether the move is accepted or rejected
+        if acc_prob < np.random.rand() or np.isnan(acc_prob):
+            # Need to revert the changes made if the move is to be rejected
+            self.adjustSpecificWater(atom_indices, 1.0)
+            self.context.setPositions(self.positions)
+            self.context.Velocities(-self.velocities)  # Reverse velocities on rejection
+            state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
+            self.updateGCMCSphere(state)
+        else:
+            # Update some variables if move is accepted
+            self.gcmc_status[gcmc_id] = 0
+            self.water_status[wat_id] = 0
+            self.N = len(gcmc_wats_new) - 1  # Accounting for the deleted water
+            self.n_accepted += 1
+            state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
+            self.positions = deepcopy(state.getPositions(asNumpy=True))
+            self.velocities = deepcopy(state.getVelocities(asNumpy=True))
+            self.updateGCMCSphere(state)
+
+        return None
