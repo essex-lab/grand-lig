@@ -36,16 +36,11 @@ class GrandCanonicalMonteCarloSampler(object):
     """
     Base class for carrying out GCMC moves in OpenMM
     """
-    def __init__(self, system, topology, temperature, adams=None, chemicalPotential=None, waterName="HOH",
-                 waterModel="tip3p", ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None,
-                 dcd=None, rst7=None):
+    def __init__(self, system, topology, temperature, adams=None, chemicalPotential=-6.1*unit.kilocalories_per_mole,
+                 adamsShift=0.0, waterName="HOH", ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None,
+                 sphereRadius=None, dcd=None, rst7=None):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
-
-        Notes
-        -----
-        At some point the mu' values below will have to be replaced with calculated
-        hydration free energies for each of the water models.
 
         Parameters
         ----------
@@ -60,14 +55,13 @@ class GrandCanonicalMonteCarloSampler(object):
             if None, the B value is calculated from the box volume and chemical
             potential
         chemicalPotential : simtk.unit.Quantity
-            Chemical potential of the simulation, default is None. This is to be used
-            if you don't want to use the equilibrium value or if using a water model
-            other than SPCE, TIP3P, TIP4Pew (need to add others).
+            Chemical potential of the simulation, default is -6.1 kcal/mol. This should
+            be the hydration free energy of water, and may need to be changed for specific
+            simulation parameters.
+        adamsShift : float
+            Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         waterName : str
             Name of the water residues. Default is 'HOH'
-        waterModel : str
-            Name of the water model being used. This is used to identify the equilibrium chemical
-            potential to use. Default: TIP3P. Accepted: SPCE, TIP3P, TIP4Pew
         ghostFile : str
             Name of a file to write out the residue IDs of ghost water molecules. This is
             useful if you want to visualise the sampling, as you can then remove these waters
@@ -111,21 +105,15 @@ class GrandCanonicalMonteCarloSampler(object):
             self.ref_atoms = self.getReferenceAtomIndices(referenceAtoms)
         else:
             raise Exception("A set of atoms must be used to define the centre of the sphere!")
-        
-        # Calculate Adams value, if needed
-        if adams is None:
-            if chemicalPotential is None:
-                assert waterModel.lower() in ['spce', 'tip3p', 'tip4pew'],\
-                    "Unsupported water model. Must define mu' manually"
-                mu_dict = {"spce": -6.2 * unit.kilocalorie_per_mole,
-                           "tip3p": -6.2 * unit.kilocalorie_per_mole,
-                           "tip4pew": -6.2 * unit.kilocalorie_per_mole}
-                mu = mu_dict[waterModel.lower()]
-            else:
-                mu = chemicalPotential
-            self.B = mu/self.kT + np.log(volume / (30.0 * unit.angstrom ** 3))
-        else:
+
+        # Set or calculate the Adams value for the simulation
+        if adams is not None:
             self.B = adams
+        else:
+            # Calculate Bequil from the chemical potential and volume
+            self.B = chemicalPotential/self.kT + np.log(volume / (30.0 * unit.angstrom ** 3))
+            # Shift B from Bequil if necessary
+            self.B += adamsShift
 
         # Other variables
         self.n_moves = 0
@@ -647,9 +635,9 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
     """
     Class to carry out instantaneous GCMC moves in OpenMM
     """
-    def __init__(self, system, topology, temperature, adams=None, chemicalPotential=None, waterName="HOH",
-                 waterModel="tip3p", ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None,
-                 dcd=None, rst7=None):
+    def __init__(self, system, topology, temperature, adams=None, chemicalPotential=-6.1*unit.kilocalories_per_mole,
+                 adamsShift=0.0, waterName="HOH", ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None,
+                 sphereRadius=None, dcd=None, rst7=None):
         """
         Initialise the object to be used for sampling instantaneous water insertion/deletion moves
 
@@ -666,9 +654,11 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
             if None, the B value is calculated from the box volume and chemical
             potential
         chemicalPotential : simtk.unit.Quantity
-            Chemical potential of the simulation, default is None. This is to be used
-            if you don't want to use the equilibrium value or if using a water model
-            other than SPCE, TIP3P, TIP4Pew (need to add others).
+            Chemical potential of the simulation, default is -6.1 kcal/mol. This should
+            be the hydration free energy of water, and may need to be changed for specific
+            simulation parameters.
+        adamsShift : float
+            Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         waterName : str
             Name of the water residues. Default is 'HOH'
         waterModel : str
@@ -689,10 +679,10 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
         rst7 : str
             Name of the AMBER restart file to write out
         """
-        # Initialise base class - don't need any more for the instantaneous sampler
+        # Initialise base class - don't need any more initialisation for the instantaneous sampler
         GrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, adams=adams,
-                                                 chemicalPotential=chemicalPotential, waterName=waterName,
-                                                 waterModel=waterModel, ghostFile=ghostFile,
+                                                 chemicalPotential=chemicalPotential, adamsShift=adamsShift,
+                                                 waterName=waterName, ghostFile=ghostFile,
                                                  referenceAtoms=referenceAtoms, sphereRadius=sphereRadius,
                                                  dcd=dcd, rst7=rst7)
 
@@ -837,9 +827,10 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
     Class to carry out GCMC moves in OpenMM, using nonequilibrium candidate Monte Carlo (NCMC)
     to boost acceptance rates
     """
-    def __init__(self, system, topology, temperature, integrator, adams=None, chemicalPotential=None, nPertSteps=1,
-                 nPropSteps=1, waterName="HOH", waterModel="tip3p", ghostFile="gcmc-ghost-wats.txt",
-                 referenceAtoms=None, sphereRadius=None, dcd=None, rst7=None):
+    def __init__(self, system, topology, temperature, integrator, adams=None,
+                 chemicalPotential=-6.1*unit.kilocalories_per_mole, adamsShift=0.0, nPertSteps=1, nPropSteps=1,
+                 waterName="HOH", ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None, dcd=None,
+                 rst7=None):
         """
         Initialise the object to be used for sampling NCMC-enhanced water insertion/deletion moves
 
@@ -859,9 +850,11 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             if None, the B value is calculated from the box volume and chemical
             potential
         chemicalPotential : simtk.unit.Quantity
-            Chemical potential of the simulation, default is None. This is to be used
-            if you don't want to use the equilibrium value or if using a water model
-            other than SPCE, TIP3P, TIP4Pew (need to add others).
+            Chemical potential of the simulation, default is -6.1 kcal/mol. This should
+            be the hydration free energy of water, and may need to be changed for specific
+            simulation parameters.
+        adamsShift : float
+            Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         nPertSteps : int
             Number of pertubation steps over which to shift lambda between 0 and 1 (or vice versa).
         nPropSteps : int
@@ -888,10 +881,10 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         """
         # Initialise base class
         GrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, adams=adams,
-                                                 chemicalPotential=chemicalPotential, waterName=waterName,
-                                                 waterModel=waterModel, ghostFile=ghostFile,
-                                                 referenceAtoms=referenceAtoms, sphereRadius=sphereRadius,
-                                                 dcd=dcd, rst7=rst7)
+                                                 chemicalPotential=chemicalPotential, adamsShift=adamsShift,
+                                                 waterName=waterName, ghostFile=ghostFile,
+                                                 referenceAtoms=referenceAtoms, sphereRadius=sphereRadius, dcd=dcd,
+                                                 rst7=rst7)
 
         # Load in extra NCMC variables
         self.integrator = integrator
