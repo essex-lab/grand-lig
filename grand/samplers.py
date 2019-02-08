@@ -81,7 +81,6 @@ class GrandCanonicalMonteCarloSampler(object):
         self.system = system
         self.topology = topology
         self.positions = None  # Store no positions upon initialisation
-        self.energy = None
         self.context = None
         self.kT = unit.BOLTZMANN_CONSTANT_kB * unit.AVOGADRO_CONSTANT_NA * temperature
         self.simulation_box = np.zeros(3) * unit.nanometer  # Set to zero for now
@@ -686,6 +685,8 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
                                                  referenceAtoms=referenceAtoms, sphereRadius=sphereRadius,
                                                  dcd=dcd, rst7=rst7)
 
+        self.energy = None  # Need to save energy
+
     def move(self, context, n=1):
         """
         Execute a number of GCMC moves on the current system
@@ -886,21 +887,25 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
                                                  referenceAtoms=referenceAtoms, sphereRadius=sphereRadius, dcd=dcd,
                                                  rst7=rst7)
 
+        self.velocities = None  # Need to store velocities for this type of sampling
+
         # Load in extra NCMC variables
         self.n_pert_steps = nPertSteps
         self.n_prop_steps = nPropSteps
+        self.works = []  # Store work values of moves
+        self.acceptance_probabilities = []  # Store acceptance probabilities
 
         # Define a compound integrator
-        self.integrator = openmm.CompoundIntegrator()
+        self.compound_integrator = openmm.CompoundIntegrator()
         # Add the MD integrator
-        self.integrator.addIntegrator(integrator)
+        self.compound_integrator.addIntegrator(integrator)
         # Create and add the nonequilibrium integrator
-        self. ncmc_integrator = NonequilibriumLangevinIntegrator(temperature=temperature,
-                                                                 collision_rate=1.0/unit.picosecond,
-                                                                 timestep=2*unit.femtoseconds, splitting="V R O R V")
-        self.integrator.addIntegrator(self.ncmc_integrator)
+        self.ncmc_integrator = NonequilibriumLangevinIntegrator(temperature=temperature,
+                                                                collision_rate=1.0/unit.picosecond,
+                                                                timestep=2*unit.femtoseconds, splitting="V R O R V")
+        self.compound_integrator.addIntegrator(self.ncmc_integrator)
         # Set the compound integrator to the MD integrator
-        self.integrator.setCurrentIntegrator(0)
+        self.compound_integrator.setCurrentIntegrator(0)
 
     def move(self, context, n=1):
         """
@@ -923,7 +928,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         self.updateGCMCSphere(state)
 
         # Set to NCMC integrator
-        self.integrator.setCurrentIntegrator(1)
+        self.compound_integrator.setCurrentIntegrator(1)
 
         #  Execute moves
         for i in range(n):
@@ -938,7 +943,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             self.Ns.append(self.N)
 
         # Set to MD integrator
-        self.integrator.setCurrentIntegrator(0)
+        self.compound_integrator.setCurrentIntegrator(0)
 
         return None
 
@@ -983,25 +988,39 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         self.context.setPositions(new_positions)
 
         # Set lambda values for each perturbation
-        lambdas = np.linspace(0.0, 1.0, self.n_pert_steps)
+        lambdas = np.linspace(0.0, 1.0, self.n_pert_steps + 1)
 
         # Start running perturbation and propagation kernels
-        self.integrator.step(self.n_prop_steps)
+        protocol_work = 0.0 * unit.kilocalories_per_mole
+        explosion = False
+        self.ncmc_integrator.step(self.n_prop_steps)
         for i in range(self.n_pert_steps):
             print("\tlambda = {}".format(lambdas[i + 1]))
+            state = self.context.getState(getEnergy=True)
+            energy_initial = state.getPotentialEnergy()
             # Adjust interactions of this water
             self.adjustSpecificWater(atom_indices, lambdas[i+1])
+            state = self.context.getState(getEnergy=True)
+            energy_final = state.getPotentialEnergy()
+            protocol_work += energy_final - energy_initial
             # Propagate the system
-            self.integrator.step(self.n_pert_steps)
+            try:
+                self.ncmc_integrator.step(self.n_prop_steps)
+            except:
+                print("Caught explosion!")
+                explosion = True
+                break
 
         # Get the protocol work (in units of kT)
-        protocol_work = self.ncmc_integrator.get_protocol_work(dimensionless=True)
-        print("\tw = {} kT".format(protocol_work))
+        #protocol_work = self.ncmc_integrator.get_protocol_work(dimensionless=True)
+        print("\tw = {}".format(protocol_work))
+        #print("\tw2 = {}".format(protocol_work2))
+        self.works.append(protocol_work)
 
         # Update variables and GCMC sphere
-        self.gcmc_status[gcmc_id] = 1
+        #self.gcmc_status[gcmc_id] = 1
         self.water_status[wat_id] = 1
-        state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getEnergy=True)
+        state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
         self.updateGCMCSphere(state)
 
         # Check which waters are still in the GCMC sphere
@@ -1011,23 +1030,28 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         if insert_water not in gcmc_wats_new:
             # If the inserted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
             acc_prob = 0
+        elif explosion:
+            acc_prob = 0
         else:
             # Calculate acceptance probability based on protocol work
-            acc_prob = np.exp(self.B) * np.exp(-protocol_work) / self.N  # Here N is the new value
+            acc_prob = np.exp(self.B) * np.exp(-protocol_work/self.kT) / self.N  # Here N is the new value
 
-        print("Probability = {}".format(acc_prob))
+        print("\tProbability = {}".format(acc_prob))
+        self.acceptance_probabilities.append(acc_prob)
 
         # Update or reset the system, depending on whether the move is accepted or rejected
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
+            print('\tRejected\n')
             # Need to revert the changes made if the move is to be rejected
             self.adjustSpecificWater(atom_indices, 0.0)
             self.context.setPositions(self.positions)
-            self.context.Velocities(-self.velocities)  # Reverse velocities on rejection
+            self.context.setVelocities(-self.velocities)  # Reverse velocities on rejection
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
-            self.gcmc_status[gcmc_id] = 0
+            #self.gcmc_status[gcmc_id] = 0
             self.water_status[wat_id] = 0
             self.updateGCMCSphere(state)
         else:
+            print('\tAccepted\n')
             # Update some variables if move is accepted
             self.N = len(gcmc_wats_new)
             self.n_accepted += 1
@@ -1058,25 +1082,32 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
                     atom_indices.append(atom.index)
 
         # Set lambda values for each perturbation
-        lambdas = np.linspace(1.0, 0.0, self.n_pert_steps)
+        lambdas = np.linspace(1.0, 0.0, self.n_pert_steps + 1)
 
         # Start running perturbation and propagation kernels
-        self.integrator.step(self.n_prop_steps)
+        protocol_work = 0.0 * unit.kilocalories_per_mole
+        self.ncmc_integrator.step(self.n_prop_steps)
         for i in range(self.n_pert_steps):
+            print("\tlambda = {}".format(lambdas[i + 1]))
+            state = self.context.getState(getEnergy=True)
+            energy_initial = state.getPotentialEnergy()
             # Adjust interactions of this water
-            print("\tlambda = {}".format(lambdas[i+1]))
             self.adjustSpecificWater(atom_indices, lambdas[i + 1])
+            state = self.context.getState(getEnergy=True)
+            energy_final = state.getPotentialEnergy()
+            protocol_work += energy_final - energy_initial
             # Propagate the system
-            self.integrator.step(self.n_pert_steps)
+            self.ncmc_integrator.step(self.n_prop_steps)
 
         # Get the protocol work (in units of kT)
-        protocol_work = self.ncmc_integrator.get_protocol_work(dimensionless=True)
-        print("\tw = {} kT".format(protocol_work))
+        #protocol_work = self.ncmc_integrator.get_protocol_work(dimensionless=True)
+        print("\tw = {}".format(protocol_work))
+        self.works.append(protocol_work)
 
         # Update variables and GCMC sphere
-        self.gcmc_status[gcmc_id] = 1  # Leaving the water as 'on' here to check
+        #self.gcmc_status[gcmc_id] = 1  # Leaving the water as 'on' here to check
         self.water_status[wat_id] = 1  # that the deleted water doesn't leave
-        state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getEnergy=True)
+        state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
         self.updateGCMCSphere(state)
 
         # Check which waters are still in the GCMC sphere
@@ -1088,21 +1119,22 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             acc_prob = 0
         else:
             # Calculate acceptance probability based on protocol work
-            acc_prob = self.N * np.exp(-self.B) * np.exp(-protocol_work)  # N is the old value
+            acc_prob = self.N * np.exp(-self.B) * np.exp(-protocol_work/self.kT)  # N is the old value
 
         print("Probability = {}".format(acc_prob))
+        self.acceptance_probabilities.append(acc_prob)
 
         # Update or reset the system, depending on whether the move is accepted or rejected
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             # Need to revert the changes made if the move is to be rejected
             self.adjustSpecificWater(atom_indices, 1.0)
             self.context.setPositions(self.positions)
-            self.context.Velocities(-self.velocities)  # Reverse velocities on rejection
+            self.context.setVelocities(-self.velocities)  # Reverse velocities on rejection
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
             self.updateGCMCSphere(state)
         else:
             # Update some variables if move is accepted
-            self.gcmc_status[gcmc_id] = 0
+            #self.gcmc_status[gcmc_id] = 0
             self.water_status[wat_id] = 0
             self.N = len(gcmc_wats_new) - 1  # Accounting for the deleted water
             self.n_accepted += 1
