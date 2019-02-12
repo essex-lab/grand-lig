@@ -894,6 +894,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         self.n_prop_steps = nPropSteps
         self.works = []  # Store work values of moves
         self.acceptance_probabilities = []  # Store acceptance probabilities
+        self.n_explosions = 0
 
         # Define a compound integrator
         self.compound_integrator = openmm.CompoundIntegrator()
@@ -941,6 +942,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
                 self.deleteRandomWater()
             self.n_moves += 1
             self.Ns.append(self.N)
+            print("{}/{} moves exploded".format(self.n_explosions, self.n_moves))
 
         # Set to MD integrator
         self.compound_integrator.setCurrentIntegrator(0)
@@ -1009,6 +1011,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             except:
                 print("Caught explosion!")
                 explosion = True
+                self.n_explosions += 1
                 break
 
         # Get the protocol work (in units of kT)
@@ -1066,10 +1069,11 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         """
         Carry out a nonequilibrium deletion move for a random water molecule
         """
-        print("Deleting a water...")
         # Cannot carry out deletion if there are no GCMC waters on
         if np.sum(self.gcmc_status) == 0:
             return None
+
+        print("Deleting a water...")
 
         # Select a water residue to delete
         gcmc_id = np.random.choice(np.where(self.gcmc_status == 1)[0])  # Position in list of GCMC waters
@@ -1086,6 +1090,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
 
         # Start running perturbation and propagation kernels
         protocol_work = 0.0 * unit.kilocalories_per_mole
+        explosion = False
         self.ncmc_integrator.step(self.n_prop_steps)
         for i in range(self.n_pert_steps):
             print("\tlambda = {}".format(lambdas[i + 1]))
@@ -1097,7 +1102,13 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             energy_final = state.getPotentialEnergy()
             protocol_work += energy_final - energy_initial
             # Propagate the system
-            self.ncmc_integrator.step(self.n_prop_steps)
+            try:
+                self.ncmc_integrator.step(self.n_prop_steps)
+            except:
+                print("Caught explosion!")
+                explosion = True
+                self.n_explosions += 1
+                break
 
         # Get the protocol work (in units of kT)
         #protocol_work = self.ncmc_integrator.get_protocol_work(dimensionless=True)
@@ -1116,6 +1127,8 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         # Calculate acceptance probability
         if delete_water not in gcmc_wats_new:
             # If the deleted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
+            acc_prob = 0
+        elif explosion:
             acc_prob = 0
         else:
             # Calculate acceptance probability based on protocol work
