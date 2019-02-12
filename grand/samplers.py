@@ -30,6 +30,7 @@ from simtk import openmm
 from parmed.openmm.reporters import RestartReporter
 from openmmtools.integrators import NonequilibriumLangevinIntegrator
 from utils import random_rotation_matrix
+from potential import get_lambda_values
 
 
 class GrandCanonicalMonteCarloSampler(object):
@@ -541,18 +542,21 @@ class GrandCanonicalMonteCarloSampler(object):
         new_lambda : float
             Value to set lambda to for this particle
         """
+        # Get lambda values
+        lambda_vdw, lambda_ele = get_lambda_values(new_lambda)
+
         # Loop over parameters
         for i, atom_idx in enumerate(atoms):
             # Obtain original parameters
             atom_params = self.water_params[i]
             # Update charge in NonbondedForce
             self.nonbonded_force.setParticleParameters(atom_idx,
-                                                       charge=(new_lambda * atom_params["charge"]),
+                                                       charge=(lambda_ele * atom_params["charge"]),
                                                        sigma=atom_params["sigma"],
                                                        epsilon=abs(0.0))
             # Update lambda in CustomNonbondedForce
             self.custom_nb_force.setParticleParameters(atom_idx,
-                                                       [atom_params["sigma"], atom_params["epsilon"], new_lambda])
+                                                       [atom_params["sigma"], atom_params["epsilon"], lambda_vdw])
 
         # Update context with new parameters
         self.nonbonded_force.updateParametersInContext(self.context)
