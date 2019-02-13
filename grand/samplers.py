@@ -946,7 +946,6 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
                 self.deleteRandomWater()
             self.n_moves += 1
             self.Ns.append(self.N)
-            print("{}/{} moves exploded".format(self.n_explosions, self.n_moves))
 
         # Set to MD integrator
         self.compound_integrator.setCurrentIntegrator(0)
@@ -1001,7 +1000,6 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         explosion = False
         self.ncmc_integrator.step(self.n_prop_steps)
         for i in range(self.n_pert_steps):
-            print("\tlambda = {}".format(lambdas[i + 1]))
             state = self.context.getState(getEnergy=True)
             energy_initial = state.getPotentialEnergy()
             # Adjust interactions of this water
@@ -1097,7 +1095,6 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         explosion = False
         self.ncmc_integrator.step(self.n_prop_steps)
         for i in range(self.n_pert_steps):
-            print("\tlambda = {}".format(lambdas[i + 1]))
             state = self.context.getState(getEnergy=True)
             energy_initial = state.getPotentialEnergy()
             # Adjust interactions of this water
@@ -1143,6 +1140,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
 
         # Update or reset the system, depending on whether the move is accepted or rejected
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
+            print('\tRejected\n')
             # Need to revert the changes made if the move is to be rejected
             self.adjustSpecificWater(atom_indices, 1.0)
             self.context.setPositions(self.positions)
@@ -1150,6 +1148,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
             self.updateGCMCSphere(state)
         else:
+            print('\tAccepted\n')
             # Update some variables if move is accepted
             #self.gcmc_status[gcmc_id] = 0
             self.water_status[wat_id] = 0
