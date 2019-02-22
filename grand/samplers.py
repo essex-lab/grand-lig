@@ -29,8 +29,8 @@ from simtk import unit
 from simtk import openmm
 from parmed.openmm.reporters import RestartReporter
 from openmmtools.integrators import NonequilibriumLangevinIntegrator
-from utils import random_rotation_matrix
-from potential import get_lambda_values
+from grand.utils import random_rotation_matrix
+from grand.potential import get_lambda_values
 
 
 class GrandCanonicalMonteCarloSampler(object):
