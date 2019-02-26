@@ -77,6 +77,6 @@ trj = grand.utils.recentre_traj(t=trj, resname='TYR', resid=23)
 grand.utils.align_traj(t=trj, output='scytalone-gcmc.dcd')
 
 # Write out a trajectory of the GCMC sphere
-grand.utils.write_sphere_traj(ref_atoms=ref_atoms, radius=4.0, topology='sd-ghosts.pdb', trajectory='sd-gcmc.dcd',
+grand.utils.write_sphere_traj(radius=4.0, ref_atoms=ref_atoms, topology='sd-ghosts.pdb', trajectory='sd-gcmc.dcd',
                               output='gcmc_sphere.pdb', initial_frame=True)
 

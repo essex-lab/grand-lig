@@ -68,5 +68,5 @@ trj = grand.utils.recentre_traj(t=trj, resname='TYR', resid=10)
 grand.utils.align_traj(t=trj, output='bpti-gcmc.dcd')
 
 # Write out a trajectory of the GCMC sphere
-grand.utils.write_sphere_traj(ref_atoms=ref_atoms, radius=4.0, topology='bpti-gcmc.pdb', trajectory='bpti-gcmc.dcd',
+grand.utils.write_sphere_traj(radius=4.0, ref_atoms=ref_atoms, topology='bpti-gcmc.pdb', trajectory='bpti-gcmc.dcd',
                               output='gcmc_sphere.pdb', initial_frame=True)

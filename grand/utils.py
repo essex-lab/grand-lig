@@ -486,23 +486,25 @@ def recentre_traj(topology=None, trajectory=None, t=None, resname='ALA', resid=1
         return None
 
 
-def write_sphere_traj(ref_atoms, radius, topology=None, trajectory=None, t=None, output='gcmc_sphere.pdb',
-                      initial_frame=False):
+def write_sphere_traj(radius, ref_atoms=None, topology=None, trajectory=None, t=None, sphere_centre=None,
+                      output='gcmc_sphere.pdb', initial_frame=False):
     """
     Write out a multi-frame PDB file containing the centre of the GCMC sphere
 
     Parameters
     ----------
-    ref_atoms : list
-        List of reference atoms for the GCMC sphere, as [['name', 'resname', 'resid']]
     radius : float
         Radius of the GCMC sphere in Angstroms
+    ref_atoms : list
+        List of reference atoms for the GCMC sphere, as [['name', 'resname', 'resid']]
     topology : str
         Topology of the system, such as a PDB file
     trajectory : str
         Trajectory file, such as DCD
     t : mdtraj.Trajectory
         Trajectory object, if already loaded
+    sphere_centre : simtk.unit.Quantity
+        Coordinates around which the GCMC sohere is based
     output : str
         Name of the output PDB file
     initial_frame : bool
@@ -537,10 +539,13 @@ def write_sphere_traj(ref_atoms, radius, topology=None, trajectory=None, t=None,
         if initial_frame:
             t_i = mdtraj.load(topology, discard_overlapping_frames=False)
             # Calculate centre
-            centre = np.zeros(3)
-            for idx in ref_indices:
-                centre += t_i.xyz[0, idx, :]
-            centre *= 10 / len(ref_indices)  # Also convert from nm to A
+            if sphere_centre is None:
+                centre = np.zeros(3)
+                for idx in ref_indices:
+                    centre += t_i.xyz[0, idx, :]
+                centre *= 10 / len(ref_indices)  # Also convert from nm to A
+            else:
+                centre = sphere_centre.in_units_of(unit.angstroms)._value
             # Write to PDB file
             f.write("MODEL\n")
             f.write("HETATM{:>5d} {:<4s} {:<4s} {:>4d}    {:>8.3f}{:>8.3f}{:>8.3f}\n".format(1, 'CTR', 'SPH', 1,
@@ -551,10 +556,13 @@ def write_sphere_traj(ref_atoms, radius, topology=None, trajectory=None, t=None,
         # Loop over all frames
         for frame in range(n_frames):
             # Calculate sphere centre
-            centre = np.zeros(3)
-            for idx in ref_indices:
-                centre += t.xyz[frame, idx, :]
-            centre *= 10 / len(ref_indices)  # Also convert from nm to A
+            if sphere_centre is None:
+                centre = np.zeros(3)
+                for idx in ref_indices:
+                    centre += t_i.xyz[0, idx, :]
+                centre *= 10 / len(ref_indices)  # Also convert from nm to A
+            else:
+                centre = sphere_centre.in_units_of(unit.angstroms)._value
             # Write to PDB file
             f.write("MODEL {}\n".format(frame+1))
             f.write("HETATM{:>5d} {:<4s} {:<4s} {:>4d}    {:>8.3f}{:>8.3f}{:>8.3f}\n".format(1, 'CTR', 'SPH', 1,

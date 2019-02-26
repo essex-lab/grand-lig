@@ -39,7 +39,7 @@ class GrandCanonicalMonteCarloSampler(object):
     """
     def __init__(self, system, topology, temperature, adams=None, chemicalPotential=-6.1*unit.kilocalories_per_mole,
                  adamsShift=0.0, waterName="HOH", ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None,
-                 sphereRadius=None, dcd=None, rst7=None):
+                 sphereRadius=None, sphereCentre=None, dcd=None, rst7=None):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
 
@@ -73,6 +73,8 @@ class GrandCanonicalMonteCarloSampler(object):
             e.g. ['C1', 'LIG', 123] or just ['C1', 'LIG']
         sphereRadius : simtk.unit.Quantity
             Radius of the spherical GCMC region
+        sphereCentre : simtk.unit.Quantity
+            Coordinates around which the GCMC sohere is based
         dcd : str
             Name of the DCD file to write the system out to
         rst7 : str
@@ -102,9 +104,15 @@ class GrandCanonicalMonteCarloSampler(object):
         self.sphere_centre = None
         volume = (4 * np.pi * sphereRadius ** 3) / 3
         if referenceAtoms is not None:
+            # Define sphere based on reference atoms
             self.ref_atoms = self.getReferenceAtomIndices(referenceAtoms)
+        elif sphereCentre is not None:
+            # Define sphere based on coordinates
+            assert len(sphereCentre) == 3, "Sphere coordinates must be 3D"
+            self.sphere_centre = sphereCentre
+            self.ref_atoms = None
         else:
-            raise Exception("A set of atoms must be used to define the centre of the sphere!")
+            raise Exception("A set of atoms or coordinates must be used to define the centre of the sphere!")
 
         # Set or calculate the Adams value for the simulation
         if adams is not None:
@@ -304,13 +312,14 @@ class GrandCanonicalMonteCarloSampler(object):
                                         box_vectors[1,1]._value,
                                         box_vectors[2,2]._value]) * unit.nanometer
 
-        # Calculate the centre of the GCMC sphere
-        self.sphere_centre = np.zeros(3) * unit.nanometers
-        for atom in self.ref_atoms:
-            self.sphere_centre += self.positions[atom]
-        self.sphere_centre /= len(self.ref_atoms)
+        # Calculate the centre of the GCMC sphere, if using reference atoms
+        if self.ref_atoms is not None:
+            self.sphere_centre = np.zeros(3) * unit.nanometers
+            for atom in self.ref_atoms:
+                self.sphere_centre += self.positions[atom]
+            self.sphere_centre /= len(self.ref_atoms)
 
-        # Loop over waters and check which are in/out of the GCMC sphere at the beginning
+        # Loop over waters and check which are in/out of the GCMC sphere at the beginning - may be able to replace this with updateGCMCSphere?
         for resid, residue in enumerate(self.topology.residues()):
             if resid not in self.water_resids:
                 continue
@@ -482,10 +491,12 @@ class GrandCanonicalMonteCarloSampler(object):
         Update the relevant GCMC-sphere related parameters. This also involves monitoring
         which water molecules are in/out of the region
         """
-        self.sphere_centre = np.zeros(3) * unit.nanometers
-        for atom in self.ref_atoms:
-            self.sphere_centre += self.positions[atom]
-        self.sphere_centre /= len(self.ref_atoms)
+        # Get the sphere centre, if using reference atoms, otherwise this will be fine
+        if self.ref_atoms is not None:
+            self.sphere_centre = np.zeros(3) * unit.nanometers
+            for atom in self.ref_atoms:
+                self.sphere_centre += self.positions[atom]
+            self.sphere_centre /= len(self.ref_atoms)
 
         # Update gcmc_resids and gcmc_status
         gcmc_resids = []
