@@ -517,18 +517,19 @@ def write_sphere_traj(radius, ref_atoms=None, topology=None, trajectory=None, t=
     n_frames, n_atoms, n_dims = t.xyz.shape
 
     # Get reference atom IDs
-    ref_indices = []
-    for ref_atom in ref_atoms:
-        found = False
-        for residue in t.topology.residues:
-            if residue.name == ref_atom[1] and str(residue.resSeq) == ref_atom[2]:
-                for atom in residue.atoms:
-                    if atom.name == ref_atom[0]:
-                        ref_indices.append(atom.index)
-                        found = True
-        if not found:
-            raise Exception("Atom {} of residue {}{} not found!".format(ref_atom[0], ref_atom[1].capitalize(),
-                                                                        ref_atom[2]))
+    if ref_atoms is not None:
+        ref_indices = []
+        for ref_atom in ref_atoms:
+            found = False
+            for residue in t.topology.residues:
+                if residue.name == ref_atom[1] and str(residue.resSeq) == ref_atom[2]:
+                    for atom in residue.atoms:
+                        if atom.name == ref_atom[0]:
+                            ref_indices.append(atom.index)
+                            found = True
+            if not found:
+                raise Exception("Atom {} of residue {}{} not found!".format(ref_atom[0], ref_atom[1].capitalize(),
+                                                                            ref_atom[2]))
 
     # Loop over all frames and write to PDB file
     with open(output, 'w') as f:
