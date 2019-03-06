@@ -118,6 +118,55 @@ def add_ghosts(topology, positions, ff='tip3p', n=10, pdb='gcmc-extra-wats.pdb')
     return modeller.topology, modeller.positions, ghosts
 
 
+def remove_ghosts(topology, positions, ghosts=None, pdb='gcmc-removed-ghosts.pdb'):
+    """
+    Function to remove ghost water molecules from a topology, after a simulation.
+    This is so that a structure can then be used to run further analysis without ghost
+    waters disturbing the system.
+
+    Parameters
+    ----------
+    topology : simtk.openmm.app.Topology
+        Topology of the initial system
+    positions : simtk.unit.Quantity
+        Atomic coordinates of the initial system
+    ghosts : list
+        List of residue IDs for the ghost waters to be deleted
+    pdb : str
+        Name of the PDB file to write containing the updated system
+        This will be useful for visualising the results obtained.
+
+    Returns
+    -------
+    modeller.topology : simtk.openmm.app.Topology
+        Topology of the system after modification
+    modeller.positions : simtk.unit.Quantity
+        Atomic positions of the system after modification
+    """
+    # Do nothing if no ghost waters are specified
+    if ghosts is None:
+        raise Exception("No ghost waters defined! Nothing to do.")
+
+    # Create a Modeller instance
+    modeller = app.Modeller(topology=topology, positions=positions)
+
+    # Find the residues which need to be removed, and delete them
+    delete_waters = []  # Residue objects for waters to be deleted
+    for resid, residue in enumerate(modeller.topology.residues()):
+        if resid in ghosts:
+            delete_waters.append(residue)
+    modeller.delete(toDelete=delete_waters)
+
+    # Save PDB file
+    if pdb is not None:
+        tip3p_pdb = app.PDBFile(file=get_data_file("tip3p.pdb"))  # Need to start with a PDB so will use the TIP3P one..
+        pdbfile = open(pdb, 'w')
+        tip3p_pdb.writeFile(topology=modeller.topology, positions=modeller.positions, file=pdbfile)
+        pdbfile.close()
+
+    return modeller.topology, modeller.positions
+
+
 def write_amber_input(pdb, protein_ff="ff14SB", ligand_ff="gaff", water_ff="tip3p",
                       prepi=None, frcmod=None, outdir="."):
     """
