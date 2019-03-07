@@ -119,8 +119,8 @@ pdb_len = len(pdb.positions)
 position_lens = [pdb_len]
 
 # Initialise the two ForceField 1 - fixed charge, 2 - AMOEBA
-#ff_fixed = ForceField('amber14-all.xml', "amber14/tip3p.xml")
-ff_fixed = ForceField('amber10.xml', "tip3p.xml")
+ff_fixed = ForceField('amber14-all.xml', "amber14/tip3p.xml")
+#ff_fixed = ForceField('amber10.xml', "tip3p.xml")
 ff_amoeba = ForceField("amoeba2013.xml")
 
 # Create Simulation objects
@@ -144,7 +144,7 @@ energy_amoeba_old = state_amoeba.getPotentialEnergy()
 for i in range(args.nsamples - len(ensemble)):
     # Load a random PDB file
     filename_new = args.pdbs[np.random.randint(len(args.pdbs))]
-    pdb_new = PDBFile(filename_new)
+    pdb = PDBFile(filename_new)
 
     # Check the length of the PDB file, and if it's new, then create a new Simulation object to handle this
     pdb_len = len(pdb.positions)
@@ -156,10 +156,10 @@ for i in range(args.nsamples - len(ensemble)):
         position_lens.append(pdb_len)
     else:
         # Update the positions if an object already exists
-        simulations_fixed[pdb_len].context.setPositions(pdb_new.positions)
-        simulations_fixed[pdb_len].context.setPeriodicBoxVectors(*pdb_new.topology.getPeriodicBoxVectors())
-        simulations_amoeba[pdb_len].context.setPositions(pdb_new.positions)
-        simulations_amoeba[pdb_len].context.setPeriodicBoxVectors(*pdb_new.topology.getPeriodicBoxVectors())
+        simulations_fixed[pdb_len].context.setPositions(pdb.positions)
+        simulations_fixed[pdb_len].context.setPeriodicBoxVectors(*pdb.topology.getPeriodicBoxVectors())
+        simulations_amoeba[pdb_len].context.setPositions(pdb.positions)
+        simulations_amoeba[pdb_len].context.setPeriodicBoxVectors(*pdb.topology.getPeriodicBoxVectors())
 
     # Get energies of the new state
     state_fixed = simulations_fixed[pdb_len].context.getState(getEnergy=True)
