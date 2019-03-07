@@ -74,7 +74,7 @@ else:
             for line in lines:
                 if 'MODEL' not in line and 'ENDMDL' not in line:
                     f.write(line)
-                    
+
         # Remove ghosts, if needed
         if args.ghosts is not None:
             # Load in PDB file
