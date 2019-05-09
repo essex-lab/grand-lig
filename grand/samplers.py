@@ -991,6 +991,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
                 self.sphere_radius * np.power(np.random.rand(), 1.0 / 3) * rand_nums) / np.linalg.norm(rand_nums)
         #  Generate a random rotation matrix
         R = random_rotation_matrix()
+        old_positions = deepcopy(self.positions)
         new_positions = deepcopy(self.positions)
         for i, index in enumerate(atom_indices):
             #  Translate coordinates to an origin defined by the oxygen atom, and normalise
@@ -1041,6 +1042,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         #self.gcmc_status[gcmc_id] = 1
         self.water_status[wat_id] = 1
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
+        self.positions = state.getPositions(asNumpy=True)
         self.updateGCMCSphere(state)
 
         # Check which waters are still in the GCMC sphere
@@ -1064,8 +1066,10 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             print('\tRejected\n')
             # Need to revert the changes made if the move is to be rejected
             self.adjustSpecificWater(atom_indices, 0.0)
-            self.context.setPositions(self.positions)
+            self.context.setPositions(old_positions)
             self.context.setVelocities(-self.velocities)  # Reverse velocities on rejection
+            self.positions = deepcopy(old_positions)
+            self.velocities *= -1
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
             #self.gcmc_status[gcmc_id] = 0
             self.water_status[wat_id] = 0
@@ -1091,6 +1095,8 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             return None
 
         print("Deleting a water...")
+
+        old_positions = deepcopy(self.positions)
 
         # Select a water residue to delete
         gcmc_id = np.random.choice(np.where(self.gcmc_status == 1)[0])  # Position in list of GCMC waters
@@ -1135,6 +1141,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         #self.gcmc_status[gcmc_id] = 1  # Leaving the water as 'on' here to check
         self.water_status[wat_id] = 1  # that the deleted water doesn't leave
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
+        self.positions = state.getPositions(asNumpy=True)
         self.updateGCMCSphere(state)
 
         # Check which waters are still in the GCMC sphere
@@ -1158,8 +1165,10 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             print('\tRejected\n')
             # Need to revert the changes made if the move is to be rejected
             self.adjustSpecificWater(atom_indices, 1.0)
-            self.context.setPositions(self.positions)
+            self.context.setPositions(old_positions)
             self.context.setVelocities(-self.velocities)  # Reverse velocities on rejection
+            self.positions = deepcopy(old_positions)
+            self.velocities *= -1
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
             self.updateGCMCSphere(state)
         else:
@@ -1175,3 +1184,4 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             self.updateGCMCSphere(state)
 
         return None
+
