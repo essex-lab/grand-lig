@@ -1176,6 +1176,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         self.water_status[wat_id] = 1  # that the deleted water doesn't leave
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
         self.positions = state.getPositions(asNumpy=True)
+        old_N = self.N
         self.updateGCMCSphere(state)
 
         # Check which waters are still in the GCMC sphere
@@ -1189,7 +1190,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             acc_prob = 0
         else:
             # Calculate acceptance probability based on protocol work
-            acc_prob = self.N * np.exp(-self.B) * np.exp(-protocol_work/self.kT)  # N is the old value
+            acc_prob = old_N * np.exp(-self.B) * np.exp(-protocol_work/self.kT)  # N is the old value
 
         print("Probability = {}".format(acc_prob))
         self.acceptance_probabilities.append(acc_prob)
