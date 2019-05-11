@@ -287,6 +287,37 @@ class GrandCanonicalMonteCarloSampler(object):
 
         return atom_indices
 
+    def getSphereCentre(self):
+        """
+        Update the coordinates of the sphere centre
+        Need to make sure it isn't affected by the reference atoms being split across PBCs
+        """
+        if self.ref_atoms is None:
+            raise Exception("No reference atoms defined, cannot get sphere coordinates...")
+
+        # Calculate the mean coordinate
+        self.sphere_centre = np.zeros(3) * unit.nanometers
+        for i, atom in enumerate(self.ref_atoms):
+            # Need to add on a correction in case the atoms get separated
+            correction = np.zeros(3) * unit.nanometers
+            if i != 0:
+                # Vector from the first reference atom
+                vec = self.positions[self.ref_atoms[0]] - self.positions[atom]
+                # Correct for PBCs
+                for j in range(3):
+                    if vec[j] > 0.5 * self.simulation_box[j]:
+                        correction[j] = self.simulation_box[j]
+                    elif vec[j] < -0.5 * self.simulation_box[j]:
+                        correction[j] = -self.simulation_box[j]
+
+            # Add vector and correction onto the running sum
+            self.sphere_centre += self.positions[atom] + correction
+
+        # Calculate the average coordinate
+        self.sphere_centre /= len(self.ref_atoms)
+
+        return None
+
     def prepareGCMCSphere(self, context, ghostResids):
         """
         Prepare the GCMC sphere for simulation by loading the coordinates from a
@@ -314,10 +345,11 @@ class GrandCanonicalMonteCarloSampler(object):
 
         # Calculate the centre of the GCMC sphere, if using reference atoms
         if self.ref_atoms is not None:
-            self.sphere_centre = np.zeros(3) * unit.nanometers
-            for atom in self.ref_atoms:
-                self.sphere_centre += self.positions[atom]
-            self.sphere_centre /= len(self.ref_atoms)
+            #self.sphere_centre = np.zeros(3) * unit.nanometers
+            #for atom in self.ref_atoms:
+            #    self.sphere_centre += self.positions[atom]
+            #self.sphere_centre /= len(self.ref_atoms)
+            self.getSphereCentre()
 
         # Loop over waters and check which are in/out of the GCMC sphere at the beginning - may be able to replace this with updateGCMCSphere?
         for resid, residue in enumerate(self.topology.residues()):
@@ -493,10 +525,11 @@ class GrandCanonicalMonteCarloSampler(object):
         """
         # Get the sphere centre, if using reference atoms, otherwise this will be fine
         if self.ref_atoms is not None:
-            self.sphere_centre = np.zeros(3) * unit.nanometers
-            for atom in self.ref_atoms:
-                self.sphere_centre += self.positions[atom]
-            self.sphere_centre /= len(self.ref_atoms)
+            #self.sphere_centre = np.zeros(3) * unit.nanometers
+            #for atom in self.ref_atoms:
+            #    self.sphere_centre += self.positions[atom]
+            #self.sphere_centre /= len(self.ref_atoms)
+            self.getSphereCentre()
 
         # Update gcmc_resids and gcmc_status
         gcmc_resids = []
@@ -591,10 +624,11 @@ class GrandCanonicalMonteCarloSampler(object):
             acc_rate = np.nan
         mean_N = np.round(np.mean(self.Ns), 3)
         # Print out a line describing the acceptance rate and sampling of N
-        msg = "{} move(s) completed ({:.3f} % accepted). Current N = {}. Average N = {:.3f}".format(self.n_moves,
-                                                                                                    acc_rate,
-                                                                                                    self.N,
-                                                                                                    mean_N)
+        msg = "{} move(s) completed ({} accepted({:.3f} %)). Current N = {}. Average N = {:.3f}".format(self.n_moves,
+                                                                                                        self.n_accepted,
+                                                                                                        acc_rate,
+                                                                                                        self.N,
+                                                                                                        mean_N)
         print(msg)
 
         # Write to the file describing which waters are ghosts through the trajectory
