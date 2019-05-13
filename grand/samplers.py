@@ -737,6 +737,7 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
                                                  sphereCentre=sphereCentre, dcd=dcd, rst7=rst7)
 
         self.energy = None  # Need to save energy
+        self.acceptance_probabilities = []  # Store acceptance probabilities
 
     def move(self, context, n=1):
         """
@@ -817,6 +818,7 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
         # Calculate new system energy and acceptance probability
         final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
         acc_prob = np.exp(self.B) * np.exp(-(final_energy - self.energy) / self.kT) / (self.N + 1)
+        self.acceptance_probabilities.append(acc_prob)
 
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             # Need to revert the changes made if the move is to be rejected
@@ -858,6 +860,7 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
         # Calculate energy of new state and acceptance probability
         final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
         acc_prob = self.N * np.exp(-self.B) * np.exp(-(final_energy - self.energy) / self.kT)
+        self.acceptance_probabilities.append(acc_prob)
 
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             # Switch the water back on if the move is rejected
