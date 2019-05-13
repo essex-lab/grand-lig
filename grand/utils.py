@@ -21,6 +21,7 @@ import mdtraj
 from simtk import unit
 from simtk.openmm import app
 from copy import deepcopy
+from scipy.cluster import hierarchy
 
 
 def get_data_file(filename):
@@ -609,7 +610,7 @@ def write_sphere_traj(radius, ref_atoms=None, topology=None, trajectory=None, t=
             if sphere_centre is None:
                 centre = np.zeros(3)
                 for idx in ref_indices:
-                    centre += t_i.xyz[0, idx, :]
+                    centre += t.xyz[frame, idx, :]
                 centre *= 10 / len(ref_indices)  # Also convert from nm to A
             else:
                 centre = sphere_centre.in_units_of(unit.angstroms)._value
@@ -619,5 +620,146 @@ def write_sphere_traj(radius, ref_atoms=None, topology=None, trajectory=None, t=
                                                                                              centre[0], centre[1],
                                                                                              centre[2]))
             f.write("ENDMDL\n")
+
+    return None
+
+def cluster_waters(topology, trajectory, sphere_radius, ref_atoms=None, sphere_centre=None, cutoff=2.4,
+                   output='gcmc_clusts.pdb'):
+    """
+    Carry out a clustering analysis on GCMC water molecules with the sphere. Based on the clustering
+    code in the ProtoMS software package.
+
+    This function currently assumes that the system has been aligned and centred on the GCMC sphere (approximately).
+
+    Parameters
+    ----------
+    topology : str
+        Topology of the system, such as a PDB file
+    trajectory : str
+        Trajectory file, such as DCD
+    sphere_radius : float
+        Radius of the GCMC sphere in Angstroms
+    ref_atoms : list
+        List of reference atoms for the GCMC sphere, as [['name', 'resname', 'resid']]
+    sphere_centre : simtk.unit.Quantity
+        Coordinates around which the GCMC sohere is based
+    cutoff : float
+        Distance cutoff used in the clustering
+    output : str
+        Name of the output PDB file containing the clusters
+    """
+    # Load trajectory
+    t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
+    n_frames, n_atoms, n_dims = t.xyz.shape
+
+    # Get reference atom IDs
+    if ref_atoms is not None:
+        ref_indices = []
+        for ref_atom in ref_atoms:
+            found = False
+            for residue in t.topology.residues:
+                if residue.name == ref_atom[1] and str(residue.resSeq) == ref_atom[2]:
+                    for atom in residue.atoms:
+                        if atom.name == ref_atom[0]:
+                            ref_indices.append(atom.index)
+                            found = True
+            if not found:
+                raise Exception("Atom {} of residue {}{} not found!".format(ref_atom[0], ref_atom[1].capitalize(),
+                                                                            ref_atom[2]))
+
+    wat_coords = []  # Store a list of water coordinates
+    wat_frames = []  # Store a list of the frame that each water is in
+
+    # Get list of water oxygen atom IDs
+    wat_ox_ids = []
+    for residue in t.topology.residues:
+        if residue.name.lower() in ['wat', 'hoh']:
+            for atom in residue.atoms:
+                if atom.name.lower() == 'o':
+                    wat_ox_ids.append(atom.index)
+
+    # Get the coordinates of all GCMC water oxygen atoms
+    for f in range(n_frames):
+
+        # Calculate sphere centre for this frame
+        if ref_atoms is not None:
+            centre = np.zeros(3)
+            for idx in ref_indices:
+                centre += t.xyz[f, idx, :]
+            centre /= len(ref_indices)
+        else:
+            centre = sphere_centre.in_units_of(unit.nanometer)._value
+
+        # For all waters, check the distance to the sphere centre
+        for o in wat_ox_ids:
+            # Calculate PBC-corrected vector
+            vector = t.xyz[f, o, :] - centre
+
+            # Check length and add to list if within sphere
+            if 10*np.linalg.norm(vector) <= sphere_radius:  # *10 to give Angstroms
+                wat_coords.append(10 * t.xyz[f, o, :])  # Convert to Angstroms
+                wat_frames.append(f)
+
+    # Calculate water-water distances - if the waters are in the same frame are assigned a very large distance
+    dist_list = []
+    for i in range(len(wat_coords)):
+        for j in range(i+1, len(wat_coords)):
+            if wat_frames[i] == wat_frames[j]:
+                dist = 1e8
+            else:
+                dist = np.linalg.norm(wat_coords[i] - wat_coords[j])
+            dist_list.append(dist)
+
+    # Cluster the waters hierarchically
+    tree = hierarchy.linkage(dist_list, method='average')
+    wat_clust_ids = hierarchy.fcluster(tree, t=cutoff, criterion='distance')
+    n_clusts = max(wat_clust_ids)
+
+    # Sort the clusters by occupancy
+    clusts = []
+    for i in range(1, n_clusts+1):
+        occ = len([wat for wat in wat_clust_ids if wat == i])
+        clusts.append([i, occ])
+    clusts = sorted(clusts, key=lambda x: -x[1])
+    clust_ids_sorted = [x[0] for x in clusts]
+    clust_occs_sorted = [x[1] for x in clusts]
+
+    # Calculate the cluster centre and representative position for each cluster
+    rep_coords = []
+    for i in range(n_clusts):
+        clust_id = clust_ids_sorted[i]
+        # Calculate the mean position of the cluster
+        clust_centre = np.zeros(3)
+        for j, wat in enumerate(wat_clust_ids):
+            if wat == clust_id:
+                clust_centre += wat_coords[j]
+        clust_centre /= clust_occs_sorted[i]
+
+        # Find the water observation which is closest to the mean position
+        min_dist = 1e8
+        rep_wat = None
+        for j, wat in enumerate(wat_clust_ids):
+            if wat == clust_id:
+                dist = np.linalg.norm(wat_coords[j] - clust_centre)
+                if dist < min_dist:
+                    min_dist = dist
+                    rep_wat = j
+        rep_coords.append(wat_coords[rep_wat])
+
+    # Write the cluster coordinates to a PDB file
+    with open(output, 'w') as f:
+        f.write("REMARK Clustered GCMC Water positions written by grand\n")
+        for i in range(n_clusts):
+            coords = rep_coords[i]
+            occ1 = clust_occs_sorted[i]
+            occ2 = occ1 / float(n_frames)
+            f.write("ATOM  {:>5d} {:<4s} {:<4s} {:>4d}    {:>8.3f}{:>8.3f}{:>8.3f}{:>6.2f}{:>6.2f}\n".format(1, 'O',
+                                                                                                             'WAT', i+1,
+                                                                                                             coords[0],
+                                                                                                             coords[1],
+                                                                                                             coords[2],
+                                                                                                             occ1, occ2))
+            f.write("TER\n")
+        f.write("END")
 
     return None
