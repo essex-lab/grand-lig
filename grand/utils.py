@@ -169,7 +169,7 @@ def remove_ghosts(topology, positions, ghosts=None, pdb='gcmc-removed-ghosts.pdb
 
 
 def write_amber_input(pdb, protein_ff="ff14SB", ligand_ff="gaff", water_ff="tip3p",
-                      prepi=None, frcmod=None, outdir="."):
+                      other_ffs=[], prepi=None, frcmod=None, outdir="."):
     """
     Take a PDB file (with ghosts having been added) and create AMBER format prmtop
     and inpcrd files, allowing the use of other forcefields and parameter sets
@@ -179,11 +179,13 @@ def write_amber_input(pdb, protein_ff="ff14SB", ligand_ff="gaff", water_ff="tip3
     pdb : str
         Name of the PDB file
     protein_ff : str
-        Name of the protein force field, e.g. 'ff14SB'
+        Name of the protein force field leaprc file, e.g. 'leaprc.protein.ff14SB'
     ligand_ff : str
-        Name of the ligand force field, e.g. 'gaff'
+        Name of the ligand force field leaprc file, e.g. 'leaprc.gaff'
     water_ff : str
-        Name of the water force field, e.g. 'tip3p'
+        Name of the water force field leaprc file, e.g. 'leaprc.water.tip3p'
+    other_ffs : list
+        List of any other force field leaprc files to load
     prepi : str
         Name of the ligand .prepi file
     frcmod : str
@@ -214,14 +216,17 @@ def write_amber_input(pdb, protein_ff="ff14SB", ligand_ff="gaff", water_ff="tip3
 
     # Write an input file for tleap using the relevant settings
     with open("{}.in".format(tleap), "w") as f:
-        f.write("source leaprc.protein.{}\n".format(protein_ff))
-        f.write("source leaprc.{}\n".format(ligand_ff))
-        f.write("source leaprc.water.{}\n".format(water_ff))
+        # Load force fields
+        for ff in [protein_ff, ligand_ff, water_ff] + other_ffs:
+            f.write("source {}\n".format(ff))
+        # Load ligand parameters
         if prepi is not None:
             f.write("loadamberprep {}\n".format(prepi))
         if frcmod is not None:
             f.write("loadamberparams {}\n".format(frcmod))
+        # Need an atom name map to fix cap atom names being mixed up
         f.write("addPdbAtomMap {{C CH3} {H1 HH31} {H2 HH32} {H3 HH33}}\n")
+        # Load system and write to AMBER files
         f.write("mol = loadpdb {}-amber.pdb\n".format(file_stem))
         f.write("set mol box { %f %f %f }\n" % (box[0], box[1], box[2]))  # Have to use % due to {}
         f.write("saveamberparm mol {} {}\n".format(prmtop, inpcrd))

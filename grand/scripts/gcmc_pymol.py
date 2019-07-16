@@ -83,7 +83,8 @@ if args.sphere is not None:
     for f in range(1, n_frames+1):
         # Need to write a command to update the movie to show GCMC waters as sticks
         movie_command = ("hide sticks, resn HOH;"
-                         "sele gcmcwats, resn SPH around {} and resn HOH, state={};"
-                         "show sticks, gcmcwats").format(radius, f)
+                         "sele gcmcwats, resn SPH around {} and (resn HOH and name O), state={};"
+                         "sele gcmcwats, byres gcmcwats;"
+                         "show sticks, gcmcwats;").format(radius, f)
         cmd.mdo(f, movie_command)
 

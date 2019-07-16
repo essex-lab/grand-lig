@@ -1,9 +1,9 @@
 *pyc
 build
-.idea
-.cache
-.eggs
 dist
 grand.egg-info
-.coverage
 grand/tests/output/*
+.cache
+.coverage
+.eggs
+.idea

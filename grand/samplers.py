@@ -37,7 +37,7 @@ class GrandCanonicalMonteCarloSampler(object):
     """
     Base class for carrying out GCMC moves in OpenMM
     """
-    def __init__(self, system, topology, temperature, adams=None, chemicalPotential=-6.1*unit.kilocalories_per_mole,
+    def __init__(self, system, topology, temperature, adams=None, chemicalPotential=-6.3*unit.kilocalories_per_mole,
                  adamsShift=0.0, waterName="HOH", ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None,
                  sphereRadius=None, sphereCentre=None, dcd=None, rst7=None):
         """
@@ -56,7 +56,7 @@ class GrandCanonicalMonteCarloSampler(object):
             if None, the B value is calculated from the box volume and chemical
             potential
         chemicalPotential : simtk.unit.Quantity
-            Chemical potential of the simulation, default is -6.1 kcal/mol. This should
+            Chemical potential of the simulation, default is -6.3 kcal/mol. This should
             be the hydration free energy of water, and may need to be changed for specific
             simulation parameters.
         adamsShift : float
@@ -624,7 +624,6 @@ class GrandCanonicalMonteCarloSampler(object):
                                                                                                          self.n_accepted,
                                                                                                          acc_rate,
                                                                                                          self.N,
-                                                                                                        mean_N)
         print(msg)
 
         # Write to the file describing which waters are ghosts through the trajectory
@@ -679,7 +678,7 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
     """
     Class to carry out instantaneous GCMC moves in OpenMM
     """
-    def __init__(self, system, topology, temperature, adams=None, chemicalPotential=-6.1*unit.kilocalories_per_mole,
+    def __init__(self, system, topology, temperature, adams=None, chemicalPotential=-6.3*unit.kilocalories_per_mole,
                  adamsShift=0.0, waterName="HOH", ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None,
                  sphereRadius=None, sphereCentre=None, dcd=None, rst7=None):
         """
@@ -698,7 +697,7 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
             if None, the B value is calculated from the box volume and chemical
             potential
         chemicalPotential : simtk.unit.Quantity
-            Chemical potential of the simulation, default is -6.1 kcal/mol. This should
+            Chemical potential of the simulation, default is -6.3 kcal/mol. This should
             be the hydration free energy of water, and may need to be changed for specific
             simulation parameters.
         adamsShift : float
@@ -879,7 +878,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
     to boost acceptance rates
     """
     def __init__(self, system, topology, temperature, integrator, adams=None,
-                 chemicalPotential=-6.1*unit.kilocalories_per_mole, adamsShift=0.0, nPertSteps=1, nPropSteps=1,
+                 chemicalPotential=-6.3*unit.kilocalories_per_mole, adamsShift=0.0, nPertSteps=1, nPropSteps=1,
                  waterName="HOH", ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None,
                  sphereCentre=None, dcd=None, rst7=None):
         """
@@ -901,7 +900,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             if None, the B value is calculated from the box volume and chemical
             potential
         chemicalPotential : simtk.unit.Quantity
-            Chemical potential of the simulation, default is -6.1 kcal/mol. This should
+            Chemical potential of the simulation, default is -6.3 kcal/mol. This should
             be the hydration free energy of water, and may need to be changed for specific
             simulation parameters.
         adamsShift : float
