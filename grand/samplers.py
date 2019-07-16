@@ -624,6 +624,7 @@ class GrandCanonicalMonteCarloSampler(object):
                                                                                                          self.n_accepted,
                                                                                                          acc_rate,
                                                                                                          self.N,
+                                                                                                         mean_N)
         print(msg)
 
         # Write to the file describing which waters are ghosts through the trajectory
