@@ -287,6 +287,37 @@ class GrandCanonicalMonteCarloSampler(object):
 
         return atom_indices
 
+    def getSphereCentre(self):
+        """
+        Update the coordinates of the sphere centre
+        Need to make sure it isn't affected by the reference atoms being split across PBCs
+        """
+        if self.ref_atoms is None:
+            raise Exception("No reference atoms defined, cannot get sphere coordinates...")
+
+        # Calculate the mean coordinate
+        self.sphere_centre = np.zeros(3) * unit.nanometers
+        for i, atom in enumerate(self.ref_atoms):
+            # Need to add on a correction in case the atoms get separated
+            correction = np.zeros(3) * unit.nanometers
+            if i != 0:
+                # Vector from the first reference atom
+                vec = self.positions[self.ref_atoms[0]] - self.positions[atom]
+                # Correct for PBCs
+                for j in range(3):
+                    if vec[j] > 0.5 * self.simulation_box[j]:
+                        correction[j] = self.simulation_box[j]
+                    elif vec[j] < -0.5 * self.simulation_box[j]:
+                        correction[j] = -self.simulation_box[j]
+
+            # Add vector and correction onto the running sum
+            self.sphere_centre += self.positions[atom] + correction
+
+        # Calculate the average coordinate
+        self.sphere_centre /= len(self.ref_atoms)
+
+        return None
+
     def prepareGCMCSphere(self, context, ghostResids):
         """
         Prepare the GCMC sphere for simulation by loading the coordinates from a
@@ -314,10 +345,7 @@ class GrandCanonicalMonteCarloSampler(object):
 
         # Calculate the centre of the GCMC sphere, if using reference atoms
         if self.ref_atoms is not None:
-            self.sphere_centre = np.zeros(3) * unit.nanometers
-            for atom in self.ref_atoms:
-                self.sphere_centre += self.positions[atom]
-            self.sphere_centre /= len(self.ref_atoms)
+            self.getSphereCentre()
 
         # Loop over waters and check which are in/out of the GCMC sphere at the beginning - may be able to replace this with updateGCMCSphere?
         for resid, residue in enumerate(self.topology.residues()):
@@ -493,10 +521,11 @@ class GrandCanonicalMonteCarloSampler(object):
         """
         # Get the sphere centre, if using reference atoms, otherwise this will be fine
         if self.ref_atoms is not None:
-            self.sphere_centre = np.zeros(3) * unit.nanometers
-            for atom in self.ref_atoms:
-                self.sphere_centre += self.positions[atom]
-            self.sphere_centre /= len(self.ref_atoms)
+            #self.sphere_centre = np.zeros(3) * unit.nanometers
+            #for atom in self.ref_atoms:
+            #    self.sphere_centre += self.positions[atom]
+            #self.sphere_centre /= len(self.ref_atoms)
+            self.getSphereCentre()
 
         # Update gcmc_resids and gcmc_status
         gcmc_resids = []
@@ -591,10 +620,11 @@ class GrandCanonicalMonteCarloSampler(object):
             acc_rate = np.nan
         mean_N = np.round(np.mean(self.Ns), 3)
         # Print out a line describing the acceptance rate and sampling of N
-        msg = "{} move(s) completed ({:.3f} % accepted). Current N = {}. Average N = {:.3f}".format(self.n_moves,
-                                                                                                    acc_rate,
-                                                                                                    self.N,
-                                                                                                    mean_N)
+        msg = "{} move(s) completed ({} accepted ({:.3f} %)). Current N = {}. Average N = {:.3f}".format(self.n_moves,
+                                                                                                         self.n_accepted,
+                                                                                                         acc_rate,
+                                                                                                         self.N,
+                                                                                                        mean_N)
         print(msg)
 
         # Write to the file describing which waters are ghosts through the trajectory
@@ -703,6 +733,7 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
                                                  sphereCentre=sphereCentre, dcd=dcd, rst7=rst7)
 
         self.energy = None  # Need to save energy
+        self.acceptance_probabilities = []  # Store acceptance probabilities
 
     def move(self, context, n=1):
         """
@@ -783,6 +814,7 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
         # Calculate new system energy and acceptance probability
         final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
         acc_prob = np.exp(self.B) * np.exp(-(final_energy - self.energy) / self.kT) / (self.N + 1)
+        self.acceptance_probabilities.append(acc_prob)
 
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             # Need to revert the changes made if the move is to be rejected
@@ -824,6 +856,7 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
         # Calculate energy of new state and acceptance probability
         final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
         acc_prob = self.N * np.exp(-self.B) * np.exp(-(final_energy - self.energy) / self.kT)
+        self.acceptance_probabilities.append(acc_prob)
 
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             # Switch the water back on if the move is rejected
@@ -1142,6 +1175,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         self.water_status[wat_id] = 1  # that the deleted water doesn't leave
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
         self.positions = state.getPositions(asNumpy=True)
+        old_N = self.N
         self.updateGCMCSphere(state)
 
         # Check which waters are still in the GCMC sphere
@@ -1155,7 +1189,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             acc_prob = 0
         else:
             # Calculate acceptance probability based on protocol work
-            acc_prob = self.N * np.exp(-self.B) * np.exp(-protocol_work/self.kT)  # N is the old value
+            acc_prob = old_N * np.exp(-self.B) * np.exp(-protocol_work/self.kT)  # N is the old value
 
         print("Probability = {}".format(acc_prob))
         self.acceptance_probabilities.append(acc_prob)

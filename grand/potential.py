@@ -112,9 +112,22 @@ def calc_mu(model, box_len, cutoff, switch_dist, nb_method=PME, temperature=300*
             alchemical_ids.append(atom.index)
         break
     #print('Alchemical atoms: {}'.format(alchemical_ids))
+    
+    #harmonic = CustomExternalForce("k*((x-x0)^2 + (y-y0)^2 + (z-z0)^2)")
+    #harmonic.addPerParticleParameter("k")
+    #harmonic.addPerParticleParameter("x0")
+    #harmonic.addPerParticleParameter("y0")
+    #harmonic.addPerParticleParameter("z0")
+    #x0 = water_box.positions[alchemical_ids[0], 0]
+    #y0 = water_box.positions[alchemical_ids[0], 1]
+    #z0 = water_box.positions[alchemical_ids[0], 2]
+    #harmonic.addParticle(alchemical_ids[0], [8.4, x0, y0, z0])
+    #water_box.system.addForce(harmonic)
 
     # Create alchemical system
-    alchemical_region = openmmtools.alchemy.AlchemicalRegion(alchemical_atoms=alchemical_ids)
+    alchemical_region = openmmtools.alchemy.AlchemicalRegion(alchemical_atoms=alchemical_ids,
+                                                             annihilate_sterics=True,
+                                                             annihilate_electrostatics=True)
     factory = openmmtools.alchemy.AbsoluteAlchemicalFactory()
     alchemical_system = factory.create_alchemical_system(water_box.system, alchemical_region)
     alchemical_state = openmmtools.alchemy.AlchemicalState.from_system(alchemical_system)
