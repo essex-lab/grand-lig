@@ -32,6 +32,9 @@ args = parser.parse_args()
 
 # Load universe and define the system
 u = mda.Universe(args.connect, args.trajectory)
+print('x')
+print(dir(u.atoms))
+u.atoms[u.atoms.types == 'Cl'].masses = 35.5
 system = u.select_atoms('all')
 
 # Read in ghost waters from file, if needed
