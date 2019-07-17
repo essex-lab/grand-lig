@@ -68,9 +68,9 @@ class GrandCanonicalMonteCarloSampler(object):
             useful if you want to visualise the sampling, as you can then remove these waters
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
         referenceAtoms : list
-            List containing details of the atom to use as the centre of the GCMC region
-            Must contain atom name, residue name and (optionally) residue ID,
-            e.g. ['C1', 'LIG', 123] or just ['C1', 'LIG']
+            List containing dictionaries describing the atoms to use as the centre of the GCMC region
+            Must contain 'name' and 'resname' as keys, and optionally 'resid' (recommended) and 'chain'
+            e.g. [{'name': 'C1', 'resname': 'LIG', 'resid': 123}]
         sphereRadius : simtk.unit.Quantity
             Radius of the spherical GCMC region
         sphereCentre : simtk.unit.Quantity
@@ -254,8 +254,8 @@ class GrandCanonicalMonteCarloSampler(object):
         Parameters
         ----------
         ref_atoms : list
-            List containing the atom name, residue name and (optionally) residue ID, in that order.
-            May be a list of these values for each reference atom.
+            List of dictionaries containing the atom name, residue name and (optionally) residue ID and chain,
+            as marked by keys 'name', 'resname', 'resid' and 'chain'
         
         Returns
         -------
@@ -264,19 +264,41 @@ class GrandCanonicalMonteCarloSampler(object):
         """
         atom_indices = []
         # Convert to list of lists, if not already
-        if type(ref_atoms[0]) != list:
-            ref_atoms = [ref_atoms]
+        if not all(type(x) == dict for x in ref_atoms):
+            raise Exception("Reference atoms must be a list of dictionaries! {}".format(ref_atoms))
 
         # Find atom index for each of the atoms used
-        for _atom in ref_atoms:
-            found = False
+        for atom_dict in ref_atoms:
+            found = False  # Checks if the atom has been found
+            # Read in atom data
+            name = atom_dict['name']
+            resname = atom_dict['resname']
+            # Residue ID and chain may not be present
+            try:
+                resid = atom_dict['resid']
+            except:
+                resid = None
+            try:
+                chain = atom_dict['chain']
+            except:
+                chain = None
+
+            # Loop over all atoms to find one which matches these criteria
             for residue in self.topology.residues():
-                if residue.name != _atom[1]:
+                # Check residue name
+                if residue.name != resname:
                     continue
-                if len(_atom) > 2 and residue.id != _atom[2]:
-                    continue
+                # Check residue ID, if specified
+                if resid is not None:
+                    if residue.id != resid:
+                        continue
+                # Check chain, if specified
+                if chain is not None:
+                    if residue.chain != resid:
+                        continue
+                # Loop over all atoms in this residue to find the one with the right name
                 for atom in residue.atoms():
-                    if atom.name == _atom[0]:
+                    if atom.name == name:
                         atom_indices.append(atom.index)
                         found = True
             if not found:
