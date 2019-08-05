@@ -168,8 +168,9 @@ def remove_ghosts(topology, positions, ghosts=None, pdb='gcmc-removed-ghosts.pdb
     return modeller.topology, modeller.positions
 
 
-def write_amber_input(pdb, protein_ff="ff14SB", ligand_ff="gaff", water_ff="tip3p",
-                      other_ffs=[], prepi=None, frcmod=None, outdir="."):
+def write_amber_input(pdb, protein_ff="leaprc.protein.ff14SB", ligand_ff="leaprc.gaff",
+                      water_ff="leaprc.water.tip3p", other_ffs=[], prepi=None, frcmod=None,
+                      outdir="."):
     """
     Take a PDB file (with ghosts having been added) and create AMBER format prmtop
     and inpcrd files, allowing the use of other forcefields and parameter sets
