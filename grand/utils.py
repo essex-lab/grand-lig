@@ -604,14 +604,15 @@ def write_sphere_traj(radius, ref_atoms=None, topology=None, trajectory=None, t=
         for ref_atom in ref_atoms:
             found = False
             for residue in t.topology.residues:
-                if residue.name == ref_atom[1] and str(residue.resSeq) == ref_atom[2]:
+                if residue.name == ref_atom['resname'] and str(residue.resSeq) == ref_atom['resid']:
                     for atom in residue.atoms:
-                        if atom.name == ref_atom[0]:
+                        if atom.name == ref_atom['name']:
                             ref_indices.append(atom.index)
                             found = True
             if not found:
-                raise Exception("Atom {} of residue {}{} not found!".format(ref_atom[0], ref_atom[1].capitalize(),
-                                                                            ref_atom[2]))
+                raise Exception("Atom {} of residue {}{} not found!".format(ref_atom['name'],
+                                                                            ref_atom['resname'].capitalize(),
+                                                                            ref_atom['resid']))
 
     # Loop over all frames and write to PDB file
     with open(output, 'w') as f:
@@ -690,14 +691,15 @@ def cluster_waters(topology, trajectory, sphere_radius, ref_atoms=None, sphere_c
         for ref_atom in ref_atoms:
             found = False
             for residue in t.topology.residues:
-                if residue.name == ref_atom[1] and str(residue.resSeq) == ref_atom[2]:
+                if residue.name == ref_atom['resname'] and str(residue.resSeq) == ref_atom['resid']:
                     for atom in residue.atoms:
-                        if atom.name == ref_atom[0]:
+                        if atom.name == ref_atom['name']:
                             ref_indices.append(atom.index)
                             found = True
             if not found:
-                raise Exception("Atom {} of residue {}{} not found!".format(ref_atom[0], ref_atom[1].capitalize(),
-                                                                            ref_atom[2]))
+                raise Exception("Atom {} of residue {}{} not found!".format(ref_atom['name'],
+                                                                            ref_atom['resname'].capitalize(),
+                                                                            ref_atom['resid']))
 
     wat_coords = []  # Store a list of water coordinates
     wat_frames = []  # Store a list of the frame that each water is in
