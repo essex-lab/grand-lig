@@ -302,7 +302,9 @@ class GrandCanonicalMonteCarloSampler(object):
                         atom_indices.append(atom.index)
                         found = True
             if not found:
-                raise Exception("Atom {} of residue {}{} not found!".format(_atom[0], _atom[1].capitalize(), _atom[2]))
+                raise Exception("Atom {} of residue {}{} not found!".format(atom_dict['name'],
+                                                                            atom_dict['resname'].capitalize(),
+                                                                            atom_dict['resid']))
 
         if len(atom_indices) == 0:
             raise Exception("No GCMC reference atoms found")
@@ -973,6 +975,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         self.works = []  # Store work values of moves
         self.acceptance_probabilities = []  # Store acceptance probabilities
         self.n_explosions = 0
+        self.n_left_sphere = 0  # Number of moves rejected because the water left the sphere
 
         # Define a compound integrator
         self.compound_integrator = openmm.CompoundIntegrator()
@@ -1111,13 +1114,14 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         if insert_water not in gcmc_wats_new:
             # If the inserted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
             acc_prob = 0
+            self.n_left_sphere += 1
         elif explosion:
             acc_prob = 0
         else:
             # Calculate acceptance probability based on protocol work
             acc_prob = np.exp(self.B) * np.exp(-protocol_work/self.kT) / self.N  # Here N is the new value
 
-        print("\tProbability = {}".format(acc_prob))
+        print("\tP = {}".format(acc_prob))
         self.acceptance_probabilities.append(acc_prob)
 
         # Update or reset the system, depending on whether the move is accepted or rejected
@@ -1211,13 +1215,14 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         if delete_water not in gcmc_wats_new:
             # If the deleted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
             acc_prob = 0
+            self.n_left_sphere += 1
         elif explosion:
             acc_prob = 0
         else:
             # Calculate acceptance probability based on protocol work
             acc_prob = old_N * np.exp(-self.B) * np.exp(-protocol_work/self.kT)  # N is the old value
 
-        print("Probability = {}".format(acc_prob))
+        print("P = {}".format(acc_prob))
         self.acceptance_probabilities.append(acc_prob)
 
         # Update or reset the system, depending on whether the move is accepted or rejected
