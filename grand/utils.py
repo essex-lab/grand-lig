@@ -101,20 +101,46 @@ def add_ghosts(topology, positions, ff='tip3p', n=10, pdb='gcmc-extra-wats.pdb')
         # Need a slightly more elegant way than this as each water is written to a different chain...
         # Read in template water positions
         positions = water.positions
+
         # Need to translate the water to a random point in the simulation box
         new_centre = np.random.rand(3) * box_size
         new_positions = deepcopy(water.positions)
         for i in range(len(positions)):
             new_positions[i] = positions[i] + new_centre - positions[0]
+
         # Add the water to the model and include the resid in a list
         modeller.add(addTopology=water.topology, addPositions=new_positions)
         ghosts.append(modeller.topology._numResidues - 1)
 
+    # Get chain IDs of new waters
+    new_chains = []
+    for res_id, residue in enumerate(modeller.topology.residues()):
+        if res_id in ghosts:
+            new_chains.append(chr(ord('a') + residue.chain.index).upper())
+
     # Write the new topology and positions to a PDB file
     if pdb is not None:
-        pdbfile = open(pdb, 'w')
-        water.writeFile(topology=modeller.topology, positions=modeller.positions, file=pdbfile)
-        pdbfile.close()
+        with open(pdb, 'w') as f:
+            water.writeFile(topology=modeller.topology, positions=modeller.positions, file=f)
+
+        # Want to correct the residue IDs of the added waters as this can sometimes cause issues
+        with open(pdb, 'r') as f:
+            lines = f.readlines()
+
+        max_resid = ghosts[0] + 1  # Start the new resids at the first ghost resid (+1)
+        with open(pdb, 'w') as f:
+            for line in lines:
+                # Automatically write out non-atom lines
+                if not line.startswith('ATOM') and not line.startswith('HETATM'):
+                    f.write(line)
+                else:
+                    # Correct the residue ID if this corresponds to an added water
+                    if line[21] in  new_chains:
+                        f.write("{}{:4d}{}".format(line[:22], max_resid, line[26:]))
+                        max_resid += 1
+                    else:
+                        f.write(line)
+
 
     return modeller.topology, modeller.positions, ghosts
 
