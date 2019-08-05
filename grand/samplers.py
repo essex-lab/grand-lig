@@ -646,11 +646,11 @@ class GrandCanonicalMonteCarloSampler(object):
             acc_rate = np.nan
         mean_N = np.round(np.mean(self.Ns), 3)
         # Print out a line describing the acceptance rate and sampling of N
-        msg = "{} move(s) completed ({} accepted({:.3f} %)). Current N = {}. Average N = {:.3f}".format(self.n_moves,
-                                                                                                        self.n_accepted,
-                                                                                                        acc_rate,
-                                                                                                        self.N,
-                                                                                                        mean_N)
+        msg = "{} move(s) completed ({} accepted ({:.3f} %)). Current N = {}. Average N = {:.3f}".format(self.n_moves,
+                                                                                                         self.n_accepted,
+                                                                                                         acc_rate,
+                                                                                                         self.N,
+                                                                                                         mean_N)
         print(msg)
 
         # Write to the file describing which waters are ghosts through the trajectory
