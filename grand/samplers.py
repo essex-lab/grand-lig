@@ -1222,7 +1222,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             # Calculate acceptance probability based on protocol work
             acc_prob = old_N * np.exp(-self.B) * np.exp(-protocol_work/self.kT)  # N is the old value
 
-        print("P = {}".format(acc_prob))
+        print("\tP = {}".format(acc_prob))
         self.acceptance_probabilities.append(acc_prob)
 
         # Update or reset the system, depending on whether the move is accepted or rejected
