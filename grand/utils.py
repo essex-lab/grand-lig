@@ -131,15 +131,18 @@ def add_ghosts(topology, positions, ff='tip3p', n=10, pdb='gcmc-extra-wats.pdb')
         with open(pdb, 'w') as f:
             for line in lines:
                 # Automatically write out non-atom lines
-                if not line.startswith('ATOM') and not line.startswith('HETATM'):
+                if not any([line.startswith(x) for x in ['ATOM', 'HETATM', 'TER']]):
                     f.write(line)
                 else:
                     # Correct the residue ID if this corresponds to an added water
-                    if line[21] in  new_chains:
+                    if line[21] in new_chains:
                         f.write("{}{:4d}{}".format(line[:22], max_resid, line[26:]))
-                        max_resid += 1
                     else:
                         f.write(line)
+                        
+                    # Need to change the resid if there is a TER line
+                    if line.startswith('TER'):
+                        max_resid += 1
 
 
     return modeller.topology, modeller.positions, ghosts
