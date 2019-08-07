@@ -762,7 +762,7 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
     """
     def __init__(self, system, topology, temperature, adams=None, chemicalPotential=-6.3*unit.kilocalories_per_mole,
                  adamsShift=0.0, waterName="HOH", ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None,
-                 sphereRadius=None, sphereCentre=None, dcd=None, rst7=None, overwrite=False):
+                 sphereRadius=None, sphereCentre=None, log=None, dcd=None, rst7=None, overwrite=False):
         """
         Initialise the object to be used for sampling instantaneous water insertion/deletion moves
 
@@ -801,6 +801,8 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
             Radius of the spherical GCMC region
         sphereCentre : simtk.unit.Quantity
             Coordinates around which the GCMC sohere is based
+        log : str
+            Name of the log file to write out
         dcd : str
             Name of the DCD file to write the system out to
         rst7 : str
@@ -813,7 +815,8 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
                                                  chemicalPotential=chemicalPotential, adamsShift=adamsShift,
                                                  waterName=waterName, ghostFile=ghostFile,
                                                  referenceAtoms=referenceAtoms, sphereRadius=sphereRadius,
-                                                 sphereCentre=sphereCentre, dcd=dcd, rst7=rst7, overwrite=overwrite)
+                                                 sphereCentre=sphereCentre, log=log, dcd=dcd, rst7=rst7,
+                                                 overwrite=overwrite)
 
         self.energy = None  # Need to save energy
         self.acceptance_probabilities = []  # Store acceptance probabilities
@@ -976,7 +979,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
     def __init__(self, system, topology, temperature, integrator, adams=None,
                  chemicalPotential=-6.3*unit.kilocalories_per_mole, adamsShift=0.0, nPertSteps=1, nPropSteps=1,
                  waterName="HOH", ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None,
-                 sphereCentre=None, dcd=None, rst7=None, overwrite=False):
+                 sphereCentre=None, log='gcmc.log', dcd=None, rst7=None, overwrite=False):
         """
         Initialise the object to be used for sampling NCMC-enhanced water insertion/deletion moves
 
@@ -1022,6 +1025,8 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             Radius of the spherical GCMC region
         sphereCentre : simtk.unit.Quantity
             Coordinates around which the GCMC sohere is based
+        log : str
+            Name of the log file to write out
         dcd : str
             Name of the DCD file to write the system out to
         rst7 : str
@@ -1034,7 +1039,8 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
                                                  chemicalPotential=chemicalPotential, adamsShift=adamsShift,
                                                  waterName=waterName, ghostFile=ghostFile,
                                                  referenceAtoms=referenceAtoms, sphereRadius=sphereRadius,
-                                                 sphereCentre=sphereCentre, dcd=dcd, rst7=rst7, overwrite=overwrite)
+                                                 sphereCentre=sphereCentre, log=log, dcd=dcd, rst7=rst7,
+                                                 overwrite=overwrite)
 
         self.velocities = None  # Need to store velocities for this type of sampling
 
