@@ -38,8 +38,10 @@ gcmc_mover = grand.samplers.StandardGCMCSampler(system=system,
                                                 temperature=300*kelvin,
                                                 sphereRadius=2*angstroms,
                                                 sphereCentre=[12.5, 12.5, 12.5]*angstroms,
+                                                log='water-gcmc.log',
                                                 dcd='water-raw.dcd',
-                                                rst7='water-gcmc.rst7')
+                                                rst7='water-gcmc.rst7',
+                                                overwrite=False)
 
 # Langevin integrator
 integrator = BAOABIntegrator(300*kelvin, 1.0/picosecond, 0.002*picoseconds)

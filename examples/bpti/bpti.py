@@ -42,8 +42,10 @@ gcmc_mover = grand.samplers.StandardGCMCSampler(system=system,
                                                 temperature=300*kelvin,
                                                 referenceAtoms=ref_atoms,
                                                 sphereRadius=4*angstroms,
+                                                log='bpti-gcmc.log',
                                                 dcd='bpti-raw.dcd',
-                                                rst7='bpti-gcmc.rst7')
+                                                rst7='bpti-gcmc.rst7',
+                                                overwrite=False)
 
 # BAOAB Langevin integrator
 integrator = BAOABIntegrator(300*kelvin, 1.0/picosecond, 0.002*picoseconds)
