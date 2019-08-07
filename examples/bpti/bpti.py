@@ -102,7 +102,7 @@ grand.utils.align_traj(t=trj, output='bpti-gcmc.dcd')
 # Write out a PDB trajectory of the GCMC sphere
 grand.utils.write_sphere_traj(radius=4.0,
                               ref_atoms=ref_atoms,
-                              topology='bpti-gcmc.pdb',
-                              trajectory='bpti-ghosts.dcd',
+                              topology='bpti-ghosts.pdb',
+                              trajectory='bpti-gcmc.dcd',
                               output='gcmc_sphere.pdb',
                               initial_frame=True)
