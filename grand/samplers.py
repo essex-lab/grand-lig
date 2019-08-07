@@ -87,11 +87,15 @@ class GrandCanonicalMonteCarloSampler(object):
         if os.path.isfile(log):
             if overwrite:
                 os.remove(log)
-                self.logger = logging.getLogger(log)
             else:
                 raise Exception("File {} already exists, not overwriting...".format(log))
-        else:
-            self.logger = logging.getLogger(log)
+
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+        file_handler = logging.FileHandler(log)
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s: %(message)s'))
+        self.logger.addHandler(file_handler)
 
         # Set important variables here
         self.system = system
@@ -144,7 +148,7 @@ class GrandCanonicalMonteCarloSampler(object):
             # Shift B from Bequil if necessary
             self.B += adamsShift
 
-        self.logger.info("Simulating at an Adams (B) value of {}".format(self))
+        self.logger.info("Simulating at an Adams (B) value of {}".format(self.B))
 
         # Other variables
         self.n_moves = 0
@@ -280,10 +284,11 @@ class GrandCanonicalMonteCarloSampler(object):
         """
         Reset counted values (such as number of total or accepted moves) to zero
         """
+        self.logger.info('Resetting any tracked variables...')
         self.n_accepted = 0
         self.n_moves = 0
         self.Ns = []
-
+        
         return None
 
     def getReferenceAtomIndices(self, ref_atoms):
@@ -691,9 +696,9 @@ class GrandCanonicalMonteCarloSampler(object):
             acc_rate = np.round(self.n_accepted * 100.0 / self.n_moves, 3)
         else:
             acc_rate = np.nan
-        mean_N = np.round(np.mean(self.Ns), 3)
+        mean_N = np.round(np.mean(self.Ns), 4)
         # Print out a line describing the acceptance rate and sampling of N
-        msg = "{} move(s) completed ({} accepted ({:.3f} %)). Current N = {}. Average N = {:.3f}".format(self.n_moves,
+        msg = "{} move(s) completed ({} accepted ({:.4f} %)). Current N = {}. Average N = {:.3f}".format(self.n_moves,
                                                                                                          self.n_accepted,
                                                                                                          acc_rate,
                                                                                                          self.N,
