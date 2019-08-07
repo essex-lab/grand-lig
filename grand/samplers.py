@@ -21,6 +21,7 @@ References
 import numpy as np
 import mdtraj
 import os
+import logging
 from copy import deepcopy
 from simtk import unit
 from simtk import openmm
@@ -68,7 +69,7 @@ class GrandCanonicalMonteCarloSampler(object):
         referenceAtoms : list
             List containing dictionaries describing the atoms to use as the centre of the GCMC region
             Must contain 'name' and 'resname' as keys, and optionally 'resid' (recommended) and 'chain'
-            e.g. [{'name': 'C1', 'resname': 'LIG', 'resid': 123}]
+            e.g. [{'name': 'C1', 'resname': 'LIG', 'resid': '123'}]
         sphereRadius : simtk.unit.Quantity
             Radius of the spherical GCMC region
         sphereCentre : simtk.unit.Quantity
@@ -82,6 +83,16 @@ class GrandCanonicalMonteCarloSampler(object):
         overwrite : bool
             Overwrite any data already present
         """
+        # Create logging object
+        if os.path.isfile(log):
+            if overwrite:
+                os.remove(log)
+                self.logger = logging.getLogger(log)
+            else:
+                raise Exception("File {} already exists, not overwriting...".format(log))
+        else:
+            self.logger = logging.getLogger(log)
+
         # Set important variables here
         self.system = system
         self.topology = topology
@@ -90,6 +101,8 @@ class GrandCanonicalMonteCarloSampler(object):
         self.kT = unit.BOLTZMANN_CONSTANT_kB * unit.AVOGADRO_CONSTANT_NA * temperature
         self.simulation_box = np.zeros(3) * unit.nanometer  # Set to zero for now
 
+        self.logger.info("kT = {}".format(self.kT.in_units_of(unit.kilocalorie_per_mole)))
+
         # Find NonbondedForce - needs to be updated to switch waters on/off
         for f in range(system.getNumForces()):
             force = system.getForce(f)
@@ -97,7 +110,8 @@ class GrandCanonicalMonteCarloSampler(object):
                 self.nonbonded_force = force
             # Flag an error if not simulating at constant volume
             elif "Barostat" in force.__class__.__name__:
-                raise Exception("GCMC must be used at constant volume!")
+                self.logger.error("GCMC must be used at constant volume - {} cannot be used!".format(force.__class__.__name__))
+                raise Exception("GCMC must be used at constant volume - {} cannot be used!".format(force.__class__.__name__))
         
         # Calculate GCMC-specific variables
         self.N = 0  # Initialise N as zero
@@ -108,13 +122,18 @@ class GrandCanonicalMonteCarloSampler(object):
         if referenceAtoms is not None:
             # Define sphere based on reference atoms
             self.ref_atoms = self.getReferenceAtomIndices(referenceAtoms)
+            self.logger.info("GCMC sphere is based on reference atom IDs: {}".format(self.ref_atoms))
         elif sphereCentre is not None:
             # Define sphere based on coordinates
             assert len(sphereCentre) == 3, "Sphere coordinates must be 3D"
             self.sphere_centre = sphereCentre
             self.ref_atoms = None
+            self.logger.info("GCMC sphere is fixed in space and centred on {}".format(self.sphere_centre))
         else:
+            self.logger.error("A set of atoms or coordinates must be used to define the centre of the sphere!")
             raise Exception("A set of atoms or coordinates must be used to define the centre of the sphere!")
+
+        self.logger.info("GCMC sphere radius is {}".format(self.sphere_radius))
 
         # Set or calculate the Adams value for the simulation
         if adams is not None:
@@ -124,6 +143,8 @@ class GrandCanonicalMonteCarloSampler(object):
             self.B = chemicalPotential/self.kT + np.log(volume / (30.0 * unit.angstrom ** 3))
             # Shift B from Bequil if necessary
             self.B += adamsShift
+
+        self.logger.info("Simulating at an Adams (B) value of {}".format(self))
 
         # Other variables
         self.n_moves = 0
@@ -148,6 +169,7 @@ class GrandCanonicalMonteCarloSampler(object):
         self.ghost_file = ghostFile
         # Check whether to overwrite if the file already exists
         if os.path.isfile(self.ghost_file) and not overwrite:
+            self.logger.error("File {} already exists, not overwriting...".format(self.ghost_file))
             raise Exception("File {} already exists, not overwriting...".format(self.ghost_file))
         else:
             with open(self.ghost_file, 'w') as f:
@@ -162,6 +184,7 @@ class GrandCanonicalMonteCarloSampler(object):
                     os.remove(dcd)
                     self.dcd = mdtraj.reporters.DCDReporter(dcd, 0)
                 else:
+                    self.logger.error("File {} already exists, not overwriting...".format(dcd))
                     raise Exception("File {} already exists, not overwriting...".format(dcd))
             else:
                 self.dcd = mdtraj.reporters.DCDReporter(dcd, 0)
@@ -171,6 +194,7 @@ class GrandCanonicalMonteCarloSampler(object):
         if rst7 is not None:
             # Check whether to overwrite
             if os.path.isfile(dcd) and not overwrite:
+                self.logger.error("File {} already exists, not overwriting...".format(rst7))
                 raise Exception("File {} already exists, not overwriting...".format(rst7))
             else:
                 self.rst = RestartReporter(rst7, 0)
@@ -321,11 +345,15 @@ class GrandCanonicalMonteCarloSampler(object):
                         atom_indices.append(atom.index)
                         found = True
             if not found:
+                self.logger.error("Atom {} of residue {}{} not found!".format(atom_dict['name'],
+                                                                              atom_dict['resname'].capitalize(),
+                                                                              atom_dict['resid']))
                 raise Exception("Atom {} of residue {}{} not found!".format(atom_dict['name'],
                                                                             atom_dict['resname'].capitalize(),
                                                                             atom_dict['resid']))
 
         if len(atom_indices) == 0:
+            self.logger.error("No GCMC reference atoms found")
             raise Exception("No GCMC reference atoms found")
 
         return atom_indices
@@ -336,6 +364,7 @@ class GrandCanonicalMonteCarloSampler(object):
         Need to make sure it isn't affected by the reference atoms being split across PBCs
         """
         if self.ref_atoms is None:
+            self.logger.error("No reference atoms defined, cannot get sphere coordinates...")
             raise Exception("No reference atoms defined, cannot get sphere coordinates...")
 
         # Calculate the mean coordinate
@@ -374,6 +403,7 @@ class GrandCanonicalMonteCarloSampler(object):
             List of residue IDs corresponding to the ghost waters added
         """
         if len(ghostResids) == 0 or ghostResids is None:
+            self.logger.error("No ghost waters given! Cannot insert waters without any ghosts!")
             raise Exception("No ghost waters given! Cannot insert waters without any ghosts!")
         # Load context into sampler
         self.context = context
@@ -388,10 +418,6 @@ class GrandCanonicalMonteCarloSampler(object):
 
         # Calculate the centre of the GCMC sphere, if using reference atoms
         if self.ref_atoms is not None:
-            #self.sphere_centre = np.zeros(3) * unit.nanometers
-            #for atom in self.ref_atoms:
-            #    self.sphere_centre += self.positions[atom]
-            #self.sphere_centre /= len(self.ref_atoms)
             self.getSphereCentre()
 
         # Loop over waters and check which are in/out of the GCMC sphere at the beginning - may be able to replace this with updateGCMCSphere?
@@ -673,6 +699,7 @@ class GrandCanonicalMonteCarloSampler(object):
                                                                                                          self.N,
                                                                                                          mean_N)
         print(msg)
+        self.logger.info(msg)
 
         # Write to the file describing which waters are ghosts through the trajectory
         self.writeGhostWaterResids()
@@ -718,7 +745,9 @@ class GrandCanonicalMonteCarloSampler(object):
         n : int
             Number of moves to execute
         """
-        error_msg = "This object is not designed to sample! Use StandardGCMCSampler or NonequilibriumGCMCSampler"
+        error_msg = ("GrandCanonicalMonteCarloSampler is not designed to sample! Use StandardGCMCSampler or "
+                     "NonequilibriumGCMCSampler")
+        self.logger.error(error_msg)
         raise NotImplementedError(error_msg)
 
 
@@ -760,9 +789,9 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
             useful if you want to visualise the sampling, as you can then remove these waters
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
         referenceAtoms : list
-            List containing details of the atom to use as the centre of the GCMC region
-            Must contain atom name, residue name and (optionally) residue ID,
-            e.g. ['C1', 'LIG', 123] or just ['C1', 'LIG']
+            List containing dictionaries describing the atoms to use as the centre of the GCMC region
+            Must contain 'name' and 'resname' as keys, and optionally 'resid' (recommended) and 'chain'
+            e.g. [{'name': 'C1', 'resname': 'LIG', 'resid': '123'}]
         sphereRadius : simtk.unit.Quantity
             Radius of the spherical GCMC region
         sphereCentre : simtk.unit.Quantity
@@ -783,6 +812,7 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
 
         self.energy = None  # Need to save energy
         self.acceptance_probabilities = []  # Store acceptance probabilities
+        self.logger.info("StandardGCMCSampler object initialised")
 
     def move(self, context, n=1):
         """
@@ -795,6 +825,9 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
         n : int
             Number of moves to execute
         """
+        self.logger.info("Starting a batch of {} GCMC moves".format(n))
+        old_accepted = self.n_accepted
+
         # Read in positions
         self.context = context
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getEnergy=True)
@@ -816,6 +849,8 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
             self.n_moves += 1
             self.Ns.append(self.N)
 
+        self.logger.info("{}/{} moves accepted from this batch".format(self.n_accepted-old_accepted, n))
+
         return None
 
     def insertRandomWater(self):
@@ -828,7 +863,13 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
         and the inserted coordinates
         """
         # Select a ghost water to insert
-        gcmc_id = np.random.choice(np.where(self.gcmc_status == 0)[0])  # Position in list of GCMC waters
+        ghost_wats = np.where(self.gcmc_status == 0)[0]
+        # Check that there are any ghosts present
+        if len(ghost_wats) == 0:
+            self.logger.error("No ghost water molecules left, so insertion moves cannot occur - add more ghost waters")
+            raise Exception("No ghost water molecules left, so insertion moves cannot occur - add more ghost waters")
+
+        gcmc_id = np.random.choice(ghost_wats)  # Position in list of GCMC waters
         insert_water = self.gcmc_resids[gcmc_id]
         wat_id = np.where(np.array(self.water_resids) == insert_water)[0][0]  # Position in list of all waters
         atom_indices = []
@@ -969,9 +1010,9 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             useful if you want to visualise the sampling, as you can then remove these waters
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
         referenceAtoms : list
-            List containing details of the atom to use as the centre of the GCMC region
-            Must contain atom name, residue name and (optionally) residue ID,
-            e.g. ['C1', 'LIG', 123] or just ['C1', 'LIG']
+            List containing dictionaries describing the atoms to use as the centre of the GCMC region
+            Must contain 'name' and 'resname' as keys, and optionally 'resid' (recommended) and 'chain'
+            e.g. [{'name': 'C1', 'resname': 'LIG', 'resid': '123'}]
         sphereRadius : simtk.unit.Quantity
             Radius of the spherical GCMC region
         sphereCentre : simtk.unit.Quantity
@@ -981,7 +1022,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         rst7 : str
             Name of the AMBER restart file to write out
         overwrite : bool
-            Indicates whether to overwrite already exisiting data
+            Indicates whether to overwrite already existing data
         """
         # Initialise base class
         GrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, adams=adams,
@@ -1012,6 +1053,8 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         # Set the compound integrator to the MD integrator
         self.compound_integrator.setCurrentIntegrator(0)
 
+        self.logger.info("NonequilibriumGCMCSampler object initialised")
+
     def move(self, context, n=1):
         """
         Carry out a nonequilibrium GCMC move
@@ -1023,6 +1066,9 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         n : int
             Number of moves to execute
         """
+        self.logger.info("Starting a batch of {} nonequilibrium GCMC moves".format(n))
+        old_accepted = self.n_accepted
+
         # Read in positions
         self.context = context
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
@@ -1050,18 +1096,22 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         # Set to MD integrator
         self.compound_integrator.setCurrentIntegrator(0)
 
+        self.logger.info("{}/{} moves accepted from this batch".format(self.n_accepted-old_accepted, n))
+
         return None
 
     def insertRandomWater(self):
         """
         Carry out a nonequilibrium insertion move for a random water molecule
         """
-        print("Inserting a water...")
-        # Get a list of what the GCMC waters are prior to the move
-        gcmc_wats = [wat for i, wat in enumerate(self.gcmc_resids) if self.gcmc_status[i] == 1]
-
         # Select a ghost water to insert
-        gcmc_id = np.random.choice(np.where(self.gcmc_status == 0)[0])  # Position in list of GCMC waters
+        ghost_wats = np.where(self.gcmc_status == 0)[0]
+        # Check that there are any ghosts present
+        if len(ghost_wats) == 0:
+            self.logger.error("No ghost water molecules left, so insertion moves cannot occur - add more ghost waters")
+            raise Exception("No ghost water molecules left, so insertion moves cannot occur - add more ghost waters")
+
+        gcmc_id = np.random.choice(ghost_wats)  # Position in list of GCMC waters
         insert_water = self.gcmc_resids[gcmc_id]
         wat_id = np.where(np.array(self.water_resids) == insert_water)[0][0]  # Position in list of all waters
         atom_indices = []
@@ -1119,8 +1169,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
 
         # Get the protocol work (in units of kT)
         #protocol_work = self.ncmc_integrator.get_protocol_work(dimensionless=True)
-        print("\tw = {}".format(protocol_work))
-        #print("\tw2 = {}".format(protocol_work2))
+        self.logger.info("Insertion work = {}".format(protocol_work))
         self.works.append(protocol_work)
 
         # Update variables and GCMC sphere
@@ -1136,20 +1185,20 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         # Calculate acceptance probability
         if insert_water not in gcmc_wats_new:
             # If the inserted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
-            acc_prob = 0
+            acc_prob = -1
             self.n_left_sphere += 1
+            self.logger.info("Move rejected due to water leaving the GCMC sphere")
         elif explosion:
-            acc_prob = 0
+            acc_prob = -1
+            self.logger.info("Move rejected due to an instability during integration")
         else:
             # Calculate acceptance probability based on protocol work
             acc_prob = np.exp(self.B) * np.exp(-protocol_work/self.kT) / self.N  # Here N is the new value
 
-        print("\tP = {}".format(acc_prob))
         self.acceptance_probabilities.append(acc_prob)
 
         # Update or reset the system, depending on whether the move is accepted or rejected
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
-            print('\tRejected\n')
             # Need to revert the changes made if the move is to be rejected
             self.adjustSpecificWater(atom_indices, 0.0)
             self.context.setPositions(old_positions)
@@ -1161,7 +1210,6 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             self.water_status[wat_id] = 0
             self.updateGCMCSphere(state)
         else:
-            print('\tAccepted\n')
             # Update some variables if move is accepted
             self.N = len(gcmc_wats_new)
             self.n_accepted += 1
@@ -1179,8 +1227,6 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         # Cannot carry out deletion if there are no GCMC waters on
         if np.sum(self.gcmc_status) == 0:
             return None
-
-        print("Deleting a water...")
 
         old_positions = deepcopy(self.positions)
 
@@ -1220,7 +1266,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
 
         # Get the protocol work (in units of kT)
         #protocol_work = self.ncmc_integrator.get_protocol_work(dimensionless=True)
-        print("\tw = {}".format(protocol_work))
+        self.logger.info("Deletion work = {}".format(protocol_work))
         self.works.append(protocol_work)
 
         # Update variables and GCMC sphere
@@ -1239,8 +1285,10 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             # If the deleted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
             acc_prob = 0
             self.n_left_sphere += 1
+            self.logger.info("Move rejected due to water leaving the GCMC sphere")
         elif explosion:
             acc_prob = 0
+            self.logger.info("Move rejected due to an instability during integration")
         else:
             # Calculate acceptance probability based on protocol work
             acc_prob = old_N * np.exp(-self.B) * np.exp(-protocol_work/self.kT)  # N is the old value
@@ -1250,7 +1298,6 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
 
         # Update or reset the system, depending on whether the move is accepted or rejected
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
-            print('\tRejected\n')
             # Need to revert the changes made if the move is to be rejected
             self.adjustSpecificWater(atom_indices, 1.0)
             self.context.setPositions(old_positions)
@@ -1260,7 +1307,6 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
             self.updateGCMCSphere(state)
         else:
-            print('\tAccepted\n')
             # Update some variables if move is accepted
             #self.gcmc_status[gcmc_id] = 0
             self.water_status[wat_id] = 0
