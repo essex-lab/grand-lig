@@ -762,7 +762,7 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
     """
     def __init__(self, system, topology, temperature, adams=None, chemicalPotential=-6.3*unit.kilocalories_per_mole,
                  adamsShift=0.0, waterName="HOH", ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None,
-                 sphereRadius=None, sphereCentre=None, log=None, dcd=None, rst7=None, overwrite=False):
+                 sphereRadius=None, sphereCentre=None, log='gcmc.log', dcd=None, rst7=None, overwrite=False):
         """
         Initialise the object to be used for sampling instantaneous water insertion/deletion moves
 
