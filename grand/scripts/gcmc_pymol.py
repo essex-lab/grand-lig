@@ -52,11 +52,8 @@ if args.residues is not None:
     for resid in args.residues:
         cmd.show('sticks', 'polymer.protein and resi {}'.format(resid))
 
-# Hide nonpolar hydrogen atoms - syntax can vary for some reason (may need brackets)
-try:
-    cmd.hide('h. and (e. c extend 1)')
-except:
-    cmd.hide('(h. and (e. c extend 1))')
+# Hide nonpolar hydrogen atoms - this may have issues sometimes (may need to remove brackets)
+cmd.hide('(h. and (e. c extend 1))')
 
 # Load GCMC sphere, if given
 if args.sphere is not None:
