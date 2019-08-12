@@ -60,7 +60,9 @@ gcmc_mover = grand.samplers.StandardGCMCSampler(system=system,
 # BAOAB Langevin integrator (important)
 integrator = BAOABIntegrator(300*kelvin, 1.0/picosecond, 0.002*picoseconds)
 
-platform = Platform.getPlatformByName('OpenCL')
+platform = Platform.getPlatformByName('CUDA')
+platform.setPropertyDefaultValue('Precision', 'mixed')
+
 simulation = Simulation(prmtop2.topology, system, integrator, platform)
 simulation.context.setPositions(inpcrd2.positions)
 simulation.context.setVelocitiesToTemperature(300*kelvin)

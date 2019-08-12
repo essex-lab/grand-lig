@@ -47,6 +47,8 @@ gcmc_mover = grand.samplers.StandardGCMCSampler(system=system,
 integrator = BAOABIntegrator(300*kelvin, 1.0/picosecond, 0.002*picoseconds)
 
 platform = Platform.getPlatformByName('CUDA')
+platform.setPropertyDefaultValue('Precision', 'mixed')
+
 simulation = Simulation(pdb.topology, system, integrator, platform)
 simulation.context.setPositions(pdb.positions)
 simulation.context.setVelocitiesToTemperature(300*kelvin)
