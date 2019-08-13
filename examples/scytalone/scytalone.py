@@ -109,7 +109,7 @@ trj = grand.utils.shift_ghost_waters(ghost_file='gcmc-ghost-wats.txt',
 trj = grand.utils.recentre_traj(t=trj, resname='TYR', resid=23)
 
 # Align the trajectory to the protein
-grand.utils.align_traj(t=trj, output='scytalone-gcmc.dcd')
+grand.utils.align_traj(t=trj, output='sd-gcmc.dcd')
 
 # Write out a trajectory of the GCMC sphere
 grand.utils.write_sphere_traj(radius=4.0,
