@@ -230,12 +230,12 @@ class GrandCanonicalMonteCarloSampler(object):
         custom_sterics.addPerParticleParameter("lambda")
         # Transfer properties from the original force
         custom_sterics.setUseSwitchingFunction(self.nonbonded_force.getUseSwitchingFunction())
-        custom_sterics.setCutoffDistance(self.nonbonded_force.getCutoffDistance())
         custom_sterics.setSwitchingDistance(self.nonbonded_force.getSwitchingDistance())
         custom_sterics.setUseLongRangeCorrection(self.nonbonded_force.getUseDispersionCorrection())
         #custom_sterics.setUseLongRangeCorrection(False)
         # Assume that the system is periodic (for now)
         custom_sterics.setNonbondedMethod(openmm.CustomNonbondedForce.CutoffPeriodic)
+        custom_sterics.setCutoffDistance(self.nonbonded_force.getCutoffDistance())
         # Set softcore parameters
         custom_sterics.addGlobalParameter('soft_alpha', 0.5)
         custom_sterics.addGlobalParameter('soft_a', 1)
