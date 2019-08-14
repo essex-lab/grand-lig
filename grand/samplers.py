@@ -228,14 +228,13 @@ class GrandCanonicalMonteCarloSampler(object):
         custom_sterics.addPerParticleParameter("sigma")
         custom_sterics.addPerParticleParameter("epsilon")
         custom_sterics.addPerParticleParameter("lambda")
-        # Transfer properties from the original force
-        custom_sterics.setUseSwitchingFunction(self.nonbonded_force.getUseSwitchingFunction())
-        custom_sterics.setSwitchingDistance(self.nonbonded_force.getSwitchingDistance())
-        custom_sterics.setUseLongRangeCorrection(self.nonbonded_force.getUseDispersionCorrection())
-        #custom_sterics.setUseLongRangeCorrection(False)
         # Assume that the system is periodic (for now)
         custom_sterics.setNonbondedMethod(openmm.CustomNonbondedForce.CutoffPeriodic)
+        # Transfer properties from the original force
+        custom_sterics.setUseSwitchingFunction(self.nonbonded_force.getUseSwitchingFunction())
         custom_sterics.setCutoffDistance(self.nonbonded_force.getCutoffDistance())
+        custom_sterics.setSwitchingDistance(self.nonbonded_force.getSwitchingDistance())
+        custom_sterics.setUseLongRangeCorrection(self.nonbonded_force.getUseDispersionCorrection())
         # Set softcore parameters
         custom_sterics.addGlobalParameter('soft_alpha', 0.5)
         custom_sterics.addGlobalParameter('soft_a', 1)
@@ -259,13 +258,13 @@ class GrandCanonicalMonteCarloSampler(object):
             [charge, sigma, epsilon] = self.nonbonded_force.getParticleParameters(atom_idx)
             # Make sure that sigma is not equal to zero
             if np.isclose(sigma._value, 0.0):
-                sigma = 1.0 * unit.nanometer
+                sigma = 1.0 * unit.angstrom
             # Add particle to the custom force (with lambda=1 for now)
             custom_sterics.addParticle([sigma, epsilon, 1.0])
             # Disable steric interactions of waters in the original force by setting epsilon=0
             # We keep the charges for PME purposes
             if atom_idx in water_atom_ids:
-                self.nonbonded_force.setParticleParameters(atom_idx, charge, sigma, abs(0.0))
+                self.nonbonded_force.setParticleParameters(atom_idx, charge, sigma, abs(0))
 
         # Copy over all exceptions into the new force as exclusions
         for exception_idx in range(self.nonbonded_force.getNumExceptions()):
