@@ -234,6 +234,8 @@ class GrandCanonicalMonteCarloSampler(object):
         custom_sterics.setUseSwitchingFunction(self.nonbonded_force.getUseSwitchingFunction())
         custom_sterics.setCutoffDistance(self.nonbonded_force.getCutoffDistance())
         custom_sterics.setSwitchingDistance(self.nonbonded_force.getSwitchingDistance())
+
+        self.nonbonded_force.setUseDispersionCorrection(False)
         custom_sterics.setUseLongRangeCorrection(self.nonbonded_force.getUseDispersionCorrection())
         # Set softcore parameters
         custom_sterics.addGlobalParameter('soft_alpha', 0.5)
@@ -832,9 +834,6 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
         n : int
             Number of moves to execute
         """
-        self.logger.info("Starting a batch of {} GCMC moves".format(n))
-        old_accepted = self.n_accepted
-
         # Read in positions
         self.context = context
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getEnergy=True)
@@ -844,7 +843,7 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
         # Update GCMC region based on current state
         self.updateGCMCSphere(state)
 
-        #  Execute moves
+        # Execute moves
         for i in range(n):
             # Insert or delete a water, based on random choice
             if np.random.randint(2) == 1:
@@ -856,7 +855,6 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
             self.n_moves += 1
             self.Ns.append(self.N)
 
-        self.logger.info("{}/{} moves accepted from this batch".format(self.n_accepted-old_accepted, n))
 
         return None
 
@@ -1076,9 +1074,6 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         n : int
             Number of moves to execute
         """
-        self.logger.info("Starting a batch of {} nonequilibrium GCMC moves".format(n))
-        old_accepted = self.n_accepted
-
         # Read in positions
         self.context = context
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
@@ -1105,8 +1100,6 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
 
         # Set to MD integrator
         self.compound_integrator.setCurrentIntegrator(0)
-
-        self.logger.info("{}/{} moves accepted from this batch".format(self.n_accepted-old_accepted, n))
 
         return None
 
