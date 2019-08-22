@@ -23,7 +23,7 @@ pymol.finish_launching()
 parser = argparse.ArgumentParser()
 parser.add_argument('-top', '--topology', default='system.pdb',
                     help='System topology file.')
-parser.add_argument('-trj', '--trajectory', default='simulation.dcd',
+parser.add_argument('-trj', '--trajectory', default=None,
                     help='Simulation trajectory file.')
 parser.add_argument('-l', '--ligands', default=None, nargs='+',
                     help='Ligand residue names')
@@ -39,7 +39,8 @@ cmd.set('stick_h_scale', 1)
 
 # Load trajectory
 cmd.load(args.topology, 'system')
-cmd.load_traj(args.trajectory, 'system')
+if args.trajectory is not None:
+    cmd.load_traj(args.trajectory, 'system')
 cmd.show('cartoon', 'system')
 
 # Format ligands, if any
@@ -77,14 +78,15 @@ if args.sphere is not None:
     cmd.set('sphere_transparency', '0.5', 'sphere')
 
     # Format the trajectory to show the waters within the GCMC sphere as sticks
-    cmd.hide('everything', 'resn HOH')  # Hide waters first...
-    n_frames = cmd.count_states()
-    cmd.mset('1 -{}'.format(n_frames))
-    for f in range(1, n_frames+1):
-        # Need to write a command to update the movie to show GCMC waters as sticks
-        movie_command = ("hide sticks, resn HOH;"
-                         "sele gcmcwats, resn SPH around {} and (resn HOH and name O), state={};"
-                         "sele gcmcwats, byres gcmcwats;"
-                         "show sticks, gcmcwats;").format(radius, f)
-        cmd.mdo(f, movie_command)
+    if args.trajectory is not None:
+        cmd.hide('everything', 'resn HOH')  # Hide waters first...
+        n_frames = cmd.count_states()
+        cmd.mset('1 -{}'.format(n_frames))
+        for f in range(1, n_frames+1):
+            # Need to write a command to update the movie to show GCMC waters as sticks
+            movie_command = ("hide sticks, resn HOH;"
+                             "sele gcmcwats, resn SPH around {} and (resn HOH and name O), state={};"
+                             "sele gcmcwats, byres gcmcwats;"
+                             "show sticks, gcmcwats;").format(radius, f)
+            cmd.mdo(f, movie_command)
 
