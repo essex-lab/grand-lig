@@ -136,14 +136,15 @@ def add_ghosts(topology, positions, ff='tip3p', n=10, pdb='gcmc-extra-wats.pdb')
                 else:
                     # Correct the residue ID if this corresponds to an added water
                     if line[21] in new_chains:
-                        f.write("{}{:4d}{}".format(line[:22], max_resid, line[26:]))
+                        f.write("{}{:4d}{}".format(line[:22],
+                                                   (max_resid % 10000) + 1,
+                                                   line[26:]))
                     else:
                         f.write(line)
-                        
+
                     # Need to change the resid if there is a TER line
                     if line.startswith('TER'):
                         max_resid += 1
-
 
     return modeller.topology, modeller.positions, ghosts
 
@@ -268,14 +269,17 @@ def write_amber_input(pdb, protein_ff="leaprc.protein.ff14SB", ligand_ff="leaprc
     # The above tleap file doesn't always work, so sometimes the addPdbAtomMap has to be reversed
     if err != 0:
         with open("{}.in".format(tleap), "w") as f:
-            f.write("source leaprc.protein.{}\n".format(protein_ff))
-            f.write("source leaprc.{}\n".format(ligand_ff))
-            f.write("source leaprc.water.{}\n".format(water_ff))
+            # Load force fields
+            for ff in [protein_ff, ligand_ff, water_ff] + other_ffs:
+                f.write("source {}\n".format(ff))
+            # Load ligand parameters
             if prepi is not None:
                 f.write("loadamberprep {}\n".format(prepi))
             if frcmod is not None:
                 f.write("loadamberparams {}\n".format(frcmod))
+            # Need an atom name map to fix cap atom names being mixed up
             f.write("addPdbAtomMap {{CH3 C} {HH31 H1} {HH32 H2} {HH33 H3}}\n")
+            # Load system and write to AMBER files
             f.write("mol = loadpdb {}-amber.pdb\n".format(file_stem))
             f.write("set mol box { %f %f %f }\n" % (box[0], box[1], box[2]))  # Have to use % due to {}
             f.write("saveamberparm mol {} {}\n".format(prmtop, inpcrd))
