@@ -252,6 +252,73 @@ def read_prepi(filename):
     return atom_data, bonds
 
 
+def write_conect(pdb, resname, prepi, output):
+    """
+    Take in a PDB and write out a new one, including CONECT lines for a specified residue, given a .prepi file
+
+    To Do
+    -----
+    This function needs to be tidied up a bit...
+    Should make it easy to run this on more residues at a time - though for now it can just be run separately per residue
+    but this isn't ideal...
+
+    Parameters
+    ----------
+    pdb : str
+        Name of the input PDB file
+    resname : str
+        Name of the residue of interest
+    prepi : str
+        Name of the prepi file
+    output : str
+        Name of the output PDB file
+    """
+    # Read in bonds from prepi file
+    _, bond_list = read_prepi(prepi)
+
+    resids_done = []  # List of completed residues
+
+    conect_lines = []  # List of CONECT lines to add
+
+    with open(pdb, 'r') as f:
+        pdb_lines = f.readlines()
+
+    for i, line_i in enumerate(pdb_lines):
+        if not any([line_i.startswith(x) for x in ['ATOM', 'HETATM']]):
+            continue
+
+        if line_i[17:21].strip() == resname:
+            resid_i = int(line_i[22:26])
+            if resid_i in resids_done:
+                continue
+            residue_atoms = {}  # List of atom names & IDs for this residue
+            for line_j in pdb_lines[i:]:
+                # Make sure the following lines correspond to this resname and resid
+                resid_j = int(line_j[22:26])
+                if resid_j != resid_i or line_j[17:21].strip() != resname:
+                    break
+                # Read the atom data in for this residue
+                atom_name = line_j[12:16].strip()
+                atom_id = int(line_j[6:11])
+                residue_atoms[atom_name] = atom_id
+            # Add CONECT lines
+            for bond in bond_list:
+                conect_lines.append("CONECT{:>5d}{:>5d}\n".format(residue_atoms[bond[0]], residue_atoms[bond[1]]))
+            resids_done.append(resid_i)
+
+    # Write out the new PDB file, including CONECT lines
+    with open(output, 'w') as f:
+        for line in pdb_lines:
+            if not line.startswith('END'):
+                f.write(line)
+            else:
+                for line_c in conect_lines:
+                    f.write(line_c)
+                f.write(line)
+
+    return None
+
+
 def create_ligand_xml(prmtop, prepi, resname='LIG', output='lig.xml'):
     """
     Takes two AMBER parameter files (.prmtop and .prepi) for a small molecule and uses them to create an XML file
