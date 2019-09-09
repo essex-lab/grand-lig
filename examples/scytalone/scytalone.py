@@ -16,31 +16,28 @@ from openmmtools.integrators import BAOABIntegrator
 
 import grand
 
-# Load in AMBER files
-prmtop = AmberPrmtopFile('scytalone.prmtop')
-inpcrd = AmberInpcrdFile('scytalone-equil.inpcrd')
-prmtop.topology.setPeriodicBoxVectors(inpcrd.boxVectors)
+# Write CONECT lines to PDB
+grand.utils.write_conect('scytalone-equil.pdb', 'MQ1', 'mq1.prepi', 'sd-conect.pdb')
 
-# Add water ghosts, which can be inserted
-prmtop.topology, inpcrd.positions, ghosts = grand.utils.add_ghosts(prmtop.topology,
-                                                                   inpcrd.positions,
-                                                                   n=5,
-                                                                   pdb='sd-ghosts.pdb')
+# Write ligand XML
+grand.utils.create_ligand_xml('mq1.prmtop', 'mq1.prepi', 'MQ1', 'mq1.xml')
 
-# Write out AMBER files for the new PDB file (needed to retain the FF info)
-new_prmtop, new_inpcrd = grand.utils.write_amber_input(pdb='sd-ghosts.pdb',
-                                                       prepi='mq1.prepi',
-                                                       frcmod='mq1.frcmod')
+# Load in PDB file
+pdb = PDBFile('sd-conect.pdb')
 
-# Load in new AMBER files (containing ghosts)
-prmtop2 = AmberPrmtopFile(new_prmtop)
-inpcrd2 = AmberInpcrdFile(new_inpcrd)
+# Add ghost water molecules, which can be inserted
+pdb.topology, pdb.positions, ghosts = grand.utils.add_ghosts(pdb.topology,
+                                                             pdb.positions,
+                                                             n=5,
+                                                             pdb='sd-ghosts.pdb')
 
 # Create system
-system = prmtop2.createSystem(nonbondedMethod=PME,
-                              nonbondedCutoff=12.0*angstroms,
-                              switchDistance=10.0*angstroms,
-                              constraints=HBonds)
+ff = ForceField('amber14-all.xml', 'amber14/tip3p.xml', 'mq1.xml')
+system = ff.createSystem(pdb.topology,
+                         nonbondedMethod=PME,
+                         nonbondedCutoff=12.0*angstroms,
+                         switchDistance=10.0*angstroms,
+                         constraints=HBonds)
 
 # Define reference atoms around which the GCMC sphere is based
 ref_atoms = [{'name': 'OH', 'resname': 'TYR', 'resid': '23'},
@@ -48,7 +45,7 @@ ref_atoms = [{'name': 'OH', 'resname': 'TYR', 'resid': '23'},
 
 # Create GCMC Sampler object
 gcmc_mover = grand.samplers.StandardGCMCSampler(system=system,
-                                                topology=prmtop2.topology,
+                                                topology=pdb.topology,
                                                 temperature=300*kelvin,
                                                 referenceAtoms=ref_atoms,
                                                 sphereRadius=4*angstroms,
@@ -63,10 +60,10 @@ integrator = BAOABIntegrator(300*kelvin, 1.0/picosecond, 0.002*picoseconds)
 platform = Platform.getPlatformByName('CUDA')
 platform.setPropertyDefaultValue('Precision', 'mixed')
 
-simulation = Simulation(prmtop2.topology, system, integrator, platform)
-simulation.context.setPositions(inpcrd2.positions)
+simulation = Simulation(pdb.topology, system, integrator, platform)
+simulation.context.setPositions(pdb.positions)
 simulation.context.setVelocitiesToTemperature(300*kelvin)
-simulation.context.setPeriodicBoxVectors(*inpcrd2.boxVectors)
+simulation.context.setPeriodicBoxVectors(pdb.boxVectors)
 
 # Switch off ghost waters and in sphere
 gcmc_mover.prepareGCMCSphere(simulation.context, ghosts)
