@@ -293,6 +293,9 @@ def write_conect(pdb, resname, prepi, output):
                 continue
             residue_atoms = {}  # List of atom names & IDs for this residue
             for line_j in pdb_lines[i:]:
+                # Make sure this is an atom line
+                if not any([line_j.startswith(x) for x in ['ATOM', 'HETATM']]):
+                    break
                 # Make sure the following lines correspond to this resname and resid
                 resid_j = int(line_j[22:26])
                 if resid_j != resid_i or line_j[17:21].strip() != resname:

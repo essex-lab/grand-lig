@@ -63,7 +63,7 @@ platform.setPropertyDefaultValue('Precision', 'mixed')
 simulation = Simulation(pdb.topology, system, integrator, platform)
 simulation.context.setPositions(pdb.positions)
 simulation.context.setVelocitiesToTemperature(300*kelvin)
-simulation.context.setPeriodicBoxVectors(pdb.boxVectors)
+simulation.context.setPeriodicBoxVectors(*pdb.topology.getPeriodicBoxVectors())
 
 # Switch off ghost waters and in sphere
 gcmc_mover.prepareGCMCSphere(simulation.context, ghosts)
