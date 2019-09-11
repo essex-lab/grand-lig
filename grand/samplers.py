@@ -333,23 +333,24 @@ class GrandCanonicalMonteCarloSampler(object):
                 chain = None
 
             # Loop over all atoms to find one which matches these criteria
-            for residue in self.topology.residues():
-                # Check residue name
-                if residue.name != resname:
-                    continue
-                # Check residue ID, if specified
-                if resid is not None:
-                    if residue.id != resid:
-                        continue
+            for c, chain_obj in enumerate(self.topology.chains()):
                 # Check chain, if specified
                 if chain is not None:
-                    if residue.chain != resid:
+                    if c != chain:
                         continue
-                # Loop over all atoms in this residue to find the one with the right name
-                for atom in residue.atoms():
-                    if atom.name == name:
-                        atom_indices.append(atom.index)
-                        found = True
+                for residue in chain_obj.residues():
+                    # Check residue name
+                    if residue.name != resname:
+                        continue
+                    # Check residue ID, if specified
+                    if resid is not None:
+                        if residue.id != resid:
+                            continue
+                    # Loop over all atoms in this residue to find the one with the right name
+                    for atom in residue.atoms():
+                        if atom.name == name:
+                            atom_indices.append(atom.index)
+                            found = True
             if not found:
                 self.logger.error("Atom {} of residue {}{} not found!".format(atom_dict['name'],
                                                                               atom_dict['resname'].capitalize(),
