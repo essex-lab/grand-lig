@@ -32,14 +32,12 @@ from grand.utils import random_rotation_matrix
 from grand.potential import get_lambda_values
 
 
-class GrandCanonicalMonteCarloSampler(object):
+class BaseGrandCanonicalMonteCarloSampler(object):
     """
     Base class for carrying out GCMC moves in OpenMM
     """
-    def __init__(self, system, topology, temperature, adams=None, excessChemicalPotential=-6.3*unit.kilocalories_per_mole,
-                 standardVolume=30*unit.angstroms**3, adamsShift=0.0, waterName="HOH", ghostFile="gcmc-ghost-wats.txt",
-                 referenceAtoms=None, sphereRadius=None, sphereCentre=None, log='gcmc.log', dcd=None, rst7=None,
-                 overwrite=False):
+    def __init__(self, system, topology, temperature, waterName="HOH", ghostFile="gcmc-ghost-wats.txt", log='gcmc.log',
+                 dcd=None, rst7=None, overwrite=False):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
 
@@ -51,32 +49,12 @@ class GrandCanonicalMonteCarloSampler(object):
             Topology object for the system to be simulated
         temperature : simtk.unit.Quantity
             Temperature of the simulation, must be in appropriate units
-        adams : float
-            Adams B value for the simulation (dimensionless). Default is None,
-            if None, the B value is calculated from the box volume and chemical
-            potential
-        excessChemicalPotential : simtk.unit.Quantity
-            Excess chemical potential of the system that the simulation should be in equilibrium with, default is
-            -6.3 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
-            simulation parameters.
-        standardVolume : simtk.unit.Quantity
-            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30 A^3
-        adamsShift : float
-            Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         waterName : str
             Name of the water residues. Default is 'HOH'
         ghostFile : str
             Name of a file to write out the residue IDs of ghost water molecules. This is
             useful if you want to visualise the sampling, as you can then remove these waters
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
-        referenceAtoms : list
-            List containing dictionaries describing the atoms to use as the centre of the GCMC region
-            Must contain 'name' and 'resname' as keys, and optionally 'resid' (recommended) and 'chain'
-            e.g. [{'name': 'C1', 'resname': 'LIG', 'resid': '123'}]
-        sphereRadius : simtk.unit.Quantity
-            Radius of the spherical GCMC region
-        sphereCentre : simtk.unit.Quantity
-            Coordinates around which the GCMC sohere is based
         log : str
             Log file to write out
         dcd : str
@@ -120,43 +98,11 @@ class GrandCanonicalMonteCarloSampler(object):
                 self.logger.error("GCMC must be used at constant volume - {} cannot be used!".format(force.__class__.__name__))
                 raise Exception("GCMC must be used at constant volume - {} cannot be used!".format(force.__class__.__name__))
         
-        # Calculate GCMC-specific variables
+        # Set GCMC-specific variables
         self.N = 0  # Initialise N as zero
-        # Read in sphere-specific parameters
-        self.sphere_radius = sphereRadius
-        self.sphere_centre = None
-        volume = (4 * np.pi * sphereRadius ** 3) / 3
-        if referenceAtoms is not None:
-            # Define sphere based on reference atoms
-            self.ref_atoms = self.getReferenceAtomIndices(referenceAtoms)
-            self.logger.info("GCMC sphere is based on reference atom IDs: {}".format(self.ref_atoms))
-        elif sphereCentre is not None:
-            # Define sphere based on coordinates
-            assert len(sphereCentre) == 3, "Sphere coordinates must be 3D"
-            self.sphere_centre = sphereCentre
-            self.ref_atoms = None
-            self.logger.info("GCMC sphere is fixed in space and centred on {}".format(self.sphere_centre))
-        else:
-            self.logger.error("A set of atoms or coordinates must be used to define the centre of the sphere!")
-            raise Exception("A set of atoms or coordinates must be used to define the centre of the sphere!")
-
-        self.logger.info("GCMC sphere radius is {}".format(self.sphere_radius))
-
-        # Set or calculate the Adams value for the simulation
-        if adams is not None:
-            self.B = adams
-        else:
-            # Calculate Bequil from the chemical potential and volume
-            self.B = excessChemicalPotential/self.kT + np.log(volume / standardVolume)
-            # Shift B from Bequil if necessary
-            self.B += adamsShift
-
-        self.logger.info("Simulating at an Adams (B) value of {}".format(self.B))
-
-        # Other variables
+        self.Ns = []  # Store all observed values of N
         self.n_moves = 0
         self.n_accepted = 0
-        self.Ns = []  # Store all observed values of N
         
         # Get parameters for the water model
         self.water_params = self.getWaterParameters(waterName)
@@ -207,6 +153,8 @@ class GrandCanonicalMonteCarloSampler(object):
                 self.rst = RestartReporter(rst7, 0)
         else:
             self.rst = None
+
+        self.logger.info("BaseGrandCanonicalMonteCarloSampler object initialised")
 
     def customiseForces(self):
         """
@@ -295,20 +243,328 @@ class GrandCanonicalMonteCarloSampler(object):
         
         return None
 
+    def getWaterParameters(self, water_resname="HOH"):
+        """
+        Get the non-bonded parameters for each of the atoms in the water model used
+
+        Parameters
+        ----------
+        water_resname : str
+            Name of the water residues
+    
+        Returns
+        -------
+        wat_params : list
+            List of dictionaries containing the charge, sigma and epsilon for each water atom
+        """
+        wat_params = []  # Store parameters in a list
+        for residue in self.topology.residues():
+            if residue.name == water_resname:
+                for atom in residue.atoms():
+                    # Store the parameters of each atom
+                    atom_params = self.nonbonded_force.getParticleParameters(atom.index)
+                    wat_params.append({'charge' : atom_params[0],
+                                       'sigma' : atom_params[1],
+                                       'epsilon' : atom_params[2]})
+                break  # Don't need to continue past the first instance
+        return wat_params
+
+    def getWaterResids(self, water_resname="HOH"):
+        """
+        Get the residue IDs of all water molecules in the system
+
+        Parameters
+        ----------
+        water_resname : str
+            Name of the water residues
+
+        Returns
+        -------
+        resid_list : list
+            List of residue ID numbers
+        """
+        resid_list = []
+        for resid, residue in enumerate(self.topology.residues()):
+            if residue.name == water_resname:
+                resid_list.append(resid)
+        return resid_list
+
+    def deleteGhostWaters(self, ghostResids=None, ghostFile=None):
+        """
+        Switch off nonbonded interactions involving the ghost molecules initially added
+        This function should be executed before beginning the simulation, to prevent any
+        explosions.
+
+        Parameters
+        ----------
+        context : simtk.openmm.Context
+            Current context of the simulation
+        ghostResids : list
+            List of residue IDs corresponding to the ghost waters added
+        ghostFile : str
+            File containing residue IDs of ghost waters. Will switch off those on the
+            last line. This will be useful in restarting simulations
+
+        Returns
+        -------
+        context : simtk.openmm.Context
+            Updated context, with ghost waters switched off
+        """
+        # Get a list of all ghost residue IDs supplied from list and file
+        ghost_resids = []
+        # Read in list
+        if ghostResids is not None:
+            for resid in ghostResids:
+                ghost_resids.append(resid)
+
+        # Read residues from file if needed
+        if ghostFile is not None:
+            with open(ghostFile, 'r') as f:
+                lines = f.readlines()
+                for resid in lines[-1].split(","):
+                    ghost_resids.append(int(resid))
+
+        # Add ghost residues to list of GCMC residues
+        for resid in ghost_resids:
+            self.gcmc_resids.append(resid)
+        self.gcmc_status = np.ones_like(self.gcmc_resids, dtype=np.int_)  # Store status of each GCMC water
+
+        # Switch off the interactions involving ghost waters
+        for resid, residue in enumerate(self.topology.residues()):
+            if resid in ghost_resids:
+                #  Switch off nonbonded interactions involving this water
+                atom_ids = []
+                for i, atom in enumerate(residue.atoms()):
+                    atom_ids.append(atom.index)
+                self.adjustSpecificWater(atom_ids, 0.0)
+                # Mark that this water has been switched off
+                gcmc_id = np.where(np.array(self.gcmc_resids) == resid)[0]
+                wat_id = np.where(np.array(self.water_resids) == resid)[0]
+                self.gcmc_status[gcmc_id] = 0
+                self.water_status[wat_id] = 0
+
+        # Calculate N
+        self.N = np.sum(self.gcmc_status)
+
+        return None
+
+    def adjustSpecificWater(self, atoms, new_lambda):
+        """
+        Adjust the coupling of a specific water molecule, by adjusting the lambda value
+
+        Parameters
+        ----------
+        atoms : list
+            List of the atom indices of the water to be adjusted
+        new_lambda : float
+            Value to set lambda to for this particle
+        """
+        # Get lambda values
+        lambda_vdw, lambda_ele = get_lambda_values(new_lambda)
+
+        # Loop over parameters
+        for i, atom_idx in enumerate(atoms):
+            # Obtain original parameters
+            atom_params = self.water_params[i]
+            # Update charge in NonbondedForce
+            self.nonbonded_force.setParticleParameters(atom_idx,
+                                                       charge=(lambda_ele * atom_params["charge"]),
+                                                       sigma=atom_params["sigma"],
+                                                       epsilon=abs(0.0))
+            # Update lambda in CustomNonbondedForce
+            self.custom_nb_force.setParticleParameters(atom_idx,
+                                                       [atom_params["sigma"], atom_params["epsilon"], lambda_vdw])
+
+        # Update context with new parameters
+        self.nonbonded_force.updateParametersInContext(self.context)
+        self.custom_nb_force.updateParametersInContext(self.context)
+        
+        return None
+
+    def report(self, simulation):
+        """
+        Function to report any useful data
+
+        Parameters
+        ----------
+        simulation : simtk.openmm.app.Simulation
+            Simulation object being used
+        """
+        # Calculate rounded acceptance rate and mean N
+        if self.n_moves > 0:
+            acc_rate = np.round(self.n_accepted * 100.0 / self.n_moves, 3)
+        else:
+            acc_rate = np.nan
+        mean_N = np.round(np.mean(self.Ns), 4)
+        # Print out a line describing the acceptance rate and sampling of N
+        msg = "{} move(s) completed ({} accepted ({:.4f} %)). Current N = {}. Average N = {:.3f}".format(self.n_moves,
+                                                                                                         self.n_accepted,
+                                                                                                         acc_rate,
+                                                                                                         self.N,
+                                                                                                         mean_N)
+        print(msg)
+        self.logger.info(msg)
+
+        # Write to the file describing which waters are ghosts through the trajectory
+        self.writeGhostWaterResids()
+
+        # Append to the DCD and update the restart file
+        state = simulation.context.getState(getPositions=True, getVelocities=True)
+        if self.dcd is not None:
+            self.dcd.report(simulation, state)
+        if self.rst is not None:
+            self.rst.report(simulation, state)
+
+        return None
+
+    def writeGhostWaterResids(self):
+        """
+        Write out a comma-separated list of the residue IDs of waters which are
+        non-interacting, so that they can be removed from visualisations. It is important 
+        to execute this function when writing to trajectory files, so that each line
+        in the ghost water file corresponds to a frame in the trajectory
+        """
+        # Need to write this function
+        with open(self.ghost_file, 'a') as f:
+            gcmc_ids = np.where(self.gcmc_status == 0)[0]
+            ghost_resids = [self.gcmc_resids[id] for id in gcmc_ids]
+            if len(ghost_resids) > 0:
+                f.write("{}".format(ghost_resids[0]))
+                if len(ghost_resids) > 1:
+                    for resid in ghost_resids[1:]:
+                        f.write(",{}".format(resid))
+            f.write("\n")
+
+        return None
+
+    def move(self, context, n=1):
+        """
+        Returns an error if someone attempts to execute a move with the parent object
+        Parameters are designed to match the signature of the inheriting classes
+
+        Parameters
+        ----------
+        context : simtk.openmm.Context
+            Current context of the simulation
+        n : int
+            Number of moves to execute
+        """
+        error_msg = ("GrandCanonicalMonteCarloSampler is not designed to sample! Use StandardGCMCSampler or "
+                     "NonequilibriumGCMCSampler")
+        self.logger.error(error_msg)
+        raise NotImplementedError(error_msg)
+
+########################################################################################################################
+
+class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
+    """
+    Base class for carrying out GCMC moves in OpenMM, using a GCMC sphere to sample the system
+    """
+    def __init__(self, system, topology, temperature, adams=None,
+                 excessChemicalPotential=-6.3 * unit.kilocalories_per_mole,
+                 standardVolume=30 * unit.angstroms ** 3, adamsShift=0.0, waterName="HOH",
+                 ghostFile="gcmc-ghost-wats.txt",
+                 referenceAtoms=None, sphereRadius=None, sphereCentre=None, log='gcmc.log', dcd=None, rst7=None,
+                 overwrite=False):
+        """
+        Initialise the object to be used for sampling water insertion/deletion moves
+
+        Parameters
+        ----------
+        system : simtk.openmm.System
+            System object to be used for the simulation
+        topology : simtk.openmm.app.Topology
+            Topology object for the system to be simulated
+        temperature : simtk.unit.Quantity
+            Temperature of the simulation, must be in appropriate units
+        adams : float
+            Adams B value for the simulation (dimensionless). Default is None,
+            if None, the B value is calculated from the box volume and chemical
+            potential
+        excessChemicalPotential : simtk.unit.Quantity
+            Excess chemical potential of the system that the simulation should be in equilibrium with, default is
+            -6.3 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
+            simulation parameters.
+        standardVolume : simtk.unit.Quantity
+            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30 A^3
+        adamsShift : float
+            Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
+        waterName : str
+            Name of the water residues. Default is 'HOH'
+        ghostFile : str
+            Name of a file to write out the residue IDs of ghost water molecules. This is
+            useful if you want to visualise the sampling, as you can then remove these waters
+            from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
+        referenceAtoms : list
+            List containing dictionaries describing the atoms to use as the centre of the GCMC region
+            Must contain 'name' and 'resname' as keys, and optionally 'resid' (recommended) and 'chain'
+            e.g. [{'name': 'C1', 'resname': 'LIG', 'resid': '123'}]
+        sphereRadius : simtk.unit.Quantity
+            Radius of the spherical GCMC region
+        sphereCentre : simtk.unit.Quantity
+            Coordinates around which the GCMC sohere is based
+        log : str
+            Log file to write out
+        dcd : str
+            Name of the DCD file to write the system out to
+        rst7 : str
+            Name of the AMBER restart file to write out
+        overwrite : bool
+            Overwrite any data already present
+        """
+        # Initialise base
+        BaseGrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, waterName=waterName,
+                                                     ghostFile=ghostFile, log=log, dcd=dcd, rst7=rst7,
+                                                     overwrite=overwrite)
+
+        # Initialise variables specific to the GCMC sphere
+        self.sphere_radius = sphereRadius
+        self.sphere_centre = None
+        volume = (4 * np.pi * sphereRadius ** 3) / 3
+
+        if referenceAtoms is not None:
+            # Define sphere based on reference atoms
+            self.ref_atoms = self.getReferenceAtomIndices(referenceAtoms)
+            self.logger.info("GCMC sphere is based on reference atom IDs: {}".format(self.ref_atoms))
+        elif sphereCentre is not None:
+            # Define sphere based on coordinates
+            assert len(sphereCentre) == 3, "Sphere coordinates must be 3D"
+            self.sphere_centre = sphereCentre
+            self.ref_atoms = None
+            self.logger.info("GCMC sphere is fixed in space and centred on {}".format(self.sphere_centre))
+        else:
+            self.logger.error("A set of atoms or coordinates must be used to define the centre of the sphere!")
+            raise Exception("A set of atoms or coordinates must be used to define the centre of the sphere!")
+
+        self.logger.info("GCMC sphere radius is {}".format(self.sphere_radius))
+
+        # Set or calculate the Adams value for the simulation
+        if adams is not None:
+            self.B = adams
+        else:
+            # Calculate Bequil from the chemical potential and volume
+            self.B = excessChemicalPotential / self.kT + np.log(volume / standardVolume)
+            # Shift B from Bequil if necessary
+            self.B += adamsShift
+
+        self.logger.info("Simulating at an Adams (B) value of {}".format(self.B))
+
+        self.logger.info("GCMCSphereSampler object initialised")
+
     def getReferenceAtomIndices(self, ref_atoms):
         """
         Get the index of the atom used to define the centre of the GCMC box
-        
+
         Notes
         -----
         Should make this more efficient at some stage.
-        
+
         Parameters
         ----------
         ref_atoms : list
             List of dictionaries containing the atom name, residue name and (optionally) residue ID and chain,
             as marked by keys 'name', 'resname', 'resid' and 'chain'
-        
+
         Returns
         -------
         atom_indices : list
@@ -422,9 +678,9 @@ class GrandCanonicalMonteCarloSampler(object):
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
         self.positions = deepcopy(state.getPositions(asNumpy=True))
         box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
-        self.simulation_box = np.array([box_vectors[0,0]._value,
-                                        box_vectors[1,1]._value,
-                                        box_vectors[2,2]._value]) * unit.nanometer
+        self.simulation_box = np.array([box_vectors[0, 0]._value,
+                                        box_vectors[1, 1]._value,
+                                        box_vectors[2, 2]._value]) * unit.nanometer
 
         # Calculate the centre of the GCMC sphere, if using reference atoms
         if self.ref_atoms is not None:
@@ -438,123 +694,18 @@ class GrandCanonicalMonteCarloSampler(object):
                 ox_index = atom.index
                 break
 
-            vector = self.positions[ox_index]-self.sphere_centre
+            vector = self.positions[ox_index] - self.sphere_centre
             # Correct PBCs of this vector - need to make this part cleaner
             for i in range(3):
                 if vector[i] >= 0.5 * self.simulation_box[i]:
                     vector[i] -= self.simulation_box[i]
                 elif vector[i] <= -0.5 * self.simulation_box[i]:
                     vector[i] += self.simulation_box[i]
-            if np.linalg.norm(vector)*unit.nanometer <= self.sphere_radius:
+            if np.linalg.norm(vector) * unit.nanometer <= self.sphere_radius:
                 self.gcmc_resids.append(resid)  # Add to list of GCMC waters
 
         # Delete ghost waters
         self.deleteGhostWaters(ghostResids)
-        return None
-
-    def getWaterParameters(self, water_resname="HOH"):
-        """
-        Get the non-bonded parameters for each of the atoms in the water model used
-
-        Parameters
-        ----------
-        water_resname : str
-            Name of the water residues
-    
-        Returns
-        -------
-        wat_params : list
-            List of dictionaries containing the charge, sigma and epsilon for each water atom
-        """
-        wat_params = []  # Store parameters in a list
-        for residue in self.topology.residues():
-            if residue.name == water_resname:
-                for atom in residue.atoms():
-                    # Store the parameters of each atom
-                    atom_params = self.nonbonded_force.getParticleParameters(atom.index)
-                    wat_params.append({'charge' : atom_params[0],
-                                       'sigma' : atom_params[1],
-                                       'epsilon' : atom_params[2]})
-                break  # Don't need to continue past the first instance
-        return wat_params
-
-    def getWaterResids(self, water_resname="HOH"):
-        """
-        Get the residue IDs of all water molecules in the system
-
-        Parameters
-        ----------
-        water_resname : str
-            Name of the water residues
-
-        Returns
-        -------
-        resid_list : list
-            List of residue ID numbers
-        """
-        resid_list = []
-        for resid, residue in enumerate(self.topology.residues()):
-            if residue.name == water_resname:
-                resid_list.append(resid)
-        return resid_list
-
-    def deleteGhostWaters(self, ghostResids=None, ghostFile=None):
-        """
-        Switch off nonbonded interactions involving the ghost molecules initially added
-        This function should be executed before beginning the simulation, to prevent any
-        explosions.
-
-        Parameters
-        ----------
-        context : simtk.openmm.Context
-            Current context of the simulation
-        ghostResids : list
-            List of residue IDs corresponding to the ghost waters added
-        ghostFile : str
-            File containing residue IDs of ghost waters. Will switch off those on the
-            last line. This will be useful in restarting simulations
-
-        Returns
-        -------
-        context : simtk.openmm.Context
-            Updated context, with ghost waters switched off
-        """
-        # Get a list of all ghost residue IDs supplied from list and file
-        ghost_resids = []
-        # Read in list
-        if ghostResids is not None:
-            for resid in ghostResids:
-                ghost_resids.append(resid)
-
-        # Read residues from file if needed
-        if ghostFile is not None:
-            with open(ghostFile, 'r') as f:
-                lines = f.readlines()
-                for resid in lines[-1].split(","):
-                    ghost_resids.append(int(resid))
-
-        # Add ghost residues to list of GCMC residues
-        for resid in ghost_resids:
-            self.gcmc_resids.append(resid)
-        self.gcmc_status = np.ones_like(self.gcmc_resids, dtype=np.int_)  # Store status of each GCMC water
-
-        # Switch off the interactions involving ghost waters
-        for resid, residue in enumerate(self.topology.residues()):
-            if resid in ghost_resids:
-                #  Switch off nonbonded interactions involving this water
-                atom_ids = []
-                for i, atom in enumerate(residue.atoms()):
-                    atom_ids.append(atom.index)
-                self.adjustSpecificWater(atom_ids, 0.0)
-                # Mark that this water has been switched off
-                gcmc_id = np.where(np.array(self.gcmc_resids) == resid)[0]
-                wat_id = np.where(np.array(self.water_resids) == resid)[0]
-                self.gcmc_status[gcmc_id] = 0
-                self.water_status[wat_id] = 0
-
-        # Calculate N
-        self.N = np.sum(self.gcmc_status)
-
         return None
 
     def deleteWatersInGCMCSphere(self, context=None):
@@ -563,31 +714,31 @@ class GrandCanonicalMonteCarloSampler(object):
         This may be useful the plan is to generate a water distribution for this
         region from scratch. If so, it would be recommended to interleave the GCMC
         sampling with coordinate propagation, as this will converge faster.
-        
+
         Parameters
         ----------
         context : simtk.openmm.Context
             Current context of the system. Only needs to be supplied if the context
             has changed since the last update
-        
+
         Returns
         -------
         context : simtk.openmm.Context
             Updated context after deleting the relevant waters
         """
-        # Read in positions of the context and update GCMC box
+        #  Read in positions of the context and update GCMC box
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
         self.positions = deepcopy(state.getPositions(asNumpy=True))
         # Loop over all residues to find those of interest
         for resid, residue in enumerate(self.topology.residues()):
             if resid not in self.gcmc_resids:
                 continue  # Only concerned with GCMC waters
-            gcmc_id = np.where(np.array(self.gcmc_resids) == resid)[0][0]   # Position in list of GCMC waters
-            wat_id = np.where(np.array(self.water_resids) == resid)[0][0]  # Position in list of all waters
+            gcmc_id = np.where(np.array(self.gcmc_resids) == resid)[0][0]  # Position in list of GCMC waters
+            wat_id = np.where(np.array(self.water_resids) == resid)[0][0]  #  Position in list of all waters
             if self.gcmc_status[gcmc_id] == 1:
                 atom_ids = []
                 for atom in residue.atoms():
-                    # Switch off interactions involving the atoms of this residue
+                    #  Switch off interactions involving the atoms of this residue
                     atom_ids.append(atom.index)
                 self.adjustSpecificWater(atom_ids, 0.0)
                 # Update relevant parameters
@@ -604,10 +755,10 @@ class GrandCanonicalMonteCarloSampler(object):
         """
         # Get the sphere centre, if using reference atoms, otherwise this will be fine
         if self.ref_atoms is not None:
-            #self.sphere_centre = np.zeros(3) * unit.nanometers
-            #for atom in self.ref_atoms:
+            # self.sphere_centre = np.zeros(3) * unit.nanometers
+            # for atom in self.ref_atoms:
             #    self.sphere_centre += self.positions[atom]
-            #self.sphere_centre /= len(self.ref_atoms)
+            # self.sphere_centre /= len(self.ref_atoms)
             self.getSphereCentre()
 
         # Update gcmc_resids and gcmc_status
@@ -643,8 +794,8 @@ class GrandCanonicalMonteCarloSampler(object):
                 elif vector[i] <= -0.5 * self.simulation_box[i]:
                     vector[i] += self.simulation_box[i]
             # Update lists if this water is in the sphere
-            if np.linalg.norm(vector)*unit.nanometer <= self.sphere_radius:
-                gcmc_resids.append(resid)  # Add to list of GCMC waters
+            if np.linalg.norm(vector) * unit.nanometer <= self.sphere_radius:
+                gcmc_resids.append(resid)  #  Add to list of GCMC waters
                 gcmc_status.append(self.water_status[wat_id])
 
         # Update lists
@@ -654,114 +805,9 @@ class GrandCanonicalMonteCarloSampler(object):
 
         return None
 
-    def adjustSpecificWater(self, atoms, new_lambda):
-        """
-        Adjust the coupling of a specific water molecule, by adjusting the lambda value
+########################################################################################################################
 
-        Parameters
-        ----------
-        atoms : list
-            List of the atom indices of the water to be adjusted
-        new_lambda : float
-            Value to set lambda to for this particle
-        """
-        # Get lambda values
-        lambda_vdw, lambda_ele = get_lambda_values(new_lambda)
-
-        # Loop over parameters
-        for i, atom_idx in enumerate(atoms):
-            # Obtain original parameters
-            atom_params = self.water_params[i]
-            # Update charge in NonbondedForce
-            self.nonbonded_force.setParticleParameters(atom_idx,
-                                                       charge=(lambda_ele * atom_params["charge"]),
-                                                       sigma=atom_params["sigma"],
-                                                       epsilon=abs(0.0))
-            # Update lambda in CustomNonbondedForce
-            self.custom_nb_force.setParticleParameters(atom_idx,
-                                                       [atom_params["sigma"], atom_params["epsilon"], lambda_vdw])
-
-        # Update context with new parameters
-        self.nonbonded_force.updateParametersInContext(self.context)
-        self.custom_nb_force.updateParametersInContext(self.context)
-        
-        return None
-
-    def report(self, simulation):
-        """
-        Function to report any useful data
-
-        Parameters
-        ----------
-        simulation : simtk.openmm.app.Simulation
-            Simulation object being used
-        """
-        # Calculate rounded acceptance rate and mean N
-        if self.n_moves > 0:
-            acc_rate = np.round(self.n_accepted * 100.0 / self.n_moves, 3)
-        else:
-            acc_rate = np.nan
-        mean_N = np.round(np.mean(self.Ns), 4)
-        # Print out a line describing the acceptance rate and sampling of N
-        msg = "{} move(s) completed ({} accepted ({:.4f} %)). Current N = {}. Average N = {:.3f}".format(self.n_moves,
-                                                                                                         self.n_accepted,
-                                                                                                         acc_rate,
-                                                                                                         self.N,
-                                                                                                         mean_N)
-        print(msg)
-        self.logger.info(msg)
-
-        # Write to the file describing which waters are ghosts through the trajectory
-        self.writeGhostWaterResids()
-
-        # Append to the DCD and update the restart file
-        state = simulation.context.getState(getPositions=True, getVelocities=True)
-        if self.dcd is not None:
-            self.dcd.report(simulation, state)
-        if self.rst is not None:
-            self.rst.report(simulation, state)
-
-        return None
-
-    def writeGhostWaterResids(self):
-        """
-        Write out a comma-separated list of the residue IDs of waters which are
-        non-interacting, so that they can be removed from visualisations. It is important 
-        to execute this function when writing to trajectory files, so that each line
-        in the ghost water file corresponds to a frame in the trajectory
-        """
-        # Need to write this function
-        with open(self.ghost_file, 'a') as f:
-            gcmc_ids = np.where(self.gcmc_status == 0)[0]
-            ghost_resids = [self.gcmc_resids[id] for id in gcmc_ids]
-            if len(ghost_resids) > 0:
-                f.write("{}".format(ghost_resids[0]))
-                if len(ghost_resids) > 1:
-                    for resid in ghost_resids[1:]:
-                        f.write(",{}".format(resid))
-            f.write("\n")
-
-        return None
-
-    def move(self, context, n=1):
-        """
-        Returns an error if someone attempts to execute a move with the parent object
-        Parameters are designed to match the signature of the inheriting classes
-
-        Parameters
-        ----------
-        context : simtk.openmm.Context
-            Current context of the simulation
-        n : int
-            Number of moves to execute
-        """
-        error_msg = ("GrandCanonicalMonteCarloSampler is not designed to sample! Use StandardGCMCSampler or "
-                     "NonequilibriumGCMCSampler")
-        self.logger.error(error_msg)
-        raise NotImplementedError(error_msg)
-
-
-class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
+class StandardGCMCSphereSampler(GCMCSphereSampler):
     """
     Class to carry out instantaneous GCMC moves in OpenMM
     """
@@ -819,17 +865,15 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
             Indicates whether to overwrite already existing data
         """
         # Initialise base class - don't need any more initialisation for the instantaneous sampler
-        GrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, adams=adams,
-                                                 excessChemicalPotential=excessChemicalPotential,
-                                                 standardVolume=standardVolume, adamsShift=adamsShift,
-                                                 waterName=waterName, ghostFile=ghostFile,
-                                                 referenceAtoms=referenceAtoms, sphereRadius=sphereRadius,
-                                                 sphereCentre=sphereCentre, log=log, dcd=dcd, rst7=rst7,
-                                                 overwrite=overwrite)
+        GCMCSphereSampler.__init__(self, system, topology, temperature, adams=adams,
+                                   excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
+                                   adamsShift=adamsShift, waterName=waterName, ghostFile=ghostFile,
+                                   referenceAtoms=referenceAtoms, sphereRadius=sphereRadius, sphereCentre=sphereCentre,
+                                   log=log, dcd=dcd, rst7=rst7, overwrite=overwrite)
 
         self.energy = None  # Need to save energy
         self.acceptance_probabilities = []  # Store acceptance probabilities
-        self.logger.info("StandardGCMCSampler object initialised")
+        self.logger.info("StandardGCMCSphereSampler object initialised")
 
     def move(self, context, n=1):
         """
@@ -975,8 +1019,9 @@ class StandardGCMCSampler(GrandCanonicalMonteCarloSampler):
 
         return None
 
+########################################################################################################################
 
-class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
+class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
     """
     Class to carry out GCMC moves in OpenMM, using nonequilibrium candidate Monte Carlo (NCMC)
     to boost acceptance rates
@@ -1043,19 +1088,20 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             Indicates whether to overwrite already existing data
         """
         # Initialise base class
-        GrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, adams=adams,
-                                                 excessChemicalPotential=excessChemicalPotential,
-                                                 standardVolume=standardVolume, adamsShift=adamsShift,
-                                                 waterName=waterName, ghostFile=ghostFile,
-                                                 referenceAtoms=referenceAtoms, sphereRadius=sphereRadius,
-                                                 sphereCentre=sphereCentre, log=log, dcd=dcd, rst7=rst7,
-                                                 overwrite=overwrite)
+        GCMCSphereSampler.__init__(self, system, topology, temperature, adams=adams,
+                                   excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
+                                   adamsShift=adamsShift, waterName=waterName, ghostFile=ghostFile,
+                                   referenceAtoms=referenceAtoms, sphereRadius=sphereRadius, sphereCentre=sphereCentre,
+                                   log=log, dcd=dcd, rst7=rst7, overwrite=overwrite)
 
         self.velocities = None  # Need to store velocities for this type of sampling
 
         # Load in extra NCMC variables
         self.n_pert_steps = nPertSteps
         self.n_prop_steps = nPropSteps
+        protocol_time = self.n_pert_steps * self.n_prop_steps * 2.0 * unit.femtoseconds
+        self.logger.info("Each NCMC move will be executed over a total of {}".format(protocol_time))
+
         self.works = []  # Store work values of moves
         self.acceptance_probabilities = []  # Store acceptance probabilities
         self.n_explosions = 0
@@ -1073,7 +1119,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
         # Set the compound integrator to the MD integrator
         self.compound_integrator.setCurrentIntegrator(0)
 
-        self.logger.info("NonequilibriumGCMCSampler object initialised")
+        self.logger.info("NonequilibriumGCMCSphereSampler object initialised")
 
     def move(self, context, n=1):
         """
@@ -1333,4 +1379,7 @@ class NonequilibriumGCMCSampler(GrandCanonicalMonteCarloSampler):
             self.updateGCMCSphere(state)
 
         return None
+
+########################################################################################################################
+
 
