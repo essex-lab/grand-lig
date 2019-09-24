@@ -17,8 +17,7 @@ from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
 
-from samplers import StandardGCMCSampler
-
+import samplers
 
 def get_lambda_values(lambda_in):
     """
@@ -86,7 +85,7 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
     integrator = openmmtools.integrators.BAOABIntegrator(temperature, 1.0/picosecond, 0.002*picoseconds)
 
     # Define a GCMC sampler object, just to allow easy switching of a water - won't use this to sample
-    gcmc_mover = StandardGCMCSampler(system=system, topology=topology,
+    gcmc_mover = samplers.BaseGrandCanonicalMonteCarloSampler(system=system, topology=topology,
                                      temperature=temperature,
                                      log='dG-{}l-{}sa-{}st.log'.format(n_lambdas, n_samples, n_equil),
                                      sphereCentre=np.array([0, 0, 0])*angstrom,
