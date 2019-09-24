@@ -1452,6 +1452,43 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
 
         self.logger.info("GCMCSystemSampler object initialised")
 
+    def initialise(self, context, ghostResids):
+        """
+        Prepare the GCMC sphere for simulation by loading the coordinates from a
+        Context object.
+
+        Parameters
+        ----------
+        context : simtk.openmm.Context
+            Current context of the simulation
+        ghostResids : list
+            List of residue IDs corresponding to the ghost waters added
+        """
+        if len(ghostResids) == 0 or ghostResids is None:
+            self.logger.error("No ghost waters given! Cannot insert waters without any ghosts!")
+            raise Exception("No ghost waters given! Cannot insert waters without any ghosts!")
+        # Load context into sampler
+        self.context = context
+
+        # Load in positions and box vectors from context
+        state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
+        self.positions = deepcopy(state.getPositions(asNumpy=True))
+        box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
+        self.simulation_box = np.array([box_vectors[0, 0]._value,
+                                        box_vectors[1, 1]._value,
+                                        box_vectors[2, 2]._value]) * unit.nanometer
+
+        # Delete ghost waters
+        self.deleteGhostWaters(ghostResids)
+
+        # Count N
+        self.N = np.sum(self.water_status)
+
+        self.gcmc_resids = deepcopy(self.water_resids)
+        self.gcmc_status = deepcopy(self.water_status)
+
+        return None
+
 
 ########################################################################################################################
 
@@ -1512,43 +1549,6 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         self.energy = None  # Need to save energy
         self.acceptance_probabilities = []  # Store acceptance probabilities
         self.logger.info("StandardGCMCSystemSampler object initialised")
-
-    def initialise(self, context, ghostResids):
-        """
-        Prepare the GCMC sphere for simulation by loading the coordinates from a
-        Context object.
-
-        Parameters
-        ----------
-        context : simtk.openmm.Context
-            Current context of the simulation
-        ghostResids : list
-            List of residue IDs corresponding to the ghost waters added
-        """
-        if len(ghostResids) == 0 or ghostResids is None:
-            self.logger.error("No ghost waters given! Cannot insert waters without any ghosts!")
-            raise Exception("No ghost waters given! Cannot insert waters without any ghosts!")
-        # Load context into sampler
-        self.context = context
-
-        # Load in positions and box vectors from context
-        state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
-        self.positions = deepcopy(state.getPositions(asNumpy=True))
-        box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
-        self.simulation_box = np.array([box_vectors[0, 0]._value,
-                                        box_vectors[1, 1]._value,
-                                        box_vectors[2, 2]._value]) * unit.nanometer
-
-        # Delete ghost waters
-        self.deleteGhostWaters(ghostResids)
-
-        # Count N
-        self.N = np.sum(self.water_status)
-
-        self.gcmc_resids = deepcopy(self.water_resids)
-        self.gcmc_status = deepcopy(self.water_status)
-
-        return None
 
     def move(self, context, n=1):
         """
