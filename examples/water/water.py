@@ -33,15 +33,15 @@ system = ff.createSystem(pdb.topology,
                          constraints=HBonds)
 
 # Create GCMC sampler object
-gcmc_mover = grand.samplers.StandardGCMCSampler(system=system,
-                                                topology=pdb.topology,
-                                                temperature=300*kelvin,
-                                                sphereRadius=2*angstroms,
-                                                sphereCentre=[12.5, 12.5, 12.5]*angstroms,
-                                                log='water-gcmc.log',
-                                                dcd='water-raw.dcd',
-                                                rst7='water-gcmc.rst7',
-                                                overwrite=False)
+gcmc_mover = grand.samplers.StandardGCMCSphereSampler(system=system,
+                                                      topology=pdb.topology,
+                                                      temperature=300*kelvin,
+                                                      sphereRadius=2*angstroms,
+                                                      sphereCentre=[12.5, 12.5, 12.5]*angstroms,
+                                                      log='water-gcmc.log',
+                                                      dcd='water-raw.dcd',
+                                                      rst7='water-gcmc.rst7',
+                                                      overwrite=False)
 
 # Langevin integrator
 integrator = BAOABIntegrator(300*kelvin, 1.0/picosecond, 0.002*picoseconds)
@@ -55,7 +55,7 @@ simulation.context.setVelocitiesToTemperature(300*kelvin)
 simulation.context.setPeriodicBoxVectors(*pdb.topology.getPeriodicBoxVectors())
 
 # Switch off ghost waters and in sphere
-gcmc_mover.prepareGCMCSphere(simulation.context, ghosts)
+gcmc_mover.initialise(simulation.context, ghosts)
 gcmc_mover.deleteWatersInGCMCSphere()
 
 # Equilibrate water distribution
