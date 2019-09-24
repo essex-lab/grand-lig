@@ -51,142 +51,82 @@ def get_lambda_values(lambda_in):
     return lambda_vdw, lambda_ele
 
 
-def calc_mu(model, box_len, cutoff, switch_dist, nb_method=PME, temperature=300*kelvin, sample_time=50*picoseconds,
-            n_lambdas=16, n_samples=50, equil_time=1*nanosecond, dt=2*femtoseconds, integrator=None, platform=None,
-            args={}):
+def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas, n_samples, n_equil):
     """
-    Calculate the hydration free energy of water for a particular set of parameters
+    Calculate the excess chemical potential of a water molecule in a given system,
+    as the hydration free energy, using MBAR
 
     Parameters
     ----------
-    model : str
-        Name of the water model to be simulated
-    box_len : simtk.unit.Quantity
-        Length of the water box
-    cutoff : simtk.unit.Quantity
-        Cutoff to be used
-    switch_dist : simtk.unit.Quantity
-        Distance at which to start switching Lennard-Jones interactions
-    nb_method : (any suitable long-range nonbonded method)
-        Method to use for long range interactions, default is PME
-    temperature : simtk.unit.Quantity
-        Temperature to run the simulation at, if None, will run at 300 K
-    sample_time : simtk.unit.Quantity
-        Amount of time to simulate for each sample of each lambda window. Each window
-        will be simulated for n_samples*lambda_time
-    n_lambdas : int
-        Number of lambda values to simulate
-    n_samples : int
-        Number of samples to collect for each lambda value
-    equil_time : simtk.unit.Quantity
-        Time to equilibrate the system at each lambda window
-    dt : simtk.unit.Quantity
-        Timestep value
-    integrator : (valid OpenMM integrator)
-        Any valid OpenMM Integrator to use for the simulation. If None, will use the
-        plain LangevinIntegrator
-    platform : simtk.openmm.Platform
-        OpenMM Platform object to use for the simulation, if None, will use CPU
-    args : dict
-        Any additional arguments to pass into creating the WaterBox object
+    system : 
+        System of interest
+    topology : 
+        Topology of the system
+    positions : 
+        Initial positions for the simulation
+    box_vectors : 
+        Periodic box vectors for the system
+    temperature :
+        Temperature of the simulation
+    n_lambdas : 
+        Number of lambda values
+    n_samples : 
+        Number of energy sampels to collect at each lambda value
+    n_equil : 
+        Number of MD steps to run between each sample
 
     Returns
     -------
-    dG : simtk.unit.Quantity
-        Calculated hydration free energy of water
+    dG :
+        Calculated free energy value
     """
-    kT = AVOGADRO_CONSTANT_NA * BOLTZMANN_CONSTANT_kB * temperature
+    # Use the BAOAB integrator to sample the equilibrium distribution
+    integrator = openmmtools.integrators.BAOABIntegrator(temperature, 1.0/picosecond, 0.002*picoseconds)
 
-    #print('Building water box...')
-    # Load water box from openmmtools.testsystems
-    water_box = openmmtools.testsystems.WaterBox(box_edge=box_len, cutoff=cutoff, model=model,
-                                                 switch_width=cutoff-switch_dist, nonbondedMethod=nb_method,
-                                                 dispersion_correction=False, **args)
-    # Add a barostat to the system
-    water_box.system.addForce(MonteCarloBarostat(1*bar, temperature, 25))
+    # Define a GCMC sampler object, just to allow easy switching of a water - won't use this to sample
+    gcmc_mover = grand.samplers.StandardGCMCSampler(system=system,
+                                                    topology=topology,
+                                                    temperature=temperature,
+                                                    log='dG-{}l-{}sa-{}st.log'.format(n_lambdas, n_samples, n_equil),
+                                                    sphereCentre=np.array([0, 0, 0])*angstrom,
+                                                    sphereRadius=4*angstroms,
+                                                    ghostFile='ghosts-gcmc.txt',
+                                                    overwrite=True)
 
-    # Get the atom IDs of one water residue
-    alchemical_ids = []
-    for water in water_box.topology.residues():
-        for atom in water.atoms():
-            alchemical_ids.append(atom.index)
-        break
-    #print('Alchemical atoms: {}'.format(alchemical_ids))
-    
-    #harmonic = CustomExternalForce("k*((x-x0)^2 + (y-y0)^2 + (z-z0)^2)")
-    #harmonic.addPerParticleParameter("k")
-    #harmonic.addPerParticleParameter("x0")
-    #harmonic.addPerParticleParameter("y0")
-    #harmonic.addPerParticleParameter("z0")
-    #x0 = water_box.positions[alchemical_ids[0], 0]
-    #y0 = water_box.positions[alchemical_ids[0], 1]
-    #z0 = water_box.positions[alchemical_ids[0], 2]
-    #harmonic.addParticle(alchemical_ids[0], [8.4, x0, y0, z0])
-    #water_box.system.addForce(harmonic)
+    # IDs of the atoms to switch on/off - will need to make this more generalisable later...
+    wat_ids = [0, 1, 2]
 
-    # Create alchemical system
-    alchemical_region = openmmtools.alchemy.AlchemicalRegion(alchemical_atoms=alchemical_ids,
-                                                             annihilate_sterics=True,
-                                                             annihilate_electrostatics=True)
-    factory = openmmtools.alchemy.AbsoluteAlchemicalFactory()
-    alchemical_system = factory.create_alchemical_system(water_box.system, alchemical_region)
-    alchemical_state = openmmtools.alchemy.AlchemicalState.from_system(alchemical_system)
+    # Define the platform - will need to generalise later...
+    platform = Platform.getPlatformByName('CUDA')
+    platform.setPropertyDefaultValue('Precision', 'mixed')
 
-    # Check integrator and platform, then create Simulation object
-    if integrator is None:
-        integrator = LangevinIntegrator(temperature, 1.0/picosecond, dt)
-    if platform is None:
-        platform = Platform.getPlatformByName('CPU')
+    # Create a simulation object
+    simulation = Simulation(topology, system, integrator, platform)
+    simulation.context.setPositions(positions)
+    simulation.context.setVelocitiesToTemperature(temperature)
+    simulation.context.setPeriodicBoxVectors(*box_vectors)
 
-    #simulation = Simulation(water_box.topology, alchemical_system, integrator, platform)
-    context = Context(alchemical_system, integrator, platform)
+    # Make sure the GCMC sampler has access to the Context
+    gcmc_mover.context = simulation.context
 
-    # Update context
-    #simulation.context.setPositions(water_box.positions)
-    #simulation.context.setVelocitiesToTemperature(temperature)
-    #simulation.context.setPeriodicBoxVectors(box_vectors)
-    context.setPositions(water_box.positions)
-    context.setVelocitiesToTemperature(temperature)
-
-    # Minimise system
-    #print("Minimising system...")
-    LocalEnergyMinimizer.minimize(context)
-
-    # Get all variables for the free energy calculation ready
-    equil_steps = int(round(equil_time / dt))  # Number of equilibration steps
-    sample_steps = int(round(sample_time / dt))  # Number of sampling MD steps
     lambdas = np.linspace(1.0, 0.0, n_lambdas)  # Lambda values to use
     U = np.zeros((n_lambdas, n_lambdas, n_samples))  # Energy values calculated
 
     # Simulate the system at each lambda window
     for i in range(n_lambdas):
         # Set lambda values
-        #print("Simulating lambda = {}".format(np.round(lambdas[i], 4)))
-        alchemical_state.lambda_sterics, alchemical_state.lambda_electrostatics = get_lambda_values(lambdas[i])
-        alchemical_state.apply_to_context(context)
-        #print('vdW = {:.3f},  Ele = {:.3f}'.format(alchemical_state.lambda_sterics,
-        #                                           alchemical_state.lambda_electrostatics))
-        # Equilibrate system at this window
-        integrator.step(equil_steps)
+        gcmc_mover.adjustSpecificWater(wat_ids, lambdas[i])
         for k in range(n_samples):
-            #print("Collecting sample {}".format(k))
             # Run production MD
-            integrator.step(sample_steps)
+            simulation.step(n_equil)
             # Calculate energy at each lambda value
             for j in range(n_lambdas):
                 # Set lambda value
-                alchemical_state.lambda_sterics = get_lambda_values(lambdas[j])[0]
-                alchemical_state.lambda_electrostatics = get_lambda_values(lambdas[j])[1]
-                alchemical_state.apply_to_context(context)
+                gcmc_mover.adjustSpecificWater(wat_ids, lambdas[j])
                 # Calculate energy
-                U[i, j, k] = context.getState(getEnergy=True).getPotentialEnergy() / kT
+                U[i, j, k] = simulation.context.getState(getEnergy=True).getPotentialEnergy() / gcmc_mover.kT
             # Reset lambda value
-            alchemical_state.lambda_sterics = get_lambda_values(lambdas[i])[0]
-            alchemical_state.lambda_electrostatics = get_lambda_values(lambdas[i])[1]
-            #print('vdW = {}'.format(alchemical_state.lambda_sterics))
-            #print('Ele = {}'.format(alchemical_state.lambda_electrostatics))
-            alchemical_state.apply_to_context(context)
-    #print('U = {}'.format(U))
+            gcmc_mover.adjustSpecificWater(wat_ids, lambdas[i])
 
     # Calculate equilibration & number of uncorrelated samples
     N_k = np.zeros(n_lambdas, np.int32)
@@ -196,14 +136,13 @@ def calc_mu(model, box_len, cutoff, switch_dist, nb_method=PME, temperature=300*
         N_k[i] = len(indices)
         U[i, :, 0:N_k[i]] = U[i, :, indices].T
 
-    #print('N = {}'.format(N_k))
-
     # Calculate free energy differences
     mbar = pymbar.MBAR(U, N_k)
     [deltaG_ij, ddeltaG_ij, theta_ij] = mbar.getFreeEnergyDifferences()
     dG = -deltaG_ij[0, -1]
 
     # Convert free energy to kcal/mol
-    dG = (dG * kT).in_units_of(kilocalorie_per_mole)
+    dG = (dG * gcmc_mover.kT).in_units_of(kilocalorie_per_mole)
 
     return dG
+
