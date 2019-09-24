@@ -72,7 +72,7 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
     n_lambdas : int
         Number of lambda values
     n_samples : int
-        Number of energy sampels to collect at each lambda value
+        Number of energy samples to collect at each lambda value
     n_equil : int
         Number of MD steps to run between each sample
 
@@ -145,3 +145,65 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
     dG = (dG * gcmc_mover.kT).in_units_of(kilocalorie_per_mole)
 
     return dG
+
+
+def calc_std_volume(system, topology, positions, box_vectors, temperature, n_samples, n_equil):
+    """
+    Calculate the standard volume of a given system and parameters, this is the effective volume
+    of a single molecule
+
+    Parameters
+    ----------
+    system : simtk.openmm.System
+        System of interest
+    topology : simtk.openmm.app.Topology
+        Topology of the system
+    positions : simtk.unit.Quantity
+        Initial positions for the simulation
+    box_vectors : simtk.unit.Quantity
+        Periodic box vectors for the system
+    temperature : simtk.unit.Quantity
+        Temperature of the simulation
+    n_samples : int
+        Number of volume samples to collect
+    n_equil : int
+        Number of MD steps to run between each sample
+
+    Returns
+    -------
+    std_volume : simtk.unit.Quantity
+        Calculated free energy value
+    """
+    # Use the BAOAB integrator to sample the equilibrium distribution
+    integrator = openmmtools.integrators.BAOABIntegrator(temperature, 1.0 / picosecond, 0.002 * picoseconds)
+
+    # Define the platform - will need to generalise later...
+    platform = Platform.getPlatformByName('CUDA')
+    platform.setPropertyDefaultValue('Precision', 'mixed')
+
+    # Create a simulation object
+    simulation = Simulation(topology, system, integrator, platform)
+    simulation.context.setPositions(positions)
+    simulation.context.setVelocitiesToTemperature(temperature)
+    simulation.context.setPeriodicBoxVectors(*box_vectors)
+
+    # Count number of residues
+    n_molecules = 0
+    for residue in topology.residues():
+        n_molecules += 1
+
+    # Collect volume samples
+    volume_list = []
+    for i in range(n_samples):
+        # Run a short amount of MD
+        simulation.step(n_equil)
+        # Calculate volume & then volume per molecule
+        state = simulation.context.getState(getPositions=True)
+        box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
+        volume = box_vectors[0, 0] * box_vectors[1, 1] * box_vectors[2, 2]
+        volume_list.append(volume / n_molecules)
+
+    # Calculate mean volume per molecule
+    std_volume = np.mean(volume_list)
+
+    return std_volume
