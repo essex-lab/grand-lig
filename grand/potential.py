@@ -17,6 +17,8 @@ from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
 
+from samplers import StandardGCMCSampler
+
 
 def get_lambda_values(lambda_in):
     """
@@ -58,40 +60,39 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
 
     Parameters
     ----------
-    system : 
+    system : simtk.openmm.System
         System of interest
-    topology : 
+    topology : simtk.openmm.app.Topology
         Topology of the system
-    positions : 
+    positions : simtk.unit.Quantity
         Initial positions for the simulation
-    box_vectors : 
+    box_vectors : simtk.unit.Quantity
         Periodic box vectors for the system
-    temperature :
+    temperature : simtk.unit.Quantity
         Temperature of the simulation
-    n_lambdas : 
+    n_lambdas : int
         Number of lambda values
-    n_samples : 
+    n_samples : int
         Number of energy sampels to collect at each lambda value
-    n_equil : 
+    n_equil : int
         Number of MD steps to run between each sample
 
     Returns
     -------
-    dG :
+    dG : simtk.unit.Quantity
         Calculated free energy value
     """
     # Use the BAOAB integrator to sample the equilibrium distribution
     integrator = openmmtools.integrators.BAOABIntegrator(temperature, 1.0/picosecond, 0.002*picoseconds)
 
     # Define a GCMC sampler object, just to allow easy switching of a water - won't use this to sample
-    gcmc_mover = grand.samplers.StandardGCMCSampler(system=system,
-                                                    topology=topology,
-                                                    temperature=temperature,
-                                                    log='dG-{}l-{}sa-{}st.log'.format(n_lambdas, n_samples, n_equil),
-                                                    sphereCentre=np.array([0, 0, 0])*angstrom,
-                                                    sphereRadius=4*angstroms,
-                                                    ghostFile='ghosts-gcmc.txt',
-                                                    overwrite=True)
+    gcmc_mover = StandardGCMCSampler(system=system, topology=topology,
+                                     temperature=temperature,
+                                     log='dG-{}l-{}sa-{}st.log'.format(n_lambdas, n_samples, n_equil),
+                                     sphereCentre=np.array([0, 0, 0])*angstrom,
+                                     sphereRadius=4*angstroms,
+                                     ghostFile='ghosts-gcmc.txt',
+                                     overwrite=True)
 
     # IDs of the atoms to switch on/off - will need to make this more generalisable later...
     wat_ids = [0, 1, 2]
@@ -145,4 +146,3 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
     dG = (dG * gcmc_mover.kT).in_units_of(kilocalorie_per_mole)
 
     return dG
-
