@@ -454,6 +454,9 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.logger.error(error_msg)
         raise NotImplementedError(error_msg)
 
+
+########################################################################################################################
+########################################################################################################################
 ########################################################################################################################
 
 class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
@@ -707,7 +710,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         self.deleteGhostWaters(ghostResids)
         return None
 
-    def deleteWatersInGCMCSphere(self, context=None):
+    def deleteWatersInGCMCSphere(self):
         """
         Function to delete all of the waters currently present in the GCMC region
         This may be useful the plan is to generate a water distribution for this
@@ -754,10 +757,6 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         """
         # Get the sphere centre, if using reference atoms, otherwise this will be fine
         if self.ref_atoms is not None:
-            # self.sphere_centre = np.zeros(3) * unit.nanometers
-            # for atom in self.ref_atoms:
-            #    self.sphere_centre += self.positions[atom]
-            # self.sphere_centre /= len(self.ref_atoms)
             self.getSphereCentre()
 
         # Update gcmc_resids and gcmc_status
@@ -803,6 +802,88 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         self.N = np.sum(self.gcmc_status)
 
         return None
+
+    def insertRandomWater(self):
+        """
+        Translate a random ghost to a random point in the GCMC sphere to allow subsequent insertion
+
+        Returns
+        -------
+        new_positions : simtk.unit.Quantity
+            Positions following the 'insertion' of the ghost water
+        gcmc_id :
+            GCMC ID for this molecule
+        wat_id :
+            Overall ID for this water
+        atom_indices : list
+            List of the atom IDs for this molecule
+        """
+        # Select a ghost water to insert
+        ghost_wats = np.where(self.gcmc_status == 0)[0]
+        # Check that there are any ghosts present
+        if len(ghost_wats) == 0:
+            self.logger.error("No ghost water molecules left, so insertion moves cannot occur - add more ghost waters")
+            raise Exception("No ghost water molecules left, so insertion moves cannot occur - add more ghost waters")
+
+        gcmc_id = np.random.choice(ghost_wats)  # Position in list of GCMC waters
+        insert_water = self.gcmc_resids[gcmc_id]
+        wat_id = np.where(np.array(self.water_resids) == insert_water)[0][0]  # Position in list of all waters
+        atom_indices = []
+        for resid, residue in enumerate(self.topology.residues()):
+            if resid == insert_water:
+                for atom in residue.atoms():
+                    atom_indices.append(atom.index)
+
+        # Select a point to insert the water (based on O position)
+        rand_nums = np.random.randn(3)
+        insert_point = self.sphere_centre + (
+                self.sphere_radius * np.power(np.random.rand(), 1.0 / 3) * rand_nums) / np.linalg.norm(rand_nums)
+        #  Generate a random rotation matrix
+        R = random_rotation_matrix()
+        new_positions = deepcopy(self.positions)
+        for i, index in enumerate(atom_indices):
+            #  Translate coordinates to an origin defined by the oxygen atom, and normalise
+            atom_position = self.positions[index] - self.positions[atom_indices[0]]
+            # Rotate about the oxygen position
+            if i != 0:
+                vec_length = np.linalg.norm(atom_position)
+                atom_position = atom_position / vec_length
+                # Rotate coordinates & restore length
+                atom_position = vec_length * np.dot(R, atom_position) * unit.nanometer
+            # Translate to new position
+            new_positions[index] = atom_position + insert_point
+
+        return new_positions, gcmc_id, wat_id, atom_indices
+
+    def deleteRandomWater(self):
+        """
+        Choose a random water to be deleted
+
+        Returns
+        -------
+        gcmc_id :
+            GCMC ID for this molecule
+        wat_id :
+            Overall ID for this water
+        atom_indices : list
+            List of the atom IDs for this molecule
+        """
+        # Cannot carry out deletion if there are no GCMC waters on
+        if np.sum(self.gcmc_status) == 0:
+            return None, None, None
+
+        # Select a water residue to delete
+        gcmc_id = np.random.choice(np.where(self.gcmc_status == 1)[0])  # Position in list of GCMC waters
+        delete_water = self.gcmc_resids[gcmc_id]
+        wat_id = np.where(np.array(self.water_resids) == delete_water)[0][0]  # Position in list of all waters
+        atom_indices = []
+        for resid, residue in enumerate(self.topology.residues()):
+            if resid == delete_water:
+                for atom in residue.atoms():
+                    atom_indices.append(atom.index)
+
+        return gcmc_id, wat_id, atom_indices
+
 
 ########################################################################################################################
 
@@ -896,16 +977,16 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
             # Insert or delete a water, based on random choice
             if np.random.randint(2) == 1:
                 # Attempt to insert a water
-                self.insertRandomWater()
+                self.insertionMove()
             else:
                 # Attempt to delete a water
-                self.deleteRandomWater()
+                self.deletionMove()
             self.n_moves += 1
             self.Ns.append(self.N)
 
         return None
 
-    def insertRandomWater(self):
+    def insertionMove(self):
         """
         Carry out a random water insertion move on the current system
 
@@ -914,40 +995,8 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
         Need to double-check (and fix) any issues relating to periodic boundaries
         and the inserted coordinates
         """
-        # Select a ghost water to insert
-        ghost_wats = np.where(self.gcmc_status == 0)[0]
-        # Check that there are any ghosts present
-        if len(ghost_wats) == 0:
-            self.logger.error("No ghost water molecules left, so insertion moves cannot occur - add more ghost waters")
-            raise Exception("No ghost water molecules left, so insertion moves cannot occur - add more ghost waters")
-
-        gcmc_id = np.random.choice(ghost_wats)  # Position in list of GCMC waters
-        insert_water = self.gcmc_resids[gcmc_id]
-        wat_id = np.where(np.array(self.water_resids) == insert_water)[0][0]  # Position in list of all waters
-        atom_indices = []
-        for resid, residue in enumerate(self.topology.residues()):
-            if resid == insert_water:
-                for atom in residue.atoms():
-                    atom_indices.append(atom.index)
-
-        # Select a point to insert the water (based on O position)
-        rand_nums = np.random.randn(3)
-        insert_point = self.sphere_centre + (
-                    self.sphere_radius * np.power(np.random.rand(), 1.0 / 3) * rand_nums) / np.linalg.norm(rand_nums)
-        #  Generate a random rotation matrix
-        R = random_rotation_matrix()
-        new_positions = deepcopy(self.positions)
-        for i, index in enumerate(atom_indices):
-            #  Translate coordinates to an origin defined by the oxygen atom, and normalise
-            atom_position = self.positions[index] - self.positions[atom_indices[0]]
-            # Rotate about the oxygen position
-            if i != 0:
-                vec_length = np.linalg.norm(atom_position)
-                atom_position = atom_position / vec_length
-                # Rotate coordinates & restore length
-                atom_position = vec_length * np.dot(R, atom_position) * unit.nanometer
-            # Translate to new position
-            new_positions[index] = atom_position + insert_point
+        # Choose a random site in the sphere to insert a water
+        new_positions, gcmc_id, wat_id, atom_indices = self.insertRandomWater()
 
         # Recouple this water
         self.adjustSpecificWater(atom_indices, 1.0)
@@ -975,23 +1024,15 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
 
         return None
 
-    def deleteRandomWater(self):
+    def deletionMove(self):
         """
         Carry out a random water deletion move on the current system
         """
-        # Cannot carry out deletion if there are no GCMC waters on
-        if np.sum(self.gcmc_status) == 0:
+        # Choose a random water in the sphere to be deleted
+        gcmc_id, wat_id, atom_indices = self.deleteRandomWater()
+        # Deletion may not be possible
+        if gcmc_id is None:
             return None
-
-        # Select a water residue to delete
-        gcmc_id = np.random.choice(np.where(self.gcmc_status == 1)[0])  # Position in list of GCMC waters
-        delete_water = self.gcmc_resids[gcmc_id]
-        wat_id = np.where(np.array(self.water_resids) == delete_water)[0][0]  # Position in list of all waters
-        atom_indices = []
-        for resid, residue in enumerate(self.topology.residues()):
-            if resid == delete_water:
-                for atom in residue.atoms():
-                    atom_indices.append(atom.index)
 
         # Switch water off
         self.adjustSpecificWater(atom_indices, 0.0)
@@ -1013,6 +1054,7 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
             self.energy = final_energy
 
         return None
+
 
 ########################################################################################################################
 
@@ -1058,9 +1100,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             Number of propagation steps to carry out for
         waterName : str
             Name of the water residues. Default is 'HOH'
-        waterModel : str
-            Name of the water model being used. This is used to identify the equilibrium chemical
-            potential to use. Default: TIP3P. Accepted: SPCE, TIP3P, TIP4Pew
         ghostFile : str
             Name of a file to write out the residue IDs of ghost water molecules. This is
             useful if you want to visualise the sampling, as you can then remove these waters
@@ -1094,7 +1133,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         # Load in extra NCMC variables
         self.n_pert_steps = nPertSteps
         self.n_prop_steps = nPropSteps
-        protocol_time = self.n_pert_steps * self.n_prop_steps * 2.0 * unit.femtoseconds
+        protocol_time = (self.n_pert_steps + 1) * self.n_prop_steps * 2.0 * unit.femtoseconds
         self.logger.info("Each NCMC move will be executed over a total of {}".format(protocol_time))
 
         self.works = []  # Store work values of moves
@@ -1144,10 +1183,10 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             # Insert or delete a water, based on random choice
             if np.random.randint(2) == 1:
                 # Attempt to insert a water
-                self.insertRandomWater()
+                self.insertionMove()
             else:
                 # Attempt to delete a water
-                self.deleteRandomWater()
+                self.deletionMove()
             self.n_moves += 1
             self.Ns.append(self.N)
 
@@ -1156,45 +1195,15 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
         return None
 
-    def insertRandomWater(self):
+    def insertionMove(self):
         """
         Carry out a nonequilibrium insertion move for a random water molecule
         """
-        # Select a ghost water to insert
-        ghost_wats = np.where(self.gcmc_status == 0)[0]
-        # Check that there are any ghosts present
-        if len(ghost_wats) == 0:
-            self.logger.error("No ghost water molecules left, so insertion moves cannot occur - add more ghost waters")
-            raise Exception("No ghost water molecules left, so insertion moves cannot occur - add more ghost waters")
-
-        gcmc_id = np.random.choice(ghost_wats)  # Position in list of GCMC waters
-        insert_water = self.gcmc_resids[gcmc_id]
-        wat_id = np.where(np.array(self.water_resids) == insert_water)[0][0]  # Position in list of all waters
-        atom_indices = []
-        for resid, residue in enumerate(self.topology.residues()):
-            if resid == insert_water:
-                for atom in residue.atoms():
-                    atom_indices.append(atom.index)
-
-        # Select a point to insert the water (based on O position)
-        rand_nums = np.random.randn(3)
-        insert_point = self.sphere_centre + (
-                self.sphere_radius * np.power(np.random.rand(), 1.0 / 3) * rand_nums) / np.linalg.norm(rand_nums)
-        #  Generate a random rotation matrix
-        R = random_rotation_matrix()
+        # Store initial positions
         old_positions = deepcopy(self.positions)
-        new_positions = deepcopy(self.positions)
-        for i, index in enumerate(atom_indices):
-            #  Translate coordinates to an origin defined by the oxygen atom, and normalise
-            atom_position = self.positions[index] - self.positions[atom_indices[0]]
-            # Rotate about the oxygen position
-            if i != 0:
-                vec_length = np.linalg.norm(atom_position)
-                atom_position = atom_position / vec_length
-                # Rotate coordinates & restore length
-                atom_position = vec_length * np.dot(R, atom_position) * unit.nanometer
-            # Translate to new position
-            new_positions[index] = atom_position + insert_point
+
+        # Choose a random site in the sphere to insert a water
+        new_positions, gcmc_id, wat_id, atom_indices = self.insertRandomWater()
 
         # Need to update the context positions
         self.context.setPositions(new_positions)
@@ -1239,6 +1248,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         gcmc_wats_new = [wat for i, wat in enumerate(self.gcmc_resids) if self.gcmc_status[i] == 1]
 
         # Calculate acceptance probability
+        insert_water = self.gcmc_resids[gcmc_id]
         if insert_water not in gcmc_wats_new:
             # If the inserted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
             acc_prob = -1
@@ -1276,25 +1286,18 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
         return None
 
-    def deleteRandomWater(self):
+    def deletionMove(self):
         """
         Carry out a nonequilibrium deletion move for a random water molecule
         """
-        # Cannot carry out deletion if there are no GCMC waters on
-        if np.sum(self.gcmc_status) == 0:
-            return None
-
+        # Store initial positions
         old_positions = deepcopy(self.positions)
 
-        # Select a water residue to delete
-        gcmc_id = np.random.choice(np.where(self.gcmc_status == 1)[0])  # Position in list of GCMC waters
-        delete_water = self.gcmc_resids[gcmc_id]
-        wat_id = np.where(np.array(self.water_resids) == delete_water)[0][0]  # Position in list of all waters
-        atom_indices = []
-        for resid, residue in enumerate(self.topology.residues()):
-            if resid == delete_water:
-                for atom in residue.atoms():
-                    atom_indices.append(atom.index)
+        # Choose a random water in the sphere to be deleted
+        gcmc_id, wat_id, atom_indices = self.deleteRandomWater()
+        # Deletion may not be possible
+        if gcmc_id is None:
+            return None
 
         # Set lambda values for each perturbation
         lambdas = np.linspace(1.0, 0.0, self.n_pert_steps + 1)
@@ -1337,6 +1340,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         gcmc_wats_new = [wat for i, wat in enumerate(self.gcmc_resids) if self.gcmc_status[i] == 1]
 
         # Calculate acceptance probability
+        delete_water = self.gcmc_resids[gcmc_id]
         if delete_water not in gcmc_wats_new:
             # If the deleted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
             acc_prob = 0
@@ -1375,6 +1379,9 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
         return None
 
+
+########################################################################################################################
+########################################################################################################################
 ########################################################################################################################
 
 class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
@@ -1486,6 +1493,85 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
 
         return None
 
+    def insertRandomWater(self):
+        """
+        Translate a random ghost to a random point in the simulation box to allow subsequent insertion
+
+        Returns
+        -------
+        new_positions : simtk.unit.Quantity
+            Positions following the 'insertion' of the ghost water
+        gcmc_id :
+            GCMC ID for this molecule
+        wat_id :
+            Overall ID for this water
+        atom_indices : list
+            List of the atom IDs for this molecule
+        """
+        # Select a ghost water to insert
+        ghost_wats = np.where(self.gcmc_status == 0)[0]
+        # Check that there are any ghosts present
+        if len(ghost_wats) == 0:
+            self.logger.error("No ghost water molecules left, so insertion moves cannot occur - add more ghost waters")
+            raise Exception("No ghost water molecules left, so insertion moves cannot occur - add more ghost waters")
+
+        gcmc_id = np.random.choice(ghost_wats)  # Position in list of GCMC waters
+        insert_water = self.gcmc_resids[gcmc_id]
+        wat_id = np.where(np.array(self.water_resids) == insert_water)[0][0]  # Position in list of all waters
+        atom_indices = []
+        for resid, residue in enumerate(self.topology.residues()):
+            if resid == insert_water:
+                for atom in residue.atoms():
+                    atom_indices.append(atom.index)
+
+        # Select a point to insert the water (based on O position)
+        insert_point = np.random.rand(3) * self.simulation_box
+        #  Generate a random rotation matrix
+        R = random_rotation_matrix()
+        new_positions = deepcopy(self.positions)
+        for i, index in enumerate(atom_indices):
+            #  Translate coordinates to an origin defined by the oxygen atom, and normalise
+            atom_position = self.positions[index] - self.positions[atom_indices[0]]
+            # Rotate about the oxygen position
+            if i != 0:
+                vec_length = np.linalg.norm(atom_position)
+                atom_position = atom_position / vec_length
+                # Rotate coordinates & restore length
+                atom_position = vec_length * np.dot(R, atom_position) * unit.nanometer
+            # Translate to new position
+            new_positions[index] = atom_position + insert_point
+
+        return new_positions, gcmc_id, wat_id, atom_indices
+
+    def deleteRandomWater(self):
+        """
+        Choose a random water to be deleted
+
+        Returns
+        -------
+        gcmc_id :
+            GCMC ID for this molecule
+        wat_id :
+            Overall ID for this water
+        atom_indices : list
+            List of the atom IDs for this molecule
+        """
+        # Cannot carry out deletion if there are no GCMC waters on
+        if np.sum(self.gcmc_status) == 0:
+            return None, None, None
+
+        # Select a water residue to delete
+        gcmc_id = np.random.choice(np.where(self.gcmc_status == 1)[0])  # Position in list of GCMC waters
+        delete_water = self.gcmc_resids[gcmc_id]
+        wat_id = np.where(np.array(self.water_resids) == delete_water)[0][0]  # Position in list of all waters
+        atom_indices = []
+        for resid, residue in enumerate(self.topology.residues()):
+            if resid == delete_water:
+                for atom in residue.atoms():
+                    atom_indices.append(atom.index)
+
+        return gcmc_id, wat_id, atom_indices
+
 
 ########################################################################################################################
 
@@ -1521,9 +1607,6 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         waterName : str
             Name of the water residues. Default is 'HOH'
-        waterModel : str
-            Name of the water model being used. This is used to identify the equilibrium chemical
-            potential to use. Default: TIP3P. Accepted: SPCE, TIP3P, TIP4Pew
         boxVectors : simtk.unit.Quantity
             Box vectors for the simulation cell
         ghostFile : str
@@ -1571,16 +1654,16 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
             # Insert or delete a water, based on random choice
             if np.random.randint(2) == 1:
                 # Attempt to insert a water
-                self.insertRandomWater()
+                self.insertionMove()
             else:
                 # Attempt to delete a water
-                self.deleteRandomWater()
+                self.deletionMove()
             self.n_moves += 1
             self.Ns.append(self.N)
 
         return None
 
-    def insertRandomWater(self):
+    def insertionMove(self):
         """
         Carry out a random water insertion move on the current system
 
@@ -1589,38 +1672,8 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         Need to double-check (and fix) any issues relating to periodic boundaries
         and the inserted coordinates
         """
-        # Select a ghost water to insert
-        ghost_wats = np.where(self.gcmc_status == 0)[0]
-        # Check that there are any ghosts present
-        if len(ghost_wats) == 0:
-            self.logger.error("No ghost water molecules left, so insertion moves cannot occur - add more ghost waters")
-            raise Exception("No ghost water molecules left, so insertion moves cannot occur - add more ghost waters")
-
-        gcmc_id = np.random.choice(ghost_wats)  # Position in list of GCMC waters
-        insert_water = self.gcmc_resids[gcmc_id]
-        wat_id = np.where(np.array(self.water_resids) == insert_water)[0][0]  # Position in list of all waters
-        atom_indices = []
-        for resid, residue in enumerate(self.topology.residues()):
-            if resid == insert_water:
-                for atom in residue.atoms():
-                    atom_indices.append(atom.index)
-
-        # Select a point to insert the water (based on O position)
-        insert_point = np.random.rand(3) * self.simulation_box
-        #  Generate a random rotation matrix
-        R = random_rotation_matrix()
-        new_positions = deepcopy(self.positions)
-        for i, index in enumerate(atom_indices):
-            #  Translate coordinates to an origin defined by the oxygen atom, and normalise
-            atom_position = self.positions[index] - self.positions[atom_indices[0]]
-            # Rotate about the oxygen position
-            if i != 0:
-                vec_length = np.linalg.norm(atom_position)
-                atom_position = atom_position / vec_length
-                # Rotate coordinates & restore length
-                atom_position = vec_length * np.dot(R, atom_position) * unit.nanometer
-            # Translate to new position
-            new_positions[index] = atom_position + insert_point
+        # Insert a ghost water to a random site
+        new_positions, gcmc_id, wat_id, atom_indices = self.insertRandomWater()
 
         # Recouple this water
         self.adjustSpecificWater(atom_indices, 1.0)
@@ -1635,7 +1688,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
             # Need to revert the changes made if the move is to be rejected
             # Switch off nonbonded interactions involving this water
             self.adjustSpecificWater(atom_indices, 0.0)
-            self.context.setPositions(self.positions)
+            self.context.setPositions(self.positions)  # Not sure this is necessary...
         else:
             # Update some variables if move is accepted
             self.positions = deepcopy(new_positions)
@@ -1648,23 +1701,15 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
 
         return None
 
-    def deleteRandomWater(self):
+    def deletionMove(self):
         """
         Carry out a random water deletion move on the current system
         """
-        # Cannot carry out deletion if there are no GCMC waters on
-        if np.sum(self.gcmc_status) == 0:
+        # Choose a random water to be deleted
+        gcmc_id, wat_id, atom_indices = self.deleteRandomWater()
+        # Deletion may not be possible
+        if gcmc_id is None:
             return None
-
-        # Select a water residue to delete
-        gcmc_id = np.random.choice(np.where(self.gcmc_status == 1)[0])  # Position in list of GCMC waters
-        delete_water = self.gcmc_resids[gcmc_id]
-        wat_id = np.where(np.array(self.water_resids) == delete_water)[0][0]  # Position in list of all waters
-        atom_indices = []
-        for resid, residue in enumerate(self.topology.residues()):
-            if resid == delete_water:
-                for atom in residue.atoms():
-                    atom_indices.append(atom.index)
 
         # Switch water off
         self.adjustSpecificWater(atom_indices, 0.0)
@@ -1686,6 +1731,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
             self.energy = final_energy
 
         return None
+
 
 ########################################################################################################################
 
@@ -1746,7 +1792,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             Indicates whether to overwrite already existing data
         """
         # Initialise base class
-        GCMCSphereSampler.__init__(self, system, topology, temperature, adams=adams,
+        GCMCSystemSampler.__init__(self, system, topology, temperature, adams=adams,
                                    excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
                                    adamsShift=adamsShift, waterName=waterName, boxVectors=boxVectors,
                                    ghostFile=ghostFile, log=log, dcd=dcd, rst7=rst7, overwrite=overwrite)
@@ -1756,7 +1802,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         # Load in extra NCMC variables
         self.n_pert_steps = nPertSteps
         self.n_prop_steps = nPropSteps
-        protocol_time = self.n_pert_steps * self.n_prop_steps * 2.0 * unit.femtoseconds
+        protocol_time = (self.n_pert_steps + 1) * self.n_prop_steps * 2.0 * unit.femtoseconds
         self.logger.info("Each NCMC move will be executed over a total of {}".format(protocol_time))
 
         self.works = []  # Store work values of moves
@@ -1802,10 +1848,10 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             # Insert or delete a water, based on random choice
             if np.random.randint(2) == 1:
                 # Attempt to insert a water
-                self.insertRandomWater()
+                self.insertionMove()
             else:
                 # Attempt to delete a water
-                self.deleteRandomWater()
+                self.deletionMove()
             self.n_moves += 1
             self.Ns.append(self.N)
 
@@ -1814,43 +1860,12 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
 
         return None
 
-    def insertRandomWater(self):
+    def insertionMove(self):
         """
         Carry out a nonequilibrium insertion move for a random water molecule
         """
-        # Select a ghost water to insert
-        ghost_wats = np.where(self.gcmc_status == 0)[0]
-        # Check that there are any ghosts present
-        if len(ghost_wats) == 0:
-            self.logger.error("No ghost water molecules left, so insertion moves cannot occur - add more ghost waters")
-            raise Exception("No ghost water molecules left, so insertion moves cannot occur - add more ghost waters")
-
-        gcmc_id = np.random.choice(ghost_wats)  # Position in list of GCMC waters
-        insert_water = self.gcmc_resids[gcmc_id]
-        wat_id = np.where(np.array(self.water_resids) == insert_water)[0][0]  # Position in list of all waters
-        atom_indices = []
-        for resid, residue in enumerate(self.topology.residues()):
-            if resid == insert_water:
-                for atom in residue.atoms():
-                    atom_indices.append(atom.index)
-
-        # Select a point to insert the water (based on O position)
-        insert_point = np.random.rand(3) * self.simulation_box
-        #  Generate a random rotation matrix
-        R = random_rotation_matrix()
-        old_positions = deepcopy(self.positions)
-        new_positions = deepcopy(self.positions)
-        for i, index in enumerate(atom_indices):
-            #  Translate coordinates to an origin defined by the oxygen atom, and normalise
-            atom_position = self.positions[index] - self.positions[atom_indices[0]]
-            # Rotate about the oxygen position
-            if i != 0:
-                vec_length = np.linalg.norm(atom_position)
-                atom_position = atom_position / vec_length
-                # Rotate coordinates & restore length
-                atom_position = vec_length * np.dot(R, atom_position) * unit.nanometer
-            # Translate to new position
-            new_positions[index] = atom_position + insert_point
+        # Insert a ghost water to a random site
+        new_positions, gcmc_id, wat_id, atom_indices = self.insertRandomWater()
 
         # Need to update the context positions
         self.context.setPositions(new_positions)
@@ -1897,9 +1912,9 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             # Need to revert the changes made if the move is to be rejected
             self.adjustSpecificWater(atom_indices, 0.0)
-            self.context.setPositions(old_positions)
+            self.context.setPositions(self.positions)
             self.context.setVelocities(-self.velocities)  # Reverse velocities on rejection
-            self.positions = deepcopy(old_positions)
+            self.positions = deepcopy(self.positions)
             self.velocities *= -1
         else:
             # Update some variables if move is accepted
@@ -1913,25 +1928,15 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
 
         return None
 
-    def deleteRandomWater(self):
+    def deletionMove(self):
         """
         Carry out a nonequilibrium deletion move for a random water molecule
         """
-        # Cannot carry out deletion if there are no GCMC waters on
-        if np.sum(self.gcmc_status) == 0:
+        # Choose a random water to be deleted
+        gcmc_id, wat_id, atom_indices = self.deleteRandomWater()
+        # Deletion may not be possible
+        if gcmc_id is None:
             return None
-
-        old_positions = deepcopy(self.positions)
-
-        # Select a water residue to delete
-        gcmc_id = np.random.choice(np.where(self.gcmc_status == 1)[0])  # Position in list of GCMC waters
-        delete_water = self.gcmc_resids[gcmc_id]
-        wat_id = np.where(np.array(self.water_resids) == delete_water)[0][0]  # Position in list of all waters
-        atom_indices = []
-        for resid, residue in enumerate(self.topology.residues()):
-            if resid == delete_water:
-                for atom in residue.atoms():
-                    atom_indices.append(atom.index)
 
         # Set lambda values for each perturbation
         lambdas = np.linspace(1.0, 0.0, self.n_pert_steps + 1)
@@ -1975,9 +1980,9 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             # Need to revert the changes made if the move is to be rejected
             self.adjustSpecificWater(atom_indices, 1.0)
-            self.context.setPositions(old_positions)
+            self.context.setPositions(self.positions)
             self.context.setVelocities(-self.velocities)  # Reverse velocities on rejection
-            self.positions = deepcopy(old_positions)
+            self.positions = deepcopy(self.positions)
             self.velocities *= -1
         else:
             # Update some variables if move is accepted
