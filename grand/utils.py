@@ -25,6 +25,44 @@ from copy import deepcopy
 from scipy.cluster import hierarchy
 
 
+class PDBRestartReporter(object):
+    """
+    *Very* basic class to write PDB files as a basic form of restarter
+    """
+    def __init__(self, filename, topology):
+        """
+        Load in the name of the file and the topology of the system
+
+        Parameters
+        ----------
+        filename : str
+            Name of the PDB file to write out
+        topology : simtk.openmm.app.Topology
+            Topology object for the system of interest
+        """
+        self.filename = filename
+        self.topology = topology
+
+    def report(self, simulation, state):
+        """
+        Write out a PDB of the current state
+
+        Parameters
+        ----------
+        simulation : simtk.openmm.app.Simulation
+            Simulation object being used
+        state : simtk.openmm.State
+            Current State of the simulation
+        """
+        # Read the positions from the state
+        positions = state.getPositions()
+        # Write the PDB out
+        with open(self.filename, 'w') as f:
+            app.PDBFile.writeFile(topology=self.topology, positions=positions, file=f)
+
+        return None
+
+
 def get_data_file(filename):
     """
     Get the absolute path of one of the data files included in the package
@@ -122,7 +160,8 @@ def add_ghosts(topology, positions, ff='tip3p', n=10, pdb='gcmc-extra-wats.pdb')
     # Write the new topology and positions to a PDB file
     if pdb is not None:
         with open(pdb, 'w') as f:
-            water.writeFile(topology=modeller.topology, positions=modeller.positions, file=f)
+            print('Testing PDB writing...')
+            app.PDBFile.writeFile(topology=modeller.topology, positions=modeller.positions, file=f)
 
         # Want to correct the residue IDs of the added waters as this can sometimes cause issues
         with open(pdb, 'r') as f:

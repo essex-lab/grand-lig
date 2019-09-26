@@ -22,13 +22,14 @@ import numpy as np
 import mdtraj
 import os
 import logging
+import parmed
 from copy import deepcopy
 from simtk import unit
 from simtk import openmm
-from parmed.openmm.reporters import RestartReporter
 from openmmtools.integrators import NonequilibriumLangevinIntegrator
 
 from grand.utils import random_rotation_matrix
+from grand.utils import PDBRestartReporter
 from grand.potential import get_lambda_values
 
 
@@ -37,7 +38,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
     Base class for carrying out GCMC moves in OpenMM
     """
     def __init__(self, system, topology, temperature, waterName="HOH", ghostFile="gcmc-ghost-wats.txt", log='gcmc.log',
-                 dcd=None, rst7=None, overwrite=False):
+                 dcd=None, rst=None, overwrite=False):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
 
@@ -59,8 +60,8 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             Log file to write out
         dcd : str
             Name of the DCD file to write the system out to
-        rst7 : str
-            Name of the AMBER restart file to write out
+        rst : str
+            Name of the restart file to write out (.pdb or .rst7)
         overwrite : bool
             Overwrite any data already present
         """
@@ -144,15 +145,23 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         else:
             self.dcd = None
 
-        if rst7 is not None:
+        if rst is not None:
             # Check whether to overwrite
-            if os.path.isfile(dcd) and not overwrite:
-                self.logger.error("File {} already exists, not overwriting...".format(rst7))
-                raise Exception("File {} already exists, not overwriting...".format(rst7))
+            if os.path.isfile(rst) and not overwrite:
+                self.logger.error("File {} already exists, not overwriting...".format(rst))
+                raise Exception("File {} already exists, not overwriting...".format(rst))
             else:
-                self.rst = RestartReporter(rst7, 0)
+                # Check whether to use PDB or RST7 for the restart file
+                rst_ext = os.path.splitext(rst)[1]
+                if rst_ext == '.rst7':
+                    self.restart = parmed.openmm.reporters.RestartReporter(rst, 0)
+                elif rst_ext =='.pdb':
+                    self.restart = PDBRestartReporter(rst, self.topology)
+                else:
+                    self.logger.error("File extension {} not recognised for restart file".format(rst))
+                    raise Exception("File extension {} not recognised for restart file".format(rst))
         else:
-            self.rst = None
+            self.restart = None
 
         self.logger.info("BaseGrandCanonicalMonteCarloSampler object initialised")
 
@@ -412,8 +421,8 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         state = simulation.context.getState(getPositions=True, getVelocities=True)
         if self.dcd is not None:
             self.dcd.report(simulation, state)
-        if self.rst is not None:
-            self.rst.report(simulation, state)
+        if self.restart is not None:
+            self.restart.report(simulation, state)
 
         return None
 
@@ -467,7 +476,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
                  excessChemicalPotential=-6.3 * unit.kilocalories_per_mole,
                  standardVolume=30 * unit.angstroms ** 3, adamsShift=0.0, waterName="HOH",
                  ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None, sphereCentre=None,
-                 log='gcmc.log', dcd=None, rst7=None, overwrite=False):
+                 log='gcmc.log', dcd=None, rst=None, overwrite=False):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
 
@@ -509,14 +518,14 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
             Log file to write out
         dcd : str
             Name of the DCD file to write the system out to
-        rst7 : str
-            Name of the AMBER restart file to write out
+        rst : str
+            Name of the restart file to write out (.pdb or .rst7)
         overwrite : bool
             Overwrite any data already present
         """
         # Initialise base
         BaseGrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, waterName=waterName,
-                                                     ghostFile=ghostFile, log=log, dcd=dcd, rst7=rst7,
+                                                     ghostFile=ghostFile, log=log, dcd=dcd, rst=rst,
                                                      overwrite=overwrite)
 
         # Initialise variables specific to the GCMC sphere
@@ -893,7 +902,7 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
     """
     def __init__(self, system, topology, temperature, adams=None, excessChemicalPotential=-6.3*unit.kilocalories_per_mole,
                  standardVolume=30*unit.angstroms**3, adamsShift=0.0, waterName="HOH", ghostFile="gcmc-ghost-wats.txt",
-                 referenceAtoms=None, sphereRadius=None, sphereCentre=None, log='gcmc.log', dcd=None, rst7=None,
+                 referenceAtoms=None, sphereRadius=None, sphereCentre=None, log='gcmc.log', dcd=None, rst=None,
                  overwrite=False):
         """
         Initialise the object to be used for sampling instantaneous water insertion/deletion moves
@@ -936,8 +945,8 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
             Name of the log file to write out
         dcd : str
             Name of the DCD file to write the system out to
-        rst7 : str
-            Name of the AMBER restart file to write out
+        rst : str
+            Name of the restart file to write out (.pdb or .rst7)
         overwrite : bool
             Indicates whether to overwrite already existing data
         """
@@ -946,7 +955,7 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
                                    excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
                                    adamsShift=adamsShift, waterName=waterName, ghostFile=ghostFile,
                                    referenceAtoms=referenceAtoms, sphereRadius=sphereRadius, sphereCentre=sphereCentre,
-                                   log=log, dcd=dcd, rst7=rst7, overwrite=overwrite)
+                                   log=log, dcd=dcd, rst=rst, overwrite=overwrite)
 
         self.energy = None  # Need to save energy
         self.acceptance_probabilities = []  # Store acceptance probabilities
@@ -1066,7 +1075,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
     def __init__(self, system, topology, temperature, integrator, adams=None,
                  excessChemicalPotential=-6.3*unit.kilocalories_per_mole, standardVolume=30*unit.angstroms**3,
                  adamsShift=0.0, nPertSteps=1, nPropSteps=1, waterName="HOH", ghostFile="gcmc-ghost-wats.txt",
-                 referenceAtoms=None, sphereRadius=None, sphereCentre=None, log='gcmc.log', dcd=None, rst7=None,
+                 referenceAtoms=None, sphereRadius=None, sphereCentre=None, log='gcmc.log', dcd=None, rst=None,
                  overwrite=False):
         """
         Initialise the object to be used for sampling NCMC-enhanced water insertion/deletion moves
@@ -1116,8 +1125,8 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             Name of the log file to write out
         dcd : str
             Name of the DCD file to write the system out to
-        rst7 : str
-            Name of the AMBER restart file to write out
+        rst : str
+            Name of the restart file to write out (.pdb or .rst7)
         overwrite : bool
             Indicates whether to overwrite already existing data
         """
@@ -1126,7 +1135,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                                    excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
                                    adamsShift=adamsShift, waterName=waterName, ghostFile=ghostFile,
                                    referenceAtoms=referenceAtoms, sphereRadius=sphereRadius, sphereCentre=sphereCentre,
-                                   log=log, dcd=dcd, rst7=rst7, overwrite=overwrite)
+                                   log=log, dcd=dcd, rst=rst, overwrite=overwrite)
 
         self.velocities = None  # Need to store velocities for this type of sampling
 
@@ -1391,7 +1400,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
     def __init__(self, system, topology, temperature, adams=None,
                  excessChemicalPotential=-6.3 * unit.kilocalories_per_mole,
                  standardVolume=30 * unit.angstroms ** 3, adamsShift=0.0, waterName="HOH", boxVectors=None,
-                 ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, rst7=None, overwrite=False):
+                 ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, rst=None, overwrite=False):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
 
@@ -1427,14 +1436,14 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
             Log file to write out
         dcd : str
             Name of the DCD file to write the system out to
-        rst7 : str
-            Name of the AMBER restart file to write out
+        rst : str
+            Name of the restart file to write out (.pdb or .rst7)
         overwrite : bool
             Overwrite any data already present
         """
         # Initialise base
         BaseGrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, waterName=waterName,
-                                                     ghostFile=ghostFile, log=log, dcd=dcd, rst7=rst7,
+                                                     ghostFile=ghostFile, log=log, dcd=dcd, rst=rst,
                                                      overwrite=overwrite)
 
         # Read in simulation box lengths
@@ -1581,7 +1590,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
     """
     def __init__(self, system, topology, temperature, adams=None, excessChemicalPotential=-6.3*unit.kilocalories_per_mole,
                  standardVolume=30*unit.angstroms**3, adamsShift=0.0, waterName="HOH", boxVectors=None,
-                 ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, rst7=None, overwrite=False):
+                 ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, rst=None, overwrite=False):
         """
         Initialise the object to be used for sampling instantaneous water insertion/deletion moves
 
@@ -1617,8 +1626,8 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
             Name of the log file to write out
         dcd : str
             Name of the DCD file to write the system out to
-        rst7 : str
-            Name of the AMBER restart file to write out
+        rst : str
+            Name of the restart file to write out (.pdb or .rst7)
         overwrite : bool
             Indicates whether to overwrite already existing data
         """
@@ -1626,7 +1635,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         GCMCSystemSampler.__init__(self, system, topology, temperature, adams=adams,
                                    excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
                                    adamsShift=adamsShift, waterName=waterName, boxVectors=boxVectors,
-                                   ghostFile=ghostFile, log=log, dcd=dcd, rst7=rst7, overwrite=overwrite)
+                                   ghostFile=ghostFile, log=log, dcd=dcd, rst=rst, overwrite=overwrite)
 
         self.energy = None  # Need to save energy
         self.acceptance_probabilities = []  # Store acceptance probabilities
@@ -1743,7 +1752,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
     def __init__(self, system, topology, temperature, integrator, adams=None,
                  excessChemicalPotential=-6.3*unit.kilocalories_per_mole, standardVolume=30*unit.angstroms**3,
                  adamsShift=0.0, nPertSteps=1, nPropSteps=1, waterName="HOH", boxVectors=None,
-                 ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, rst7=None, overwrite=False):
+                 ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, rst=None, overwrite=False):
         """
         Initialise the object to be used for sampling NCMC-enhanced water insertion/deletion moves
 
@@ -1786,8 +1795,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             Name of the log file to write out
         dcd : str
             Name of the DCD file to write the system out to
-        rst7 : str
-            Name of the AMBER restart file to write out
+        rst : str
+            Name of the restart file to write out (.pdb or .rst7)
         overwrite : bool
             Indicates whether to overwrite already existing data
         """
@@ -1795,7 +1804,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         GCMCSystemSampler.__init__(self, system, topology, temperature, adams=adams,
                                    excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
                                    adamsShift=adamsShift, waterName=waterName, boxVectors=boxVectors,
-                                   ghostFile=ghostFile, log=log, dcd=dcd, rst7=rst7, overwrite=overwrite)
+                                   ghostFile=ghostFile, log=log, dcd=dcd, rst=rst, overwrite=overwrite)
 
         self.velocities = None  # Need to store velocities for this type of sampling
 
