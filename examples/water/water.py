@@ -40,7 +40,7 @@ gcmc_mover = grand.samplers.StandardGCMCSphereSampler(system=system,
                                                       sphereCentre=[12.5, 12.5, 12.5]*angstroms,
                                                       log='water-gcmc.log',
                                                       dcd='water-raw.dcd',
-                                                      rst7='water-gcmc.rst7',
+                                                      rst='water-gcmc.pdb',
                                                       overwrite=False)
 
 # Langevin integrator

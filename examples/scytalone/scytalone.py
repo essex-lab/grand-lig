@@ -51,7 +51,7 @@ gcmc_mover = grand.samplers.StandardGCMCSphereSampler(system=system,
                                                       sphereRadius=4*angstroms,
                                                       log='sd-gcmc.log',
                                                       dcd='sd-raw.dcd',
-                                                      rst7='sd-gcmc.rst7',
+                                                      rst='sd-gcmc.pdb',
                                                       overwrite=False)
 
 # BAOAB Langevin integrator (important)
