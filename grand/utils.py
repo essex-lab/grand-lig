@@ -230,12 +230,33 @@ def remove_ghosts(topology, positions, ghosts=None, pdb='gcmc-removed-ghosts.pdb
 
     # Save PDB file
     if pdb is not None:
-        tip3p_pdb = app.PDBFile(file=get_data_file("tip3p.pdb"))  # Need to start with a PDB so will use the TIP3P one..
-        pdbfile = open(pdb, 'w')
-        tip3p_pdb.writeFile(topology=modeller.topology, positions=modeller.positions, file=pdbfile)
-        pdbfile.close()
+        with open(pdb, 'w') as f:
+            app.PDBFile.writeFile(topology=modeller.topology, positions=modeller.positions, file=f)
 
     return modeller.topology, modeller.positions
+
+
+def read_ghosts_from_file(ghost_file):
+    """
+    Read in the ghost water residue IDs from each from in the ghost file
+
+    Parameters
+    ----------
+    ghost_file : str
+        File containing the IDs of the ghost residues in each frame
+
+    Returns
+    -------
+    ghost_resids : list
+        List of lists, containing residue IDs for each frame
+    """
+    # Read in residue IDs for the ghost waters in each frame
+    ghost_resids = []
+    with open(ghost_file, 'r') as f:
+        for line in f.readlines():
+            ghost_resids.append([int(resid) for resid in line.split(",")])
+
+    return ghost_resids
 
 
 def read_prepi(filename):
@@ -598,10 +619,7 @@ def shift_ghost_waters(ghost_file, topology=None, trajectory=None, t=None, outpu
         Will return a trajectory object, if no output file name is given
     """
     # Read in residue IDs for the ghost waters in each frame
-    ghost_resids = []
-    with open(ghost_file, 'r') as f:
-        for line in f.readlines():
-            ghost_resids.append([int(resid) for resid in line.split(",")])
+    ghost_resids = read_ghosts_from_file(ghost_file)
 
     # Read in trajectory data
     if t is None:
