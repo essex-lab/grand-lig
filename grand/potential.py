@@ -17,7 +17,7 @@ from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
 
-import samplers
+import grand
 
 def get_lambda_values(lambda_in):
     """
@@ -52,7 +52,7 @@ def get_lambda_values(lambda_in):
     return lambda_vdw, lambda_ele
 
 
-def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas, n_samples, n_equil):
+def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas, n_samples, n_equili, log_file):
     """
     Calculate the excess chemical potential of a water molecule in a given system,
     as the hydration free energy, using MBAR
@@ -75,6 +75,8 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
         Number of energy samples to collect at each lambda value
     n_equil : int
         Number of MD steps to run between each sample
+    log_file : str
+        Name of the log file to write out
 
     Returns
     -------
@@ -84,14 +86,16 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
     # Use the BAOAB integrator to sample the equilibrium distribution
     integrator = openmmtools.integrators.BAOABIntegrator(temperature, 1.0/picosecond, 0.002*picoseconds)
 
+    # Name the log file, if not already done
+    if log_file is None:
+        'dG-{}l-{}sa-{}st.log'.format(n_lambdas, n_samples, n_equil)
+
     # Define a GCMC sampler object, just to allow easy switching of a water - won't use this to sample
-    gcmc_mover = samplers.BaseGrandCanonicalMonteCarloSampler(system=system, topology=topology,
-                                     temperature=temperature,
-                                     log='dG-{}l-{}sa-{}st.log'.format(n_lambdas, n_samples, n_equil),
-                                     sphereCentre=np.array([0, 0, 0])*angstrom,
-                                     sphereRadius=4*angstroms,
-                                     ghostFile='ghosts-gcmc.txt',
-                                     overwrite=True)
+    gcmc_mover = grand.samplers.BaseGrandCanonicalMonteCarloSampler(system=system, topology=topology,
+                                                                    temperature=temperature,
+                                                                    log=log_file,
+                                                                    ghostFile='ghosts-gcmc.txt',
+                                                                    overwrite=True)
 
     # IDs of the atoms to switch on/off - will need to make this more generalisable later...
     wat_ids = [0, 1, 2]
@@ -143,6 +147,10 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
 
     # Convert free energy to kcal/mol
     dG = (dG * gcmc_mover.kT).in_units_of(kilocalorie_per_mole)
+    dG_err = (ddeltaG_ij[0, -1] * gcmc_mover.kT).in_units_of(kilocalorie_per_mole)
+
+    gcmc_mover.logger.info('Excess chemical potential = {}'.format(dG))
+    gcmc_mover.logger.info('Estimated error = {}'.format(dG_err))
 
     return dG
 
@@ -204,6 +212,7 @@ def calc_std_volume(system, topology, positions, box_vectors, temperature, n_sam
         volume_list.append(volume / n_molecules)
 
     # Calculate mean volume per molecule
-    std_volume = np.mean(volume_list)
+    std_volume = sum(volume_list) / len(volume_list)
 
     return std_volume
+
