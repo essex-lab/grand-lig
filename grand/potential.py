@@ -52,7 +52,7 @@ def get_lambda_values(lambda_in):
     return lambda_vdw, lambda_ele
 
 
-def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas, n_samples, n_equili, log_file):
+def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas, n_samples, n_equil, log_file):
     """
     Calculate the excess chemical potential of a water molecule in a given system,
     as the hydration free energy, using MBAR
