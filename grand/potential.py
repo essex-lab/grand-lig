@@ -97,6 +97,10 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
                                                                     ghostFile='ghosts-gcmc.txt',
                                                                     overwrite=True)
 
+    # Testing with barostat
+    system.addForce(MonteCarloBarostat(1*bar, 300*kelvin, 25))
+    pressure = 1 * bar
+
     # IDs of the atoms to switch on/off - will need to make this more generalisable later...
     wat_ids = [0, 1, 2]
 
@@ -119,16 +123,21 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
     # Simulate the system at each lambda window
     for i in range(n_lambdas):
         # Set lambda values
+        gcmc_mover.logger.info('Simulating at lambda = {:.4f}'.format(np.round(lambdas[i], 4)))
         gcmc_mover.adjustSpecificWater(wat_ids, lambdas[i])
         for k in range(n_samples):
             # Run production MD
             simulation.step(n_equil)
+            box_vectors = simulation.context.getState(getPositions=True).getPeriodicBoxVectors()
+            volume = box_vectors[0][0] * box_vectors[1][1] * box_vectors[2][2]
             # Calculate energy at each lambda value
             for j in range(n_lambdas):
                 # Set lambda value
                 gcmc_mover.adjustSpecificWater(wat_ids, lambdas[j])
                 # Calculate energy
-                U[i, j, k] = simulation.context.getState(getEnergy=True).getPotentialEnergy() / gcmc_mover.kT
+                #U[i, j, k] = simulation.context.getState(getEnergy=True).getPotentialEnergy() / gcmc_mover.kT
+                # Calculate energy (with volume correction)
+                U[i, j, k] = (simulation.context.getState(getEnergy=True).getPotentialEnergy() + (pressure * volume * AVOGADRO_CONSTANT_NA) ) / gcmc_mover.kT
             # Reset lambda value
             gcmc_mover.adjustSpecificWater(wat_ids, lambdas[i])
 
@@ -144,6 +153,11 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
     mbar = pymbar.MBAR(U, N_k)
     [deltaG_ij, ddeltaG_ij, theta_ij] = mbar.getFreeEnergyDifferences()
     dG = -deltaG_ij[0, -1]
+
+    # Write out intermediate free energies
+    for i in range(n_lambdas):
+        dG_i = (-deltaG_ij[0, i] * gcmc_mover.kT).in_units_of(kilocalorie_per_mole)
+        gcmc_mover.logger.info('Free energy ({:.3f} -> {:.3f}) = {}'.format(lambdas[0], lambdas[i], dG_i))
 
     # Convert free energy to kcal/mol
     dG = (dG * gcmc_mover.kT).in_units_of(kilocalorie_per_mole)

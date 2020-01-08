@@ -667,7 +667,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
 
         return None
 
-    def initialise(self, context, ghostResids):
+    def initialise(self, context, ghostResids=[]):
         """
         Prepare the GCMC sphere for simulation by loading the coordinates from a
         Context object.
@@ -679,9 +679,10 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         ghostResids : list
             List of residue IDs corresponding to the ghost waters added
         """
-        if len(ghostResids) == 0 or ghostResids is None:
-            self.logger.error("No ghost waters given! Cannot insert waters without any ghosts!")
-            raise Exception("No ghost waters given! Cannot insert waters without any ghosts!")
+        #if len(ghostResids) == 0 or ghostResids is None:
+        #    self.logger.error("No ghost waters given! Cannot insert waters without any ghosts!")
+        #    raise Exception("No ghost waters given! Cannot insert waters without any ghosts!")
+
         # Load context into sampler
         self.context = context
 
@@ -716,7 +717,9 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
                 self.gcmc_resids.append(resid)  # Add to list of GCMC waters
 
         # Delete ghost waters
-        self.deleteGhostWaters(ghostResids)
+        if len(ghostResids) > 0:
+            self.deleteGhostWaters(ghostResids)
+
         return None
 
     def deleteWatersInGCMCSphere(self):
@@ -981,6 +984,12 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
         # Update GCMC region based on current state
         self.updateGCMCSphere(state)
 
+        # Check change in N
+        if len(self.Ns) > 0:
+            dN = self.N - self.Ns[-1]
+            if abs(dN) > 0:
+                self.logger.info('Change in N of {:+} between GCMC batches'.format(dN))
+
         # Execute moves
         for i in range(n):
             # Insert or delete a water, based on random choice
@@ -1243,7 +1252,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
         # Get the protocol work (in units of kT)
         #protocol_work = self.ncmc_integrator.get_protocol_work(dimensionless=True)
-        self.logger.info("Insertion work = {}".format(protocol_work))
+        #self.logger.info("Insertion work = {}".format(protocol_work))
         self.works.append(protocol_work)
 
         # Update variables and GCMC sphere
@@ -1334,7 +1343,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
         # Get the protocol work (in units of kT)
         #protocol_work = self.ncmc_integrator.get_protocol_work(dimensionless=True)
-        self.logger.info("Deletion work = {}".format(protocol_work))
+        #self.logger.info("Deletion work = {}".format(protocol_work))
         self.works.append(protocol_work)
 
         # Update variables and GCMC sphere
@@ -1724,7 +1733,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         self.adjustSpecificWater(atom_indices, 0.0)
         # Calculate energy of new state and acceptance probability
         final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
-        acc_prob = self.N * np.exp(-self.B) * np.exp(-(final_energy - self.energy) / self.kT)
+        acc_prob = self.N * np.exp(-self.B) * np.exp(-(final_energy - self.energy) / self.kT) 
         self.acceptance_probabilities.append(acc_prob)
 
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
@@ -1811,7 +1820,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         # Load in extra NCMC variables
         self.n_pert_steps = nPertSteps
         self.n_prop_steps = nPropSteps
-        protocol_time = (self.n_pert_steps + 1) * self.n_prop_steps * 2.0 * unit.femtoseconds
+        protocol_time = (self.n_pert_steps + 1) * self.n_prop_steps * 0.002 * unit.picoseconds
         self.logger.info("Each NCMC move will be executed over a total of {}".format(protocol_time))
 
         self.works = []  # Store work values of moves
@@ -1905,7 +1914,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
 
         # Get the protocol work (in units of kT)
         #protocol_work = self.ncmc_integrator.get_protocol_work(dimensionless=True)
-        self.logger.info("Insertion work = {}".format(protocol_work))
+        #self.logger.info("Insertion work = {}".format(protocol_work))
         self.works.append(protocol_work)
 
         if explosion:
@@ -1973,7 +1982,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
 
         # Get the protocol work (in units of kT)
         #protocol_work = self.ncmc_integrator.get_protocol_work(dimensionless=True)
-        self.logger.info("Deletion work = {}".format(protocol_work))
+        #self.logger.info("Deletion work = {}".format(protocol_work))
         self.works.append(protocol_work)
 
         if explosion:
