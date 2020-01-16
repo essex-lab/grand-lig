@@ -194,7 +194,6 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         custom_sterics.setUseSwitchingFunction(self.nonbonded_force.getUseSwitchingFunction())
         custom_sterics.setCutoffDistance(self.nonbonded_force.getCutoffDistance())
         custom_sterics.setSwitchingDistance(self.nonbonded_force.getSwitchingDistance())
-
         self.nonbonded_force.setUseDispersionCorrection(False)
         custom_sterics.setUseLongRangeCorrection(self.nonbonded_force.getUseDispersionCorrection())
         # Set softcore parameters
@@ -1658,6 +1657,8 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         self.positions = deepcopy(state.getPositions(asNumpy=True))
         self.energy = state.getPotentialEnergy()
 
+        print("\nInitial energy : {}".format(self.energy))
+
         # Execute moves
         for i in range(n):
             # Insert or delete a water, based on random choice
@@ -1690,15 +1691,23 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         self.context.setPositions(new_positions)
         # Calculate new system energy and acceptance probability
         final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
-        acc_prob = np.exp(self.B) * np.exp(-(final_energy - self.energy) / self.kT) / (self.N + 1)
+        acc_prob = (4 * np.power(np.pi, 3)) * np.exp(self.B) * np.exp(-(final_energy - self.energy) / self.kT) / (self.N + 1)
         self.acceptance_probabilities.append(acc_prob)
 
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
+            print("I : {} -> {} = {} ({:.6f}) : R".format(self.energy.in_units_of(unit.kilocalorie_per_mole),
+                                                          final_energy.in_units_of(unit.kilocalorie_per_mole),
+                                                          (final_energy - self.energy).in_units_of(unit.kilocalorie_per_mole),
+                                                          acc_prob))
             # Need to revert the changes made if the move is to be rejected
             # Switch off nonbonded interactions involving this water
             self.adjustSpecificWater(atom_indices, 0.0)
             self.context.setPositions(self.positions)  # Not sure this is necessary...
         else:
+            print("I : {} -> {} = {} ({:.6f}) : A".format(self.energy.in_units_of(unit.kilocalorie_per_mole),
+                                                          final_energy.in_units_of(unit.kilocalorie_per_mole),
+                                                          (final_energy - self.energy).in_units_of(unit.kilocalorie_per_mole),
+                                                          acc_prob))
             # Update some variables if move is accepted
             self.positions = deepcopy(new_positions)
             self.gcmc_status[gcmc_id] = 1
@@ -1724,13 +1733,21 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         self.adjustSpecificWater(atom_indices, 0.0)
         # Calculate energy of new state and acceptance probability
         final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
-        acc_prob = self.N * np.exp(-self.B) * np.exp(-(final_energy - self.energy) / self.kT)
+        acc_prob = self.N * np.exp(-self.B) * np.exp(-(final_energy - self.energy) / self.kT) / (4 * np.power(np.pi, 3))
         self.acceptance_probabilities.append(acc_prob)
 
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
+            print("D : {} -> {} = {} ({:.6f}) : R".format(self.energy.in_units_of(unit.kilocalorie_per_mole),
+                                                          final_energy.in_units_of(unit.kilocalorie_per_mole),
+                                                          (final_energy - self.energy).in_units_of(unit.kilocalorie_per_mole),
+                                                          acc_prob))
             # Switch the water back on if the move is rejected
             self.adjustSpecificWater(atom_indices, 1.0)
         else:
+            print("D : {} -> {} = {} ({:.6f}) : A".format(self.energy.in_units_of(unit.kilocalorie_per_mole),
+                                                          final_energy.in_units_of(unit.kilocalorie_per_mole),
+                                                          (final_energy - self.energy).in_units_of(unit.kilocalorie_per_mole),
+                                                          acc_prob))
             # Update some variables if move is accepted
             self.gcmc_status[gcmc_id] = 0
             self.water_status[wat_id] = 0
