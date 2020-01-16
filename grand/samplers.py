@@ -155,7 +155,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
                 rst_ext = os.path.splitext(rst)[1]
                 if rst_ext == '.rst7':
                     self.restart = parmed.openmm.reporters.RestartReporter(rst, 0)
-                elif rst_ext =='.pdb':
+                elif rst_ext == '.pdb':
                     self.restart = PDBRestartReporter(rst, self.topology)
                 else:
                     self.logger.error("File extension {} not recognised for restart file".format(rst))
@@ -178,7 +178,8 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         energy_expression = ("U;"
                              "U = (lambda^soft_a) * 4 * epsilon * x * (x-1.0);"  # Softcore energy
                              "x = (sigma/reff)^6;"  # Define x as sigma/r(effective)
-                             "reff = sigma*((soft_alpha*(1.0-lambda)^soft_b + (r/sigma)^soft_c))^(1/soft_c);"  # Effective r
+                             # Calculate effective distance
+                             "reff = sigma*((soft_alpha*(1.0-lambda)^soft_b + (r/sigma)^soft_c))^(1/soft_c);"
                              # Define combining rules
                              "sigma = 0.5*(sigma1+sigma2); epsilon = sqrt(epsilon1*epsilon2); lambda = lambda1*lambda2")
 
@@ -1082,9 +1083,9 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
     """
     def __init__(self, system, topology, temperature, integrator, adams=None,
                  excessChemicalPotential=-6.3*unit.kilocalories_per_mole, standardVolume=30*unit.angstroms**3,
-                 adamsShift=0.0, nPertSteps=1, nPropSteps=1, waterName="HOH", ghostFile="gcmc-ghost-wats.txt",
-                 referenceAtoms=None, sphereRadius=None, sphereCentre=None, log='gcmc.log', dcd=None, rst=None,
-                 overwrite=False):
+                 adamsShift=0.0, nPertSteps=1, nPropSteps=1, lambdas=None, waterName="HOH",
+                 ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None, sphereCentre=None,
+                 log='gcmc.log', dcd=None, rst=None, overwrite=False):
         """
         Initialise the object to be used for sampling NCMC-enhanced water insertion/deletion moves
 
@@ -1115,6 +1116,8 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             Number of pertubation steps over which to shift lambda between 0 and 1 (or vice versa).
         nPropSteps : int
             Number of propagation steps to carry out for
+        lambdas : list
+            Series of lambda values corresponding to the pathway over which the molecules are perturbed
         waterName : str
             Name of the water residues. Default is 'HOH'
         ghostFile : str
@@ -1128,7 +1131,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         sphereRadius : simtk.unit.Quantity
             Radius of the spherical GCMC region
         sphereCentre : simtk.unit.Quantity
-            Coordinates around which the GCMC sohere is based
+            Coordinates around which the GCMC sphere is based
         log : str
             Name of the log file to write out
         dcd : str
@@ -1148,6 +1151,16 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         self.velocities = None  # Need to store velocities for this type of sampling
 
         # Load in extra NCMC variables
+        if lambdas is not None:
+            # Read in set of lambda values, if specified
+            assert np.isclose(lambdas[0], 0.0) and np.isclose(lambdas[-1], 1.0), "Lambda series must start at 0 and end at 1"
+            self.lambdas = lambdas
+            self.n_pert_steps = len(self.lambdas) - 1
+        else:
+            # Otherwise, assume they are evenly distributed
+            self.n_pert_steps = nPertSteps
+            self.lambdas = np.linspace(0.0, 1.0, self.n_pert_steps + 1)
+
         self.n_pert_steps = nPertSteps
         self.n_prop_steps = nPropSteps
         protocol_time = (self.n_pert_steps + 1) * self.n_prop_steps * 2.0 * unit.femtoseconds
@@ -1225,9 +1238,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         # Need to update the context positions
         self.context.setPositions(new_positions)
 
-        # Set lambda values for each perturbation
-        lambdas = np.linspace(0.0, 1.0, self.n_pert_steps + 1)
-
         # Start running perturbation and propagation kernels
         protocol_work = 0.0 * unit.kilocalories_per_mole
         explosion = False
@@ -1236,7 +1246,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             state = self.context.getState(getEnergy=True)
             energy_initial = state.getPotentialEnergy()
             # Adjust interactions of this water
-            self.adjustSpecificWater(atom_indices, lambdas[i+1])
+            self.adjustSpecificWater(atom_indices, self.lambdas[i+1])
             state = self.context.getState(getEnergy=True)
             energy_final = state.getPotentialEnergy()
             protocol_work += energy_final - energy_initial
@@ -1316,9 +1326,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         if gcmc_id is None:
             return None
 
-        # Set lambda values for each perturbation
-        lambdas = np.linspace(1.0, 0.0, self.n_pert_steps + 1)
-
         # Start running perturbation and propagation kernels
         protocol_work = 0.0 * unit.kilocalories_per_mole
         explosion = False
@@ -1327,7 +1334,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             state = self.context.getState(getEnergy=True)
             energy_initial = state.getPotentialEnergy()
             # Adjust interactions of this water
-            self.adjustSpecificWater(atom_indices, lambdas[i + 1])
+            self.adjustSpecificWater(atom_indices, self.lambdas[-(2+i)])
             state = self.context.getState(getEnergy=True)
             energy_final = state.getPotentialEnergy()
             protocol_work += energy_final - energy_initial
@@ -1666,8 +1673,6 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         self.positions = deepcopy(state.getPositions(asNumpy=True))
         self.energy = state.getPotentialEnergy()
 
-        print("\nInitial energy : {}".format(self.energy))
-
         # Execute moves
         for i in range(n):
             # Insert or delete a water, based on random choice
@@ -1704,19 +1709,11 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         self.acceptance_probabilities.append(acc_prob)
 
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
-            print("I : {} -> {} = {} ({:.6f}) : R".format(self.energy.in_units_of(unit.kilocalorie_per_mole),
-                                                          final_energy.in_units_of(unit.kilocalorie_per_mole),
-                                                          (final_energy - self.energy).in_units_of(unit.kilocalorie_per_mole),
-                                                          acc_prob))
             # Need to revert the changes made if the move is to be rejected
             # Switch off nonbonded interactions involving this water
             self.adjustSpecificWater(atom_indices, 0.0)
             self.context.setPositions(self.positions)  # Not sure this is necessary...
         else:
-            print("I : {} -> {} = {} ({:.6f}) : A".format(self.energy.in_units_of(unit.kilocalorie_per_mole),
-                                                          final_energy.in_units_of(unit.kilocalorie_per_mole),
-                                                          (final_energy - self.energy).in_units_of(unit.kilocalorie_per_mole),
-                                                          acc_prob))
             # Update some variables if move is accepted
             self.positions = deepcopy(new_positions)
             self.gcmc_status[gcmc_id] = 1
@@ -1746,17 +1743,9 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         self.acceptance_probabilities.append(acc_prob)
 
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
-            print("D : {} -> {} = {} ({:.6f}) : R".format(self.energy.in_units_of(unit.kilocalorie_per_mole),
-                                                          final_energy.in_units_of(unit.kilocalorie_per_mole),
-                                                          (final_energy - self.energy).in_units_of(unit.kilocalorie_per_mole),
-                                                          acc_prob))
             # Switch the water back on if the move is rejected
             self.adjustSpecificWater(atom_indices, 1.0)
         else:
-            print("D : {} -> {} = {} ({:.6f}) : A".format(self.energy.in_units_of(unit.kilocalorie_per_mole),
-                                                          final_energy.in_units_of(unit.kilocalorie_per_mole),
-                                                          (final_energy - self.energy).in_units_of(unit.kilocalorie_per_mole),
-                                                          acc_prob))
             # Update some variables if move is accepted
             self.gcmc_status[gcmc_id] = 0
             self.water_status[wat_id] = 0
@@ -1810,6 +1799,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             Number of pertubation steps over which to shift lambda between 0 and 1 (or vice versa).
         nPropSteps : int
             Number of propagation steps to carry out for
+        lambdas : list
+            Series of lambda values corresponding to the pathway over which the molecules are perturbed
         waterName : str
             Name of the water residues. Default is 'HOH'
         boxVectors : simtk.unit.Quantity
@@ -1836,6 +1827,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         # Load in extra NCMC variables
         if lambdas is not None:
             # Read in set of lambda values, if specified
+            assert np.isclose(lambdas[0], 0.0) and np.isclose(lambdas[-1], 1.0), "Lambda series must start at 0 and end at 1"
             self.lambdas = lambdas
             self.n_pert_steps = len(self.lambdas) - 1
         else:
@@ -1844,8 +1836,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             self.lambdas = np.linspace(0.0, 1.0, self.n_pert_steps + 1)
 
         self.n_prop_steps = nPropSteps
-        protocol_time = (self.n_pert_steps + 1) * self.n_prop_steps * 0.002 * unit.picoseconds
-        self.logger.info("Each NCMC move will be executed over a total of {}".format(protocol_time))
+        self.protocol_time = (self.n_pert_steps + 1) * self.n_prop_steps * 0.002 * unit.picoseconds
+        self.logger.info("Each NCMC move will be executed over a total of {}".format(self.protocol_time))
 
         self.velocities = None  # Need to store velocities for this type of sampling
 
