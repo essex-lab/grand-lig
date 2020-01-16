@@ -106,7 +106,7 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
     for residue in topology.residues():
         for atom in residue.atoms():
             wat_ids.append(atom.index)
-        quit()  # Make sure to stop after the first water
+        break  # Make sure to stop after the first water
 
     # Define the platform - will need to generalise later...
     platform = Platform.getPlatformByName('CUDA')
