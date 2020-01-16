@@ -101,8 +101,12 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
     system.addForce(MonteCarloBarostat(1*bar, 300*kelvin, 25))
     pressure = 1 * bar
 
-    # IDs of the atoms to switch on/off - will need to make this more generalisable later...
-    wat_ids = [0, 1, 2]
+    # IDs of the atoms to switch on/off
+    wat_ids = []
+    for residue in topology.residues():
+        for atom in residue.atoms():
+            wat_ids.append(atom.index)
+        quit()  # Make sure to stop after the first water
 
     # Define the platform - will need to generalise later...
     platform = Platform.getPlatformByName('CUDA')
