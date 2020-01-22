@@ -94,8 +94,10 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
     gcmc_mover = grand.samplers.BaseGrandCanonicalMonteCarloSampler(system=system, topology=topology,
                                                                     temperature=temperature,
                                                                     log=log_file,
-                                                                    ghostFile='ghosts-gcmc.txt',
+                                                                    ghostFile='calc_mu-ghosts.txt',
                                                                     overwrite=True)
+    # Remove unneeded ghost file
+    os.remove('calc_mu-ghosts.txt')
 
     # Testing with barostat
     system.addForce(MonteCarloBarostat(1*bar, 300*kelvin, 25))
@@ -108,9 +110,15 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
             wat_ids.append(atom.index)
         break  # Make sure to stop after the first water
 
-    # Define the platform - will need to generalise later...
-    platform = Platform.getPlatformByName('CUDA')
-    platform.setPropertyDefaultValue('Precision', 'mixed')
+    # Define the platform, first try CUDA, then OpenCL, then CPU
+    try:
+        platform = Platform.getPlatformByName('CUDA')
+        platform.setPropertyDefaultValue('Precision', 'mixed')
+    except:
+        try:
+            platform = Platform.getPlatformByName('OpenCL')
+        except:
+            platform = Platform.getPlatformByName('CPU')
 
     # Create a simulation object
     simulation = Simulation(topology, system, integrator, platform)
