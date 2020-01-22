@@ -1297,7 +1297,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             self.context.setPositions(old_positions)
             self.context.setVelocities(-self.velocities)  # Reverse velocities on rejection
             self.positions = deepcopy(old_positions)
-            self.velocities *= -1
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
             #self.gcmc_status[gcmc_id] = 0
             self.water_status[wat_id] = 0
@@ -1377,7 +1376,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             # Calculate acceptance probability based on protocol work
             acc_prob = old_N * np.exp(-self.B) * np.exp(-protocol_work/self.kT)  # N is the old value
 
-        print("\tP = {}".format(acc_prob))
         self.acceptance_probabilities.append(acc_prob)
 
         # Update or reset the system, depending on whether the move is accepted or rejected
@@ -1387,7 +1385,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             self.context.setPositions(old_positions)
             self.context.setVelocities(-self.velocities)  # Reverse velocities on rejection
             self.positions = deepcopy(old_positions)
-            self.velocities *= -1
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
             self.updateGCMCSphere(state)
         else:
@@ -1705,7 +1702,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         self.context.setPositions(new_positions)
         # Calculate new system energy and acceptance probability
         final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
-        acc_prob = (4 * np.power(np.pi, 3)) * np.exp(self.B) * np.exp(-(final_energy - self.energy) / self.kT) / (self.N + 1)
+        acc_prob = np.exp(self.B) * np.exp(-(final_energy - self.energy) / self.kT) / (self.N + 1)
         self.acceptance_probabilities.append(acc_prob)
 
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
@@ -1948,7 +1945,6 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             self.context.setPositions(self.positions)
             self.context.setVelocities(-self.velocities)  # Reverse velocities on rejection
             self.positions = deepcopy(self.positions)
-            self.velocities *= -1
         else:
             # Update some variables if move is accepted
             self.N += 1
@@ -2013,7 +2009,6 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             self.context.setPositions(self.positions)
             self.context.setVelocities(-self.velocities)  # Reverse velocities on rejection
             self.positions = deepcopy(self.positions)
-            self.velocities *= -1
         else:
             # Update some variables if move is accepted
             self.gcmc_status[gcmc_id] = 0
