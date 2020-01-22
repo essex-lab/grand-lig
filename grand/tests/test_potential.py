@@ -66,7 +66,7 @@ class TestPotential(unittest.TestCase):
         # Need to set up a system first
 
         # Load a pre-equilibrated water box
-        pdb = PDBFile(utils.get_data_file('water_box-eq.pdb'))
+        pdb = PDBFile(utils.get_data_file(os.path.join('tests', 'water_box-eq.pdb')))
 
         # Set up system
         ff = ForceField("tip3p.xml")
