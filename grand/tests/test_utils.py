@@ -85,35 +85,6 @@ class TestUtils(unittest.TestCase):
 
         return None
 
-    def test_write_amber_input(self):
-        """
-        Run some tests for the write_amber_input() function
-        """
-        # Make sure that AMBER files get written out correctly for BPTI (no ligand)
-        utils.write_amber_input(pdb=utils.get_data_file(os.path.join('tests', 'bpti-ghosts.pdb')),
-                                outdir=outdir)
-        assert os.path.isfile(os.path.join(outdir, 'bpti-ghosts.prmtop'))
-        assert os.path.isfile(os.path.join(outdir, 'bpti-ghosts.inpcrd'))
-        # Make sure that OpenMM can read these back in (but don't do anything with them)
-        prmtop = AmberPrmtopFile(os.path.join(outdir, 'bpti-ghosts.prmtop'))
-        inpcrd = AmberInpcrdFile(os.path.join(outdir, 'bpti-ghosts.inpcrd'))
-
-        # Now do the same for scytalone (example with a ligand)
-        utils.write_amber_input(pdb=utils.get_data_file(os.path.join('tests', 'scytalone.pdb')),
-                                prepi=utils.get_data_file(os.path.join('tests', 'mq1.prepi')),
-                                frcmod=utils.get_data_file(os.path.join('tests', 'mq1.frcmod')),
-                                outdir=outdir)
-        assert os.path.isfile(os.path.join(outdir, 'scytalone.prmtop'))
-        assert os.path.isfile(os.path.join(outdir, 'scytalone.inpcrd'))
-        prmtop = AmberPrmtopFile(os.path.join(outdir, 'scytalone.prmtop'))
-        inpcrd = AmberInpcrdFile(os.path.join(outdir, 'scytalone.inpcrd'))
-
-        # Clean up leap.log file if needed
-        if os.path.isfile('leap.log'):
-            os.remove('leap.log')
-
-        return None
-
     def test_rotation_matrix(self):
         """
         Test that the random_rotation_matrix() function works as expected
@@ -296,11 +267,14 @@ class TestUtils(unittest.TestCase):
         out = os.path.join(outdir, 'bpti-recentred.dcd')
         radius = 4.0
         # Make sure that the function doesn't work if an incorrect reference is given (should be Tyr10 and Asn43)
-        self.assertRaises(Exception, lambda: utils.write_sphere_traj(ref_atoms=[['CA', 'TYR', '9'],
-                                                                                ['CA', 'ASN', '43']],
+        ref_atoms_wrong = [{'name': 'CA', 'resname': 'TYR', 'resid': '9'},
+                           {'name': 'CA', 'resname': 'ASN', 'resid': '43'}]
+        self.assertRaises(Exception, lambda: utils.write_sphere_traj(ref_atoms=ref_atoms_wrong,
                                                                      radius=radius, topology=pdb, trajectory=dcd))
         # Write a sphere PDB
-        utils.write_sphere_traj(ref_atoms=[['CA', 'TYR', '10'], ['CA', 'ASN', '43']], radius=radius, topology=pdb,
+        ref_atoms = [{'name': 'CA', 'resname': 'TYR', 'resid': '10'},
+                     {'name': 'CA', 'resname': 'ASN', 'resid': '43'}]
+        utils.write_sphere_traj(ref_atoms=ref_atoms, radius=radius, topology=pdb,
                                 trajectory=dcd, output=out, initial_frame=True)
         assert os.path.isfile(out)
 

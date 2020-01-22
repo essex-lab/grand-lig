@@ -5,18 +5,41 @@ Marley Samways
 This file contains functions written to test the functions in the grand.potential sub-module
 """
 
+import os
 import unittest
 import numpy as np
 from simtk.unit import *
 from simtk.openmm.app import *
 from simtk.openmm import *
 from grand import potential
+from grand import utils
+
+
+outdir = os.path.join(os.path.dirname(__file__), 'output', 'potential')
 
 
 class TestPotential(unittest.TestCase):
     """
-    Class to store the tests for grand.utils
+    Class to store the tests for grand.potential
     """
+    @classmethod
+    def setUpClass(cls):
+        """
+        Get things ready to run these tests
+        """
+        # Make the output directory if needed
+        if not os.path.isdir(os.path.join(os.path.dirname(__file__), 'output')):
+            os.mkdir(os.path.join(os.path.dirname(__file__), 'output'))
+        # Create a new directory if needed
+        if not os.path.isdir(outdir):
+            os.mkdir(outdir)
+        # If not, then clear any files already in the output directory so that they don't influence tests
+        else:
+            for file in os.listdir(outdir):
+                os.remove(os.path.join(outdir, file))
+
+        return None
+
     def test_get_lambdas(self):
         """
         Test the get_lambda_values() function, designed to retrieve steric and
@@ -39,55 +62,28 @@ class TestPotential(unittest.TestCase):
     def test_calc_mu(self):
         """
         Test that the calc_mu function performs sensibly
-
-        Notes
-        -----
-        Need to add more thorough testing here...
-            - Not exactly sure how to do this...
-            - May need to break the calc_mu() function up a bit to facilitate
-              testing...
         """
-        # Try to calculate dG for three platforms
-        dG_cuda = None
-        dG_opencl = None
-        dG_cpu = None
-        # Try running on CUDA
-        try:
-            dG_cuda = potential.calc_mu(model='tip3p', box_len=25 * angstroms, cutoff=12 * angstroms, switch_dist=10 * angstroms,
-                                        nb_method=PME, temperature=300 * kelvin, equil_time=20 * femtoseconds,
-                                        sample_time=10 * femtoseconds,
-                                        n_lambdas=6, n_samples=5, dt=2 * femtoseconds,
-                                        platform=Platform.getPlatformByName('CUDA'))
-        except:
-            pass
-        # Then try OpenCL...
-        try:
-            dG_opencl = potential.calc_mu(model='tip3p', box_len=25 * angstroms, cutoff=12 * angstroms,
-                                          switch_dist=10 * angstroms,
-                                          nb_method=PME, temperature=300 * kelvin, equil_time=20 * femtoseconds,
-                                          sample_time=10 * femtoseconds,
-                                          n_lambdas=6, n_samples=5, dt=2 * femtoseconds,
-                                          platform=Platform.getPlatformByName('OpenCL'))
-        except:
-            pass
-        # Then try CPU (default)
-        try:
-            dG_cpu = potential.calc_mu(model='tip3p', box_len=25 * angstroms, cutoff=12 * angstroms,
-                                       switch_dist=10 * angstroms,
-                                       nb_method=PME, temperature=300 * kelvin, equil_time=20 * femtoseconds,
-                                       sample_time=10 * femtoseconds,
-                                       n_lambdas=6, n_samples=5, dt=2 * femtoseconds)
-        except:
-            pass
-        # Check that at least the CPU version has worked...
-        assert dG_cpu is not None
+        # Need to set up a system first
 
-        # Check that those which have worked each returned a free energy
-        for dG in [dG_cuda, dG_opencl, dG_cpu]:
-            if dG is not None:
-                # Make sure that the returned value has units
-                assert isinstance(dG, Quantity)
-                # Make sure that the value has units of energy
-                assert dG.unit.is_compatible(kilocalorie_per_mole)
+        # Load a pre-equilibrated water box
+        pdb = PDBFile(utils.get_data_file('water_box-eq.pdb'))
+
+        # Set up system
+        ff = ForceField("tip3p.xml")
+        system = ff.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=12.0 * angstroms,
+                                 constraints=HBonds, switchDistance=10 * angstroms)
+
+        # Run free energy calculation using grand
+        log_file = os.path.join(outdir, 'free_energy_test.log')
+        free_energy = potential.calc_mu_ex(system=system, topology=pdb.topology, positions=pdb.positions,
+                                           box_vectors=pdb.topology.getPeriodicBoxVectors(), temperature=298*kelvin,
+                                           n_lambdas=6, n_samples=5, n_equil=5,
+                                           log_file=log_file)
+
+        # Check that a free energy has been returned
+        # Make sure that the returned value has units
+        assert isinstance(free_energy, Quantity)
+        # Make sure that the value has units of energy
+        assert free_energy.unit.is_compatible(kilocalorie_per_mole)
 
         return None
