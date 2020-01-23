@@ -77,7 +77,7 @@ class TestPotential(unittest.TestCase):
         log_file = os.path.join(outdir, 'free_energy_test.log')
         free_energy = potential.calc_mu_ex(system=system, topology=pdb.topology, positions=pdb.positions,
                                            box_vectors=pdb.topology.getPeriodicBoxVectors(), temperature=298*kelvin,
-                                           n_lambdas=6, n_samples=5, n_equil=5,
+                                           n_lambdas=6, n_samples=5, n_equil=1,
                                            log_file=log_file)
 
         # Check that a free energy has been returned
