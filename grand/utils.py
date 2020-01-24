@@ -756,7 +756,7 @@ def write_sphere_traj(radius, ref_atoms=None, topology=None, trajectory=None, t=
     radius : float
         Radius of the GCMC sphere in Angstroms
     ref_atoms : list
-        List of reference atoms for the GCMC sphere, as [['name', 'resname', 'resid']]
+        List of reference atoms for the GCMC sphere (list of dictionaries)
     topology : str
         Topology of the system, such as a PDB file
     trajectory : str
@@ -851,7 +851,7 @@ def cluster_waters(topology, trajectory, sphere_radius, ref_atoms=None, sphere_c
     sphere_radius : float
         Radius of the GCMC sphere in Angstroms
     ref_atoms : list
-        List of reference atoms for the GCMC sphere, as [['name', 'resname', 'resid']]
+        List of reference atoms for the GCMC sphere (list of dictionaries)
     sphere_centre : simtk.unit.Quantity
         Coordinates around which the GCMC sohere is based
     cutoff : float
