@@ -211,9 +211,15 @@ def calc_std_volume(system, topology, positions, box_vectors, temperature, n_sam
     # Use the BAOAB integrator to sample the equilibrium distribution
     integrator = openmmtools.integrators.BAOABIntegrator(temperature, 1.0 / picosecond, 0.002 * picoseconds)
 
-    # Define the platform - will need to generalise later...
-    platform = Platform.getPlatformByName('CUDA')
-    platform.setPropertyDefaultValue('Precision', 'mixed')
+    # Define the platform, first try CUDA, then OpenCL, then CPU
+    try:
+        platform = Platform.getPlatformByName('CUDA')
+        platform.setPropertyDefaultValue('Precision', 'mixed')
+    except:
+        try:
+            platform = Platform.getPlatformByName('OpenCL')
+        except:
+            platform = Platform.getPlatformByName('CPU')
 
     # Create a simulation object
     simulation = Simulation(topology, system, integrator, platform)
