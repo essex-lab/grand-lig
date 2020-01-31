@@ -100,8 +100,8 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
     os.remove('calc_mu-ghosts.txt')
 
     # Testing with barostat
-    system.addForce(MonteCarloBarostat(1*bar, 300*kelvin, 25))
     pressure = 1 * bar
+    system.addForce(MonteCarloBarostat(pressure, temperature, 25))
 
     # IDs of the atoms to switch on/off
     wat_ids = []
