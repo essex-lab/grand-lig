@@ -160,7 +160,6 @@ def add_ghosts(topology, positions, ff='tip3p', n=10, pdb='gcmc-extra-wats.pdb')
     # Write the new topology and positions to a PDB file
     if pdb is not None:
         with open(pdb, 'w') as f:
-            print('Testing PDB writing...')
             app.PDBFile.writeFile(topology=modeller.topology, positions=modeller.positions, file=f)
 
         # Want to correct the residue IDs of the added waters as this can sometimes cause issues
@@ -970,7 +969,7 @@ def cluster_waters(topology, trajectory, sphere_radius, ref_atoms=None, sphere_c
                                                                                                              coords[0],
                                                                                                              coords[1],
                                                                                                              coords[2],
-                                                                                                             occ1, occ2))
+                                                                                                             occ2, occ1))
             f.write("TER\n")
         f.write("END")
 
