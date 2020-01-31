@@ -87,3 +87,30 @@ class TestPotential(unittest.TestCase):
         assert free_energy.unit.is_compatible(kilocalorie_per_mole)
 
         return None
+
+    def test_calc_std_volume(self):
+        """
+        Test that the calc_std_volume function performs sensibly
+        """
+        # Need to set up a system first
+
+        # Load a pre-equilibrated water box
+        pdb = PDBFile(utils.get_data_file(os.path.join('tests', 'water_box-eq.pdb')))
+
+        # Set up system
+        ff = ForceField("tip3p.xml")
+        system = ff.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=12.0 * angstroms,
+                                 constraints=HBonds, switchDistance=10 * angstroms)
+
+        # Run std volume calculation using grand
+        std_volume = potential.calc_std_volume(system=system, topology=pdb.topology, positions=pdb.positions,
+                                               box_vectors=pdb.topology.getPeriodicBoxVectors(),
+                                               temperature=298*kelvin, n_samples=10, n_equil=1)
+
+        # Check that a volume has been returned
+        # Make sure that the returned value has units
+        assert isinstance(std_volume, Quantity)
+        # Make sure that the value has units of volume
+        assert std_volume.unit.is_compatible(angstroms**3)
+
+        return None
