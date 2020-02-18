@@ -258,8 +258,8 @@ class TestUtils(unittest.TestCase):
         R = utils.random_rotation_matrix()
         # Matrix must be 3x3
         assert R.shape == (3, 3)
-        # Make sure that det(R) is +/- 1
-        assert np.isclose(np.linalg.det(R), 1.0) or np.isclose(np.linalg.det(R), -1.0)
+        # Make sure that det(R) is 1
+        assert np.isclose(np.linalg.det(R), 1.0)
         # Check that the inverse is equal to the transpose of R
         assert np.all(np.isclose(np.linalg.inv(R), R.T))
         # Make sure that a different matrix is returned each time
