@@ -117,6 +117,7 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
     except:
         try:
             platform = Platform.getPlatformByName('OpenCL')
+            #platform.setPropertyDefaultValue('Precision', 'mixed')
         except:
             platform = Platform.getPlatformByName('CPU')
 
@@ -218,6 +219,7 @@ def calc_std_volume(system, topology, positions, box_vectors, temperature, n_sam
     except:
         try:
             platform = Platform.getPlatformByName('OpenCL')
+            #platform.setPropertyDefaultValue('Precision', 'mixed')
         except:
             platform = Platform.getPlatformByName('CPU')
 
@@ -247,4 +249,3 @@ def calc_std_volume(system, topology, positions, box_vectors, temperature, n_sam
     std_volume = sum(volume_list) / len(volume_list)
 
     return std_volume
-

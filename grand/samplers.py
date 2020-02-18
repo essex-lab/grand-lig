@@ -104,6 +104,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.Ns = []  # Store all observed values of N
         self.n_moves = 0
         self.n_accepted = 0
+        self.acceptance_probabilities = []  # Store acceptance probabilities
         
         # Get parameters for the water model
         self.water_params = self.getWaterParameters(waterName)
@@ -249,6 +250,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.n_accepted = 0
         self.n_moves = 0
         self.Ns = []
+        self.acceptance_probabilities = []
         
         return None
 
@@ -961,7 +963,6 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
                                    log=log, dcd=dcd, rst=rst, overwrite=overwrite)
 
         self.energy = None  # Need to save energy
-        self.acceptance_probabilities = []  # Store acceptance probabilities
         self.logger.info("StandardGCMCSphereSampler object initialised")
 
     def move(self, context, n=1):
@@ -1167,7 +1168,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         self.logger.info("Each NCMC move will be executed over a total of {}".format(protocol_time))
 
         self.works = []  # Store work values of moves
-        self.acceptance_probabilities = []  # Store acceptance probabilities
         self.n_explosions = 0
         self.n_left_sphere = 0  # Number of moves rejected because the water left the sphere
 
@@ -1235,6 +1235,9 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         # Choose a random site in the sphere to insert a water
         new_positions, gcmc_id, wat_id, atom_indices = self.insertRandomWater()
 
+        # Get resid of the water to insert
+        insert_water = self.gcmc_resids[gcmc_id]
+
         # Need to update the context positions
         self.context.setPositions(new_positions)
 
@@ -1275,7 +1278,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         gcmc_wats_new = [wat for i, wat in enumerate(self.gcmc_resids) if self.gcmc_status[i] == 1]
 
         # Calculate acceptance probability
-        insert_water = self.gcmc_resids[gcmc_id]
         if insert_water not in gcmc_wats_new:
             # If the inserted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
             acc_prob = -1
@@ -1325,6 +1327,9 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         if gcmc_id is None:
             return None
 
+        # Get resid of the water to be deleted
+        delete_water = self.gcmc_resids[gcmc_id]
+
         # Start running perturbation and propagation kernels
         protocol_work = 0.0 * unit.kilocalories_per_mole
         explosion = False
@@ -1363,7 +1368,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         gcmc_wats_new = [wat for i, wat in enumerate(self.gcmc_resids) if self.gcmc_status[i] == 1]
 
         # Calculate acceptance probability
-        delete_water = self.gcmc_resids[gcmc_id]
         if delete_water not in gcmc_wats_new:
             # If the deleted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
             acc_prob = 0
@@ -1397,6 +1401,23 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             self.positions = deepcopy(state.getPositions(asNumpy=True))
             self.velocities = deepcopy(state.getVelocities(asNumpy=True))
             self.updateGCMCSphere(state)
+
+        return None
+
+    def reset(self):
+        """
+        Reset counted values (such as number of total or accepted moves) to zero
+        """
+        self.logger.info('Resetting any tracked variables...')
+        self.n_accepted = 0
+        self.n_moves = 0
+        self.Ns = []
+        self.acceptance_probabilities = []
+
+        # NCMC-specific variables
+        self.works = []
+        self.n_explosions = 0
+        self.n_left_sphere = 0
 
         return None
 
@@ -1650,7 +1671,6 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
                                    ghostFile=ghostFile, log=log, dcd=dcd, rst=rst, overwrite=overwrite)
 
         self.energy = None  # Need to save energy
-        self.acceptance_probabilities = []  # Store acceptance probabilities
         self.logger.info("StandardGCMCSystemSampler object initialised")
 
     def move(self, context, n=1):
@@ -1839,7 +1859,6 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         self.velocities = None  # Need to store velocities for this type of sampling
 
         self.works = []  # Store work values of moves
-        self.acceptance_probabilities = []  # Store acceptance probabilities
         self.n_explosions = 0
 
         # Define a compound integrator
@@ -2018,5 +2037,21 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
             self.positions = deepcopy(state.getPositions(asNumpy=True))
             self.velocities = deepcopy(state.getVelocities(asNumpy=True))
+
+        return None
+
+    def reset(self):
+        """
+        Reset counted values (such as number of total or accepted moves) to zero
+        """
+        self.logger.info('Resetting any tracked variables...')
+        self.n_accepted = 0
+        self.n_moves = 0
+        self.Ns = []
+        self.acceptance_probabilities = []
+
+        # NCMC-specific variables
+        self.works = []
+        self.n_explosions = 0
 
         return None
