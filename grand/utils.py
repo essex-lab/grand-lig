@@ -644,8 +644,8 @@ def align_traj(topology=None, trajectory=None, t=None, reference=None, output=No
     if t is None:
         t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
 
-    # Align trajectory based on protein IDs
-    protein_ids = [atom.index for atom in t.topology.atoms if atom.residue.is_protein]
+    # Align trajectory based on protein C-alpha atoms
+    protein_ids = [atom.index for atom in t.topology.atoms if atom.residue.is_protein and atom.name == 'CA']
     if reference is None:
         # If there is no reference then align to the first frame in the trajectory
         t.superpose(t, atom_indices=protein_ids)
@@ -662,7 +662,7 @@ def align_traj(topology=None, trajectory=None, t=None, reference=None, output=No
         return None
 
 
-def recentre_traj(topology=None, trajectory=None, t=None, resname='ALA', resid=1, output=None):
+def recentre_traj(topology=None, trajectory=None, t=None, name='CA', resname='ALA', resid=1, output=None):
     """
     Recentre a trajectory based on a specific protein residue. Assumes that the
     protein has not been broken by periodic boundaries.
@@ -676,6 +676,8 @@ def recentre_traj(topology=None, trajectory=None, t=None, resname='ALA', resid=1
         Name of the trajectory file (e.g. DCD, XTC, etc.)
     t : mdtraj.Trajectory
         Trajectory object, if already loaded
+    resname : str
+        Name of the atom to centre the trajectorname.lower(
     resname : str
         Name of the protein residue to centre the trajectory on. Should be a
         binding site residue
@@ -704,33 +706,66 @@ def recentre_traj(topology=None, trajectory=None, t=None, resname='ALA', resid=1
     for residue in t.topology.residues:
         if residue.name.lower() == resname.lower() and residue.resSeq == resid:
             for atom in residue.atoms:
-                if atom.name.lower() == 'ca':
+                if atom.name.lower() == name.lower():
                     ref_idx = atom.index
     if ref_idx is None:
-        raise Exception("Could not find residue {}{}!".format(resname.capitalize(), resid))
+        raise Exception("Could not find atom {} of residue {}{}!".format(name, resname.capitalize(), resid))
 
     # Fix all frames
     for f in range(n_frames):
+        # Box dimensions for this frame
+        box = t.unitcell_lengths[f, :]
+
+        # Recentre all protein chains residues
+        for chain in t.topology.chains:
+            # Skip if this is a non-protein chain
+            if not all([atom.index in protein_ids for atom in residue.atoms]):
+                continue
+
+            # Find the closest distance between this chain and the reference
+            min_dists = 1e8 * np.ones(3)
+            for atom in chain.atoms:
+                # Distance between this atom and referene
+                v = t.xyz[f, atom.index, :] - t.xyz[f, ref_idx, :]
+                for i in range(3):
+                    if abs(v[i]) < min_dists[i]:
+                        min_dists[i] = v[i]
+
+            # Calculate the correction vector based on the separation
+            correction = np.zeros(3)
+
+            for i in range(3):
+                if -2 * box[i] < min_dists[i] < -0.5 * box[i]:
+                    correction[i] += box[i]
+                elif 0.5 * box[i] < min_dists[i] < 2 * box[i]:
+                    correction[i] -= box[i]
+
+            # Apply the correction vector to each atom in the residue
+            for atom in chain.atoms:
+                t.xyz[f, atom.index, :] += correction
+
+        # Recentre all non-protein residues
         for residue in t.topology.residues:
             # Skip if this is a protein residue
             if any([atom.index in protein_ids for atom in residue.atoms]):
                 continue
 
+            # Find the closest distance between this residue and the reference
+            min_dists = 1e8 * np.ones(3)
+            for atom in residue.atoms:
+                # Distance between this atom and referene
+                v = t.xyz[f, atom.index, :] - t.xyz[f, ref_idx, :]
+                for i in range(3):
+                    if abs(v[i]) < min_dists[i]:
+                        min_dists[i] = v[i]
+
             # Calculate the correction vector based on the separation
-            box = t.unitcell_lengths[f, :]
             correction = np.zeros(3)
 
-            cog = np.zeros(3)
-            for atom in residue.atoms:
-                cog += t.xyz[f, atom.index, :]
-            cog /= residue.n_atoms
-
-            vector = cog - t.xyz[f, ref_idx, :]
-
             for i in range(3):
-                if -2 * box[i] < vector[i] < -0.5 * box[i]:
+                if -2 * box[i] < min_dists[i] < -0.5 * box[i]:
                     correction[i] += box[i]
-                elif 0.5 * box[i] < vector[i] < 2 * box[i]:
+                elif 0.5 * box[i] < min_dists[i] < 2 * box[i]:
                     correction[i] -= box[i]
 
             # Apply the correction vector to each atom in the residue
