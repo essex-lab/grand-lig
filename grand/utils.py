@@ -1003,7 +1003,7 @@ def cluster_waters(topology, trajectory, sphere_radius, ref_atoms=None, sphere_c
                                                                                                              coords[0],
                                                                                                              coords[1],
                                                                                                              coords[2],
-                                                                                                             occ2, occ1))
+                                                                                                             occ2, occ2))
             f.write("TER\n")
         f.write("END")
 
