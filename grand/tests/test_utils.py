@@ -401,7 +401,7 @@ class TestUtils(unittest.TestCase):
                     if atom.name.lower() == 'ca':
                         ref = atom.index
 
-        # Check all residues and make sure that the COG is within 0.5L of the reference atom in each frame
+        # Check all residues and make sure that at least one atom is within 0.5L of the reference atom in each frame
         failed_checks = []  # List of failed checks - True is that the COG is too far from the centre
         for f in range(n_frames):
             box = t.unitcell_lengths[f, :]
@@ -418,9 +418,15 @@ class TestUtils(unittest.TestCase):
                 cog /= residue.n_atoms
 
                 # Check distance from the reference
-                vector = cog - t.xyz[f, ref, :]
-                for i in range(3):
-                    failed_checks.append(vector[i] > 0.5*box[i] or vector[i] < -0.5*box[i])
+                dists_x = [abs(t.xyz[f, atom.index, 0] - t.xyz[f, ref, 0]) for atom in residue.atoms]
+                dists_y = [abs(t.xyz[f, atom.index, 1] - t.xyz[f, ref, 1]) for atom in residue.atoms]
+                dists_z = [abs(t.xyz[f, atom.index, 2] - t.xyz[f, ref, 2]) for atom in residue.atoms]
+
+                # Check the closest distance for this residue in each dimension
+                failed_checks.append(min(dists_x) > 0.5 * box[0])
+                failed_checks.append(min(dists_y) > 0.5 * box[1])
+                failed_checks.append(min(dists_z) > 0.5 * box[2])
+
         assert not any(failed_checks)
 
         return None
