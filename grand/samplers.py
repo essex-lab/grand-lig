@@ -6,9 +6,8 @@ Marley Samways
 
 Description
 -----------
-This code is written to execute GCMC moves with water molecules in OpenMM, in a 
-way that can easily be included with other OpenMM simulations or implemented
-methods, with minimal extra effort.
+This code is written to execute GCMC moves with water molecules in OpenMM, via a series of
+Sampler objects
 
 References
 ----------
@@ -475,8 +474,8 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
     Base class for carrying out GCMC moves in OpenMM, using a GCMC sphere to sample the system
     """
     def __init__(self, system, topology, temperature, adams=None,
-                 excessChemicalPotential=-6.3 * unit.kilocalories_per_mole,
-                 standardVolume=30 * unit.angstroms ** 3, adamsShift=0.0, waterName="HOH",
+                 excessChemicalPotential=-6.09*unit.kilocalories_per_mole,
+                 standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, waterName="HOH",
                  ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None, sphereCentre=None,
                  log='gcmc.log', dcd=None, rst=None, overwrite=False):
         """
@@ -496,10 +495,10 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
             potential
         excessChemicalPotential : simtk.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
-            -6.3 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
+            -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
             simulation parameters.
         standardVolume : simtk.unit.Quantity
-            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30 A^3
+            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         waterName : str
@@ -905,8 +904,8 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
     """
     Class to carry out instantaneous GCMC moves in OpenMM
     """
-    def __init__(self, system, topology, temperature, adams=None, excessChemicalPotential=-6.3*unit.kilocalories_per_mole,
-                 standardVolume=30*unit.angstroms**3, adamsShift=0.0, waterName="HOH", ghostFile="gcmc-ghost-wats.txt",
+    def __init__(self, system, topology, temperature, adams=None, excessChemicalPotential=-6.09*unit.kilocalories_per_mole,
+                 standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, waterName="HOH", ghostFile="gcmc-ghost-wats.txt",
                  referenceAtoms=None, sphereRadius=None, sphereCentre=None, log='gcmc.log', dcd=None, rst=None,
                  overwrite=False):
         """
@@ -926,10 +925,10 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
             potential
         excessChemicalPotential : simtk.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
-            -6.3 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
+            -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
             simulation parameters.
         standardVolume : simtk.unit.Quantity
-            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30 A^3
+            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         waterName : str
@@ -1083,7 +1082,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
     to boost acceptance rates
     """
     def __init__(self, system, topology, temperature, integrator, adams=None,
-                 excessChemicalPotential=-6.3*unit.kilocalories_per_mole, standardVolume=30*unit.angstroms**3,
+                 excessChemicalPotential=-6.09*unit.kilocalories_per_mole, standardVolume=30.345*unit.angstroms**3,
                  adamsShift=0.0, nPertSteps=1, nPropSteps=1, lambdas=None, waterName="HOH",
                  ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None, sphereCentre=None,
                  log='gcmc.log', dcd=None, rst=None, overwrite=False):
@@ -1107,10 +1106,10 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             potential
         excessChemicalPotential : simtk.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
-            -6.3 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
+            -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
             simulation parameters.
         standardVolume : simtk.unit.Quantity
-            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30 A^3
+            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         nPertSteps : int
@@ -1431,8 +1430,8 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
     Base class for carrying out GCMC moves in OpenMM, sampling the whole system with GCMC
     """
     def __init__(self, system, topology, temperature, adams=None,
-                 excessChemicalPotential=-6.3 * unit.kilocalories_per_mole,
-                 standardVolume=30 * unit.angstroms ** 3, adamsShift=0.0, waterName="HOH", boxVectors=None,
+                 excessChemicalPotential=-6.09*unit.kilocalories_per_mole,
+                 standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, waterName="HOH", boxVectors=None,
                  ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, rst=None, overwrite=False):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
@@ -1451,10 +1450,10 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
             potential
         excessChemicalPotential : simtk.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
-            -6.3 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
+            -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
             simulation parameters.
         standardVolume : simtk.unit.Quantity
-            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30 A^3
+            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         waterName : str
@@ -1621,8 +1620,8 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
     """
     Class to carry out instantaneous GCMC moves in OpenMM
     """
-    def __init__(self, system, topology, temperature, adams=None, excessChemicalPotential=-6.3*unit.kilocalories_per_mole,
-                 standardVolume=30*unit.angstroms**3, adamsShift=0.0, waterName="HOH", boxVectors=None,
+    def __init__(self, system, topology, temperature, adams=None, excessChemicalPotential=-6.09*unit.kilocalories_per_mole,
+                 standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, waterName="HOH", boxVectors=None,
                  ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, rst=None, overwrite=False):
         """
         Initialise the object to be used for sampling instantaneous water insertion/deletion moves
@@ -1641,10 +1640,10 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
             potential
         excessChemicalPotential : simtk.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
-            -6.3 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
+            -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
             simulation parameters.
         standardVolume : simtk.unit.Quantity
-            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30 A^3
+            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         waterName : str
@@ -1782,7 +1781,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
     to boost acceptance rates
     """
     def __init__(self, system, topology, temperature, integrator, adams=None,
-                 excessChemicalPotential=-6.3*unit.kilocalories_per_mole, standardVolume=30*unit.angstroms**3,
+                 excessChemicalPotential=-6.09*unit.kilocalories_per_mole, standardVolume=30.345*unit.angstroms**3,
                  adamsShift=0.0, nPertSteps=1, nPropSteps=1, waterName="HOH", boxVectors=None,
                  ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, rst=None, overwrite=False,
                  lambdas=None):
@@ -1806,10 +1805,10 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             potential
         excessChemicalPotential : simtk.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
-            -6.3 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
+            -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
             simulation parameters.
         standardVolume : simtk.unit.Quantity
-            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30 A^3
+            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         nPertSteps : int
