@@ -9,10 +9,6 @@ Description
 Functions to provide support for the use of GCMC in OpenMM.
 These functions are not used during the simulation, but will be relevant in setting up
 simulations and processing results
-
-Notes
------
-Need to think of what else will need to be added here (think what's useful)
 """
 
 import os
@@ -176,7 +172,7 @@ def add_ghosts(topology, positions, ff='tip3p', n=10, pdb='gcmc-extra-wats.pdb')
                     # Correct the residue ID if this corresponds to an added water
                     if line[21] in new_chains:
                         f.write("{}{:4d}{}".format(line[:22],
-                                                   (max_resid % 10000) + 1,
+                                                   (max_resid % 9999) + 1,
                                                    line[26:]))
                     else:
                         f.write(line)
@@ -716,7 +712,7 @@ def recentre_traj(topology=None, trajectory=None, t=None, name='CA', resname='AL
         # Box dimensions for this frame
         box = t.unitcell_lengths[f, :]
 
-        # Recentre all protein chains residues
+        # Recentre all protein chains
         for chain in t.topology.chains:
             # Skip if this is a non-protein chain
             if not all([atom.index in protein_ids for atom in residue.atoms]):
