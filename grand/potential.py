@@ -6,8 +6,7 @@ Marley Samways
 
 Description
 -----------
-Set of functions to calculate the excess chemical potential for water by calculating the hydration free energy of
-a specific system setup
+Set of functions to calibrate the excess chemical potential and standard state volume of water
 """
 
 import numpy as np
