@@ -1,5 +1,7 @@
 # _grand_ : Grand Canonical Molecular Dynamics in OpenMM
 
+Version : 1.0.0
+
 ### Background
 
 This Python module is designed to be run with OpenMM in order to simulate grand
@@ -22,12 +24,13 @@ python setup.py install
 The dependencies of this module can be installed as:
 
 ```commandline
-conda install -c omnia openmm=7.3.1 mdtraj parmed openmmtools pymbar
+conda install -c omnia openmm mdtraj parmed openmmtools pymbar
 pip install lxml
 ```
 
-Several examples of how this module is ran alongside OpenMM can be found in
-the `./examples` directory.
+Several (very short) examples of how this module is ran alongside OpenMM can be found in
+the `examples/` directory.
+*_ADD LINK TO PAPER EXAMPLES_*
 
 The _grand_ module is released under the MIT licence. If results from this
 module contribution to a publication, we only ask that you cite the
