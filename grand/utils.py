@@ -457,6 +457,9 @@ def create_ligand_xml(prmtop, prepi, resname='LIG', output='lig.xml'):
                     f.write(line_j.replace('type', 'class'))
                 break
 
+    # Remove temporary file
+    os.remove(tmp_xml)
+
     return None
 
 
