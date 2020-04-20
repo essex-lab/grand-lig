@@ -4,7 +4,10 @@ Marley Samways
 
 Description
 -----------
-Example script of how to run GCMC in OpenMM for a BPTI system
+Example script of how to run GCMD in OpenMM for a BPTI system
+
+Note that this simulation is only an example, and is not long enough
+to see equilibrated behaviour
 """
 
 from simtk.openmm.app import *
@@ -41,10 +44,10 @@ gcmc_mover = grand.samplers.StandardGCMCSphereSampler(system=system,
                                                       topology=pdb.topology,
                                                       temperature=300*kelvin,
                                                       referenceAtoms=ref_atoms,
-                                                      sphereRadius=4*angstroms,
+                                                      sphereRadius=4.2*angstroms,
                                                       log='bpti-gcmc.log',
                                                       dcd='bpti-raw.dcd',
-                                                      rst='bpti-rst.pdb',
+                                                      rst='bpti-rst.rst7',
                                                       overwrite=False)
 
 # BAOAB Langevin integrator
@@ -62,11 +65,12 @@ simulation.context.setPeriodicBoxVectors(*pdb.topology.getPeriodicBoxVectors())
 gcmc_mover.initialise(simulation.context, ghosts)
 gcmc_mover.deleteWatersInGCMCSphere()
 
-# Equilibrate water distribution
-print("GCMC equilibration...")
-for i in range(75):
-    gcmc_mover.move(simulation.context, 200)  # 200 GCMC moves
-    simulation.step(50)  # 100 fs propagation between moves
+# Equilibrate water distribution - 10k moves over 5 ps
+print("Equilibration...")
+for i in range(50):
+    # Carry out 200 moves every 100 fs
+    gcmc_mover.move(simulation.context, 200)
+    simulation.step(50)
 print("{}/{} equilibration GCMC moves accepted. N = {}".format(gcmc_mover.n_accepted,
                                                                gcmc_mover.n_moves,
                                                                gcmc_mover.N))
@@ -81,14 +85,18 @@ simulation.reporters.append(StateDataReporter(stdout,
 # Reset GCMC statistics
 gcmc_mover.reset()
 
-# Run simulation
-print("\n\nGCMC production")
+# Run simulation - 5k moves over 50 ps
+print("\nProduction")
 for i in range(50):
     # Carry out 100 GCMC moves per 1 ps of MD
     simulation.step(500)
     gcmc_mover.move(simulation.context, 100)
     # Write data out
     gcmc_mover.report(simulation)
+
+#
+# Need to process the trajectory for visualisation
+#
 
 # Shift ghost waters outside the simulation cell
 trj = grand.utils.shift_ghost_waters(ghost_file='gcmc-ghost-wats.txt',
@@ -102,7 +110,7 @@ trj = grand.utils.recentre_traj(t=trj, resname='TYR', resid=10)
 grand.utils.align_traj(t=trj, output='bpti-gcmc.dcd')
 
 # Write out a PDB trajectory of the GCMC sphere
-grand.utils.write_sphere_traj(radius=4.0,
+grand.utils.write_sphere_traj(radius=4.2,
                               ref_atoms=ref_atoms,
                               topology='bpti-ghosts.pdb',
                               trajectory='bpti-gcmc.dcd',

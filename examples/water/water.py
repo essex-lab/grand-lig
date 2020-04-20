@@ -4,13 +4,17 @@ Marley Samways
 
 Description
 -----------
-Example script of how to run GCMC in OpenMM for a simple water system
+Example script of how to run GCMD in OpenMM for a simple water system
+
+Note that this simulation is only an example, and is not long enough
+to see equilibrated behaviour
 """
 
 from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
 from sys import stdout
+import numpy as np
 
 from openmmtools.integrators import BAOABIntegrator
 
@@ -32,15 +36,14 @@ system = ff.createSystem(pdb.topology,
                          switchDistance=10.0*angstroms,
                          constraints=HBonds)
 
-# Create GCMC sampler object
-gcmc_mover = grand.samplers.StandardGCMCSphereSampler(system=system,
+# Create GCMC sampler object - sampling the entire simulation volume
+gcmc_mover = grand.samplers.StandardGCMCSystemSampler(system=system,
                                                       topology=pdb.topology,
                                                       temperature=300*kelvin,
-                                                      sphereRadius=2*angstroms,
-                                                      sphereCentre=[12.5, 12.5, 12.5]*angstroms,
+                                                      boxVectors=np.array(pdb.topology.getPeriodicBoxVectors()),
                                                       log='water-gcmc.log',
                                                       dcd='water-raw.dcd',
-                                                      rst='water-gcmc.pdb',
+                                                      rst='water-gcmc.rst7',
                                                       overwrite=False)
 
 # Langevin integrator
@@ -56,13 +59,13 @@ simulation.context.setPeriodicBoxVectors(*pdb.topology.getPeriodicBoxVectors())
 
 # Switch off ghost waters and in sphere
 gcmc_mover.initialise(simulation.context, ghosts)
-gcmc_mover.deleteWatersInGCMCSphere()
 
-# Equilibrate water distribution
-print("GCMC equilibration...")
+# Equilibrate water distribution - 10k moves over 5 ps
+print("Equilibration...")
 for i in range(50):
-    gcmc_mover.move(simulation.context, 200)  # 200 GCMC moves
-    simulation.step(50)  # 100 fs propagation between moves
+    # Carry out 200 moves every 100 fs
+    gcmc_mover.move(simulation.context, 200)
+    simulation.step(50)
 print("{}/{} equilibration GCMC moves accepted. N = {}".format(gcmc_mover.n_accepted,
                                                                gcmc_mover.n_moves,
                                                                gcmc_mover.N))
@@ -78,7 +81,7 @@ simulation.reporters.append(StateDataReporter(stdout,
 gcmc_mover.reset()
 
 # Run simulation
-print("\n\nGCMC production")
+print("\n\nProduction")
 for i in range(50):
     # Carry out 100 GCMC moves per 1 ps of MD
     simulation.step(500)
@@ -86,16 +89,12 @@ for i in range(50):
     # Write data out
     gcmc_mover.report(simulation)
 
-# Format the trajectory
+#
+# Need to process the trajectory for visualisation
+#
+
+# Move ghost waters away
 grand.utils.shift_ghost_waters(ghost_file='gcmc-ghost-wats.txt',
                                topology='water-ghosts.pdb',
                                trajectory='water-raw.dcd',
                                output='water-gcmc.dcd')
-
-# Write out a trajectory of the GCMC sphere
-grand.utils.write_sphere_traj(radius=2.0,
-                              sphere_centre=[12.5, 12.5, 12.5]*angstroms,
-                              topology='water-ghosts.pdb',
-                              trajectory='water-gcmc.dcd',
-                              output='gcmc_sphere.pdb',
-                              initial_frame=True)

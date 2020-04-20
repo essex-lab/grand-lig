@@ -4,7 +4,10 @@ Marley Samways
 
 Description
 -----------
-Example script of how to run GCMC in OpenMM for a scytalone dehydratase (SD) system
+Example script of how to run GCMD in OpenMM for a scytalone dehydratase (SD) system
+
+Note that this simulation is only an example, and is not long enough
+to see equilibrated behaviour
 """
 
 from simtk.openmm.app import *
@@ -51,7 +54,7 @@ gcmc_mover = grand.samplers.StandardGCMCSphereSampler(system=system,
                                                       sphereRadius=4*angstroms,
                                                       log='sd-gcmc.log',
                                                       dcd='sd-raw.dcd',
-                                                      rst='sd-gcmc.pdb',
+                                                      rst='sd-gcmc.rst7',
                                                       overwrite=False)
 
 # BAOAB Langevin integrator (important)
@@ -69,11 +72,12 @@ simulation.context.setPeriodicBoxVectors(*pdb.topology.getPeriodicBoxVectors())
 gcmc_mover.initialise(simulation.context, ghosts)
 gcmc_mover.deleteWatersInGCMCSphere()
 
-# Equilibrate water distribution
-print("GCMC equilibration...")
-for i in range(75):
-    gcmc_mover.move(simulation.context, 200)  # 200 GCMC moves
-    simulation.step(50)  # 100 fs propagation between moves
+# Equilibrate water distribution - 10k moves over 5 ps
+print("Equilibration...")
+for i in range(50):
+    # Carry out 200 moves every 100 fs
+    gcmc_mover.move(simulation.context, 200)
+    simulation.step(50)
 print("{}/{} equilibration GCMC moves accepted. N = {}".format(gcmc_mover.n_accepted,
                                                                gcmc_mover.n_moves,
                                                                gcmc_mover.N))
@@ -88,14 +92,18 @@ simulation.reporters.append(StateDataReporter(stdout,
 # Reset GCMC statistics
 gcmc_mover.reset()
 
-# Run simulation
-print("\n\nGCMC production")
+# Run simulation - 5k moves over 50 ps
+print("\nProduction")
 for i in range(50):
     # Carry out 100 GCMC moves per 1 ps of MD
     simulation.step(500)
     gcmc_mover.move(simulation.context, 100)
     # Write data out
     gcmc_mover.report(simulation)
+
+#
+# Need to process the trajectory for visualisation
+#
 
 # Move ghost waters out of the simulation cell
 trj = grand.utils.shift_ghost_waters(ghost_file='gcmc-ghost-wats.txt',
