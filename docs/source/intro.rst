@@ -32,7 +32,7 @@ The dependencies of this module can be installed as:
 
 The grand module is released under the MIT licence. If results from this
 module contribution to a publication, we only ask that you cite the
-publications above.
+publications below.
 
 Contributors
 ------------
