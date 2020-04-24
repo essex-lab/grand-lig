@@ -1,20 +1,12 @@
 # -*- coding: utf-8 -*-
 
 """
-samplers.py
-Marley Samways
-
 Description
 -----------
-This code is written to execute GCMC moves with water molecules in OpenMM, via a series of
-Sampler objects
+This module is written to execute GCMC moves with water molecules in OpenMM, via a series of
+Sampler objects.
 
-References
-----------
-1 - G. A. Ross, M. S. Bodnarchuk and J. W. Essex, J. Am. Chem. Soc., 2015,
-    137, 14930-14943
-2 - G. A. Ross, H. E. Bruce Macdonald, C. Cave-Ayland, A. I. Cabedo Martinez
-    and J. W. Essex, J. Chem. Theory Comput., 2017, 13, 6373-6381
+Marley Samways
 """
 
 import numpy as np
@@ -34,7 +26,8 @@ from grand.potential import get_lambda_values
 
 class BaseGrandCanonicalMonteCarloSampler(object):
     """
-    Base class for carrying out GCMC moves in OpenMM
+    Base class for carrying out GCMC moves in OpenMM.
+    All other Sampler objects are derived from this
     """
     def __init__(self, system, topology, temperature, waterName="HOH", ghostFile="gcmc-ghost-wats.txt", log='gcmc.log',
                  dcd=None, rst=None, overwrite=False):
@@ -567,10 +560,6 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         """
         Get the index of the atom used to define the centre of the GCMC box
 
-        Notes
-        -----
-        Should make this more efficient at some stage.
-
         Parameters
         ----------
         ref_atoms : list
@@ -824,9 +813,9 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         -------
         new_positions : simtk.unit.Quantity
             Positions following the 'insertion' of the ghost water
-        gcmc_id :
+        gcmc_id : int
             GCMC ID for this molecule
-        wat_id :
+        wat_id : int
             Overall ID for this water
         atom_indices : list
             List of the atom IDs for this molecule
@@ -874,9 +863,9 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
 
         Returns
         -------
-        gcmc_id :
+        gcmc_id : int
             GCMC ID for this molecule
-        wat_id :
+        wat_id : int
             Overall ID for this water
         atom_indices : list
             List of the atom IDs for this molecule
@@ -1007,11 +996,6 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
     def insertionMove(self):
         """
         Carry out a random water insertion move on the current system
-
-        Notes
-        -----
-        Need to double-check (and fix) any issues relating to periodic boundaries
-        and the inserted coordinates
         """
         # Choose a random site in the sphere to insert a water
         new_positions, gcmc_id, wat_id, atom_indices = self.insertRandomWater()
@@ -1542,9 +1526,9 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
         -------
         new_positions : simtk.unit.Quantity
             Positions following the 'insertion' of the ghost water
-        gcmc_id :
+        gcmc_id : int
             GCMC ID for this molecule
-        wat_id :
+        wat_id : int
             Overall ID for this water
         atom_indices : list
             List of the atom IDs for this molecule
@@ -1590,9 +1574,9 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
 
         Returns
         -------
-        gcmc_id :
+        gcmc_id : int
             GCMC ID for this molecule
-        wat_id :
+        wat_id : int
             Overall ID for this water
         atom_indices : list
             List of the atom IDs for this molecule
@@ -1706,11 +1690,6 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
     def insertionMove(self):
         """
         Carry out a random water insertion move on the current system
-
-        Notes
-        -----
-        Need to double-check (and fix) any issues relating to periodic boundaries
-        and the inserted coordinates
         """
         # Insert a ghost water to a random site
         new_positions, gcmc_id, wat_id, atom_indices = self.insertRandomWater()

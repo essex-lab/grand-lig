@@ -1,8 +1,9 @@
 """
-test_potential.py
-Marley Samways
-
+Description
+-----------
 This file contains functions written to test the functions in the grand.potential sub-module
+
+Marley Samways
 """
 
 import os

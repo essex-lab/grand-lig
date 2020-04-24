@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 
 """
-utils.py
-Marley Samways
-
 Description
 -----------
-Functions to provide support for the use of GCMC in OpenMM.
+Functions to provide support for grand canonical sampling in OpenMM.
 These functions are not used during the simulation, but will be relevant in setting up
 simulations and processing results
+
+Marley Samways
 """
 
 import os
@@ -310,10 +309,6 @@ def read_prepi(filename):
 def write_conect(pdb, resname, prepi, output):
     """
     Take in a PDB and write out a new one, including CONECT lines for a specified residue, given a .prepi file
-
-    To Do
-    -----
-    This function needs to be tidied up a bit...
     Should make it easy to run this on more residues at a time - though for now it can just be run separately per residue
     but this isn't ideal...
 
@@ -993,7 +988,7 @@ def cluster_waters(topology, trajectory, sphere_radius, ref_atoms=None, sphere_c
 
     # Write the cluster coordinates to a PDB file
     with open(output, 'w') as f:
-        f.write("REMARK Clustered GCMC Water positions written by grand\n")
+        f.write("REMARK Clustered GCMC water positions written by grand\n")
         for i in range(n_clusts):
             coords = rep_coords[i]
             occ1 = clust_occs_sorted[i]

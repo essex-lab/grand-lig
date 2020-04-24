@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 
 """
-potential.py
-Marley Samways
-
 Description
 -----------
 Set of functions to calibrate the excess chemical potential and standard state volume of water
+
+Marley Samways
 """
 
 import numpy as np

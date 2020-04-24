@@ -1,13 +1,9 @@
 """
-test_samplers.py
-Marley Samways
-
+Description
+-----------
 This file contains functions written to test the functions in the grand.samplers sub-module
 
-Notes
------
-- Need to make these tests more extensive at some stage...
-- Need to add tests for the non-equilibrium sampler (when it's written)
+Marley Samways
 """
 
 import os
