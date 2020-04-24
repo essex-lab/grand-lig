@@ -34,7 +34,7 @@ the `examples/` directory.
 
 The _grand_ module is released under the MIT licence. If results from this
 module contribution to a publication, we only ask that you cite the
-publications above.
+publications below.
 
 ### Contributors
 
