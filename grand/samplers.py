@@ -507,7 +507,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         sphereRadius : simtk.unit.Quantity
             Radius of the spherical GCMC region
         sphereCentre : simtk.unit.Quantity
-            Coordinates around which the GCMC sohere is based
+            Coordinates around which the GCMC sphere is based
         log : str
             Log file to write out
         dcd : str
@@ -933,7 +933,7 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
         sphereRadius : simtk.unit.Quantity
             Radius of the spherical GCMC region
         sphereCentre : simtk.unit.Quantity
-            Coordinates around which the GCMC sohere is based
+            Coordinates around which the GCMC sphere is based
         log : str
             Name of the log file to write out
         dcd : str
