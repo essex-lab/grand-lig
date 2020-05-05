@@ -1,7 +1,7 @@
 """
 Description
 -----------
-Example script of how to run GCMD in OpenMM for a simple water system
+Example script of how to run GCMC/MD in OpenMM for a simple water system
 
 Note that this simulation is only an example, and is not long enough
 to see equilibrated behaviour
