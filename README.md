@@ -1,4 +1,4 @@
-# _grand_ : Grand Canonical Molecular Dynamics in OpenMM
+# _grand_ : Grand Canonical Water Sampling in OpenMM
 
 Version : 1.0.0
 
