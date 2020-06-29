@@ -1,6 +1,8 @@
 # _grand_ : Grand Canonical Water Sampling in OpenMM
 
-Version : 1.0.0
+This private repository is for grand development.
+
+Latest version: 1.0.0
 
 ### Background
 
@@ -30,7 +32,6 @@ pip install lxml
 
 Several (very short) examples of how this module is ran alongside OpenMM can be found in
 the `examples/` directory.
-*_ADD LINK TO PAPER EXAMPLES_*
 
 The _grand_ module is released under the MIT licence. If results from this
 module contribute to a publication, we only ask that you cite the
