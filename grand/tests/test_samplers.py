@@ -169,7 +169,7 @@ def setup_NonequilibriumGCMCSphereSampler():
                                                                        temperature=300*kelvin, referenceAtoms=ref_atoms,
                                                                        sphereRadius=4*angstroms,
                                                                        integrator=integrator,
-                                                                       nPropSteps=10, nPertSteps=1,
+                                                                       nPropStepsPerPert=10, nPertSteps=1,
                                                                        ghostFile=os.path.join(outdir, 'bpti-ghost-wats.txt'),
                                                                        log=os.path.join(outdir, 'neqgcmcspheresampler.log'))
 

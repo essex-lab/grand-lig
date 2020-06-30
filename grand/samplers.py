@@ -1068,7 +1068,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
     """
     def __init__(self, system, topology, temperature, integrator, adams=None,
                  excessChemicalPotential=-6.09*unit.kilocalories_per_mole, standardVolume=30.345*unit.angstroms**3,
-                 adamsShift=0.0, nPertSteps=1, nPropSteps=1, timeStep=2*unit.femtoseconds, lambdas=None, waterName="HOH",
+                 adamsShift=0.0, nPertSteps=1, nPropStepsPerPert=1, timeStep=2 * unit.femtoseconds, lambdas=None, waterName="HOH",
                  ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None, sphereCentre=None,
                  log='gcmc.log', dcd=None, rst=None, overwrite=False):
         """
@@ -1099,7 +1099,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         nPertSteps : int
             Number of pertubation steps over which to shift lambda between 0 and 1 (or vice versa).
-        nPropSteps : int
+        nPropStepsPerPert : int
             Number of propagation steps to carry out for
         timeStep : simtk.unit.Quantity
             Time step to use for non-equilibrium integration during the propagation steps
@@ -1149,9 +1149,9 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             self.lambdas = np.linspace(0.0, 1.0, self.n_pert_steps + 1)
 
         self.n_pert_steps = nPertSteps
-        self.n_prop_steps = nPropSteps
+        self.n_prop_steps_per_pert = nPropStepsPerPert
         self.time_step = timeStep.in_units_of(unit.picosecond)
-        self.protocol_time = (self.n_pert_steps + 1) * self.n_prop_steps * self.time_step
+        self.protocol_time = (self.n_pert_steps + 1) * self.n_prop_steps_per_pert * self.time_step
         self.logger.info("Each NCMC move will be executed over a total of {}".format(self.protocol_time))
 
         self.works = []  # Store work values of moves
@@ -1231,7 +1231,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         # Start running perturbation and propagation kernels
         protocol_work = 0.0 * unit.kilocalories_per_mole
         explosion = False
-        self.ncmc_integrator.step(self.n_prop_steps)
+        self.ncmc_integrator.step(self.n_prop_steps_per_pert)
         for i in range(self.n_pert_steps):
             state = self.context.getState(getEnergy=True)
             energy_initial = state.getPotentialEnergy()
@@ -1242,7 +1242,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             protocol_work += energy_final - energy_initial
             # Propagate the system
             try:
-                self.ncmc_integrator.step(self.n_prop_steps)
+                self.ncmc_integrator.step(self.n_prop_steps_per_pert)
             except:
                 print("Caught explosion!")
                 explosion = True
@@ -1320,7 +1320,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         # Start running perturbation and propagation kernels
         protocol_work = 0.0 * unit.kilocalories_per_mole
         explosion = False
-        self.ncmc_integrator.step(self.n_prop_steps)
+        self.ncmc_integrator.step(self.n_prop_steps_per_pert)
         for i in range(self.n_pert_steps):
             state = self.context.getState(getEnergy=True)
             energy_initial = state.getPotentialEnergy()
@@ -1331,7 +1331,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             protocol_work += energy_final - energy_initial
             # Propagate the system
             try:
-                self.ncmc_integrator.step(self.n_prop_steps)
+                self.ncmc_integrator.step(self.n_prop_steps_per_pert)
             except:
                 print("Caught explosion!")
                 explosion = True
@@ -1765,7 +1765,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
     """
     def __init__(self, system, topology, temperature, integrator, adams=None,
                  excessChemicalPotential=-6.09*unit.kilocalories_per_mole, standardVolume=30.345*unit.angstroms**3,
-                 adamsShift=0.0, nPertSteps=1, nPropSteps=1, timeStep=2*unit.femtoseconds, waterName="HOH", boxVectors=None,
+                 adamsShift=0.0, nPertSteps=1, nPropStepsPerPert=1, timeStep=2 * unit.femtoseconds, waterName="HOH", boxVectors=None,
                  ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, rst=None, overwrite=False,
                  lambdas=None):
         """
@@ -1796,7 +1796,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         nPertSteps : int
             Number of pertubation steps over which to shift lambda between 0 and 1 (or vice versa).
-        nPropSteps : int
+        nPropStepsPerPert : int
             Number of propagation steps to carry out for
         timeStep : simtk.unit.Quantity
             Time step to use for non-equilibrium integration during the propagation steps
@@ -1836,9 +1836,9 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             self.n_pert_steps = nPertSteps
             self.lambdas = np.linspace(0.0, 1.0, self.n_pert_steps + 1)
 
-        self.n_prop_steps = nPropSteps
+        self.n_prop_steps_per_pert = nPropStepsPerPert
         self.time_step = timeStep.in_units_of(unit.picosecond)
-        self.protocol_time = (self.n_pert_steps + 1) * self.n_prop_steps * self.time_step
+        self.protocol_time = (self.n_pert_steps + 1) * self.n_prop_steps_per_pert * self.time_step
         self.logger.info("Each NCMC move will be executed over a total of {}".format(self.protocol_time))
 
         self.velocities = None  # Need to store velocities for this type of sampling
@@ -1910,7 +1910,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         # Start running perturbation and propagation kernels
         protocol_work = 0.0 * unit.kilocalories_per_mole
         explosion = False
-        self.ncmc_integrator.step(self.n_prop_steps)
+        self.ncmc_integrator.step(self.n_prop_steps_per_pert)
         for i in range(self.n_pert_steps):
             state = self.context.getState(getEnergy=True)
             energy_initial = state.getPotentialEnergy()
@@ -1921,7 +1921,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             protocol_work += energy_final - energy_initial
             # Propagate the system
             try:
-                self.ncmc_integrator.step(self.n_prop_steps)
+                self.ncmc_integrator.step(self.n_prop_steps_per_pert)
             except:
                 print("Caught explosion!")
                 explosion = True
@@ -1974,7 +1974,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         # Start running perturbation and propagation kernels
         protocol_work = 0.0 * unit.kilocalories_per_mole
         explosion = False
-        self.ncmc_integrator.step(self.n_prop_steps)
+        self.ncmc_integrator.step(self.n_prop_steps_per_pert)
         for i in range(self.n_pert_steps):
             state = self.context.getState(getEnergy=True)
             energy_initial = state.getPotentialEnergy()
@@ -1985,7 +1985,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             protocol_work += energy_final - energy_initial
             # Propagate the system
             try:
-                self.ncmc_integrator.step(self.n_prop_steps)
+                self.ncmc_integrator.step(self.n_prop_steps_per_pert)
             except:
                 print("Caught explosion!")
                 explosion = True
