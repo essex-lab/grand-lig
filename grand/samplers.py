@@ -7,6 +7,7 @@ This module is written to execute GCMC moves with water molecules in OpenMM, via
 Sampler objects.
 
 Marley Samways
+Ollie Melling
 """
 
 import numpy as np
@@ -1067,7 +1068,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
     """
     def __init__(self, system, topology, temperature, integrator, adams=None,
                  excessChemicalPotential=-6.09*unit.kilocalories_per_mole, standardVolume=30.345*unit.angstroms**3,
-                 adamsShift=0.0, nPertSteps=1, nPropSteps=1, lambdas=None, waterName="HOH",
+                 adamsShift=0.0, nPertSteps=1, nPropSteps=1, timeStep=2*unit.femtoseconds, lambdas=None, waterName="HOH",
                  ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None, sphereCentre=None,
                  log='gcmc.log', dcd=None, rst=None, overwrite=False):
         """
@@ -1100,6 +1101,8 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             Number of pertubation steps over which to shift lambda between 0 and 1 (or vice versa).
         nPropSteps : int
             Number of propagation steps to carry out for
+        timeStep : simtk.unit.Quantity
+            Time step to use for non-equilibrium integration during the propagation steps
         lambdas : list
             Series of lambda values corresponding to the pathway over which the molecules are perturbed
         waterName : str
@@ -1147,8 +1150,9 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
         self.n_pert_steps = nPertSteps
         self.n_prop_steps = nPropSteps
-        protocol_time = (self.n_pert_steps + 1) * self.n_prop_steps * 2.0 * unit.femtoseconds
-        self.logger.info("Each NCMC move will be executed over a total of {}".format(protocol_time))
+        self.time_step = timeStep.in_units_of(unit.picosecond)
+        self.protocol_time = (self.n_pert_steps + 1) * self.n_prop_steps * self.time_step
+        self.logger.info("Each NCMC move will be executed over a total of {}".format(self.protocol_time))
 
         self.works = []  # Store work values of moves
         self.n_explosions = 0
@@ -1161,7 +1165,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         # Create and add the nonequilibrium integrator
         self.ncmc_integrator = NonequilibriumLangevinIntegrator(temperature=temperature,
                                                                 collision_rate=1.0/unit.picosecond,
-                                                                timestep=2*unit.femtoseconds, splitting="V R O R V")
+                                                                timestep=self.time_step, splitting="V R O R V")
         self.compound_integrator.addIntegrator(self.ncmc_integrator)
         # Set the compound integrator to the MD integrator
         self.compound_integrator.setCurrentIntegrator(0)
@@ -1761,7 +1765,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
     """
     def __init__(self, system, topology, temperature, integrator, adams=None,
                  excessChemicalPotential=-6.09*unit.kilocalories_per_mole, standardVolume=30.345*unit.angstroms**3,
-                 adamsShift=0.0, nPertSteps=1, nPropSteps=1, waterName="HOH", boxVectors=None,
+                 adamsShift=0.0, nPertSteps=1, nPropSteps=1, timeStep=2*unit.femtoseconds, waterName="HOH", boxVectors=None,
                  ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, rst=None, overwrite=False,
                  lambdas=None):
         """
@@ -1794,6 +1798,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             Number of pertubation steps over which to shift lambda between 0 and 1 (or vice versa).
         nPropSteps : int
             Number of propagation steps to carry out for
+        timeStep : simtk.unit.Quantity
+            Time step to use for non-equilibrium integration during the propagation steps
         lambdas : list
             Series of lambda values corresponding to the pathway over which the molecules are perturbed
         waterName : str
@@ -1831,7 +1837,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             self.lambdas = np.linspace(0.0, 1.0, self.n_pert_steps + 1)
 
         self.n_prop_steps = nPropSteps
-        self.protocol_time = (self.n_pert_steps + 1) * self.n_prop_steps * 0.002 * unit.picoseconds
+        self.time_step = timeStep.in_units_of(unit.picosecond)
+        self.protocol_time = (self.n_pert_steps + 1) * self.n_prop_steps * self.time_step
         self.logger.info("Each NCMC move will be executed over a total of {}".format(self.protocol_time))
 
         self.velocities = None  # Need to store velocities for this type of sampling
@@ -1846,7 +1853,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         # Create and add the nonequilibrium integrator
         self.ncmc_integrator = NonequilibriumLangevinIntegrator(temperature=temperature,
                                                                 collision_rate=1.0/unit.picosecond,
-                                                                timestep=2*unit.femtoseconds, splitting="V R O R V")
+                                                                timestep=self.time_step, splitting="V R O R V")
         self.compound_integrator.addIntegrator(self.ncmc_integrator)
         # Set the compound integrator to the MD integrator
         self.compound_integrator.setCurrentIntegrator(0)
