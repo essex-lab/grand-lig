@@ -1154,7 +1154,8 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         self.protocol_time = (self.n_pert_steps + 1) * self.n_prop_steps_per_pert * self.time_step
         self.logger.info("Each NCMC move will be executed over a total of {}".format(self.protocol_time))
 
-        self.works = []  # Store work values of moves
+        self.insert_works = []  # Store work values of moves
+        self.delete_works = []
         self.n_explosions = 0
         self.n_left_sphere = 0  # Number of moves rejected because the water left the sphere
 
@@ -1249,10 +1250,9 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                 self.n_explosions += 1
                 break
 
-        # Get the protocol work (in units of kT)
-        #protocol_work = self.ncmc_integrator.get_protocol_work(dimensionless=True)
+        # Store the protocol work
         #self.logger.info("Insertion work = {}".format(protocol_work))
-        self.works.append(protocol_work)
+        self.insert_works.append(protocol_work)
 
         # Update variables and GCMC sphere
         #self.gcmc_status[gcmc_id] = 1
@@ -1338,10 +1338,9 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                 self.n_explosions += 1
                 break
 
-        # Get the protocol work (in units of kT)
-        #protocol_work = self.ncmc_integrator.get_protocol_work(dimensionless=True)
+        # Get the protocol work
         #self.logger.info("Deletion work = {}".format(protocol_work))
-        self.works.append(protocol_work)
+        self.delete_works.append(protocol_work)
 
         # Update variables and GCMC sphere
         #self.gcmc_status[gcmc_id] = 1  # Leaving the water as 'on' here to check
@@ -1402,7 +1401,8 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         self.acceptance_probabilities = []
 
         # NCMC-specific variables
-        self.works = []
+        self.insert_works = []
+        self.delete_works = []
         self.n_explosions = 0
         self.n_left_sphere = 0
 
@@ -1843,7 +1843,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
 
         self.velocities = None  # Need to store velocities for this type of sampling
 
-        self.works = []  # Store work values of moves
+        self.insert_works = []  # Store work values of moves
+        self.delete_works = []
         self.n_explosions = 0
 
         # Define a compound integrator
@@ -1928,10 +1929,9 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
                 self.n_explosions += 1
                 break
 
-        # Get the protocol work (in units of kT)
-        #protocol_work = self.ncmc_integrator.get_protocol_work(dimensionless=True)
+        # Get the protocol work
         #self.logger.info("Insertion work = {}".format(protocol_work))
-        self.works.append(protocol_work)
+        self.insert_works.append(protocol_work)
 
         if explosion:
             acc_prob = -1
@@ -1992,10 +1992,9 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
                 self.n_explosions += 1
                 break
 
-        # Get the protocol work (in units of kT)
-        #protocol_work = self.ncmc_integrator.get_protocol_work(dimensionless=True)
+        # Get the protocol work
         #self.logger.info("Deletion work = {}".format(protocol_work))
-        self.works.append(protocol_work)
+        self.delete_works.append(protocol_work)
 
         if explosion:
             acc_prob = 0
@@ -2036,7 +2035,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         self.acceptance_probabilities = []
 
         # NCMC-specific variables
-        self.works = []
+        self.insert_works = []
+        self.delete_works = []
         self.n_explosions = 0
 
         return None
