@@ -30,7 +30,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
     Base class for carrying out GCMC moves in OpenMM.
     All other Sampler objects are derived from this
     """
-    def __init__(self, system, topology, temperature, waterName="HOH", ghostFile="gcmc-ghost-wats.txt", log='gcmc.log',
+    def __init__(self, system, topology, temperature, ghostFile="gcmc-ghost-wats.txt", log='gcmc.log',
                  dcd=None, rst=None, overwrite=False):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
@@ -43,8 +43,6 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             Topology object for the system to be simulated
         temperature : simtk.unit.Quantity
             Temperature of the simulation, must be in appropriate units
-        waterName : str
-            Name of the water residues. Default is 'HOH'
         ghostFile : str
             Name of a file to write out the residue IDs of ghost water molecules. This is
             useful if you want to visualise the sampling, as you can then remove these waters
@@ -100,10 +98,11 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.acceptance_probabilities = []  # Store acceptance probabilities
         
         # Get parameters for the water model
-        self.water_params = self.getWaterParameters(waterName)
+        self.water_name = "HOH"
+        self.water_params = self.getWaterParameters(self.water_name)
 
         # Get water residue IDs & assign statuses to each
-        self.water_resids = self.getWaterResids(waterName)  # All waters
+        self.water_resids = self.getWaterResids(self.water_name)  # All waters
         self.water_status = np.ones_like(self.water_resids)  # 1 indicates on, 0 indicates off
         self.gcmc_resids = []  # GCMC waters
         self.gcmc_status = []  # 1 indicates on, 0 indicates off
@@ -469,7 +468,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
     """
     def __init__(self, system, topology, temperature, adams=None,
                  excessChemicalPotential=-6.09*unit.kilocalories_per_mole,
-                 standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, waterName="HOH",
+                 standardVolume=30.345*unit.angstroms**3, adamsShift=0.0,
                  ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None, sphereCentre=None,
                  log='gcmc.log', dcd=None, rst=None, overwrite=False):
         """
@@ -495,8 +494,6 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
             Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
-        waterName : str
-            Name of the water residues. Default is 'HOH'
         ghostFile : str
             Name of a file to write out the residue IDs of ghost water molecules. This is
             useful if you want to visualise the sampling, as you can then remove these waters
@@ -519,9 +516,8 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
             Overwrite any data already present
         """
         # Initialise base
-        BaseGrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, waterName=waterName,
-                                                     ghostFile=ghostFile, log=log, dcd=dcd, rst=rst,
-                                                     overwrite=overwrite)
+        BaseGrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, ghostFile=ghostFile,
+                                                     log=log, dcd=dcd, rst=rst, overwrite=overwrite)
 
         # Initialise variables specific to the GCMC sphere
         self.sphere_radius = sphereRadius
@@ -895,7 +891,7 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
     Class to carry out instantaneous GCMC moves in OpenMM
     """
     def __init__(self, system, topology, temperature, adams=None, excessChemicalPotential=-6.09*unit.kilocalories_per_mole,
-                 standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, waterName="HOH", ghostFile="gcmc-ghost-wats.txt",
+                 standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, ghostFile="gcmc-ghost-wats.txt",
                  referenceAtoms=None, sphereRadius=None, sphereCentre=None, log='gcmc.log', dcd=None, rst=None,
                  overwrite=False):
         """
@@ -921,8 +917,6 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
             Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
-        waterName : str
-            Name of the water residues. Default is 'HOH'
         ghostFile : str
             Name of a file to write out the residue IDs of ghost water molecules. This is
             useful if you want to visualise the sampling, as you can then remove these waters
@@ -947,9 +941,9 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
         # Initialise base class - don't need any more initialisation for the instantaneous sampler
         GCMCSphereSampler.__init__(self, system, topology, temperature, adams=adams,
                                    excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
-                                   adamsShift=adamsShift, waterName=waterName, ghostFile=ghostFile,
-                                   referenceAtoms=referenceAtoms, sphereRadius=sphereRadius, sphereCentre=sphereCentre,
-                                   log=log, dcd=dcd, rst=rst, overwrite=overwrite)
+                                   adamsShift=adamsShift, ghostFile=ghostFile, referenceAtoms=referenceAtoms,
+                                   sphereRadius=sphereRadius, sphereCentre=sphereCentre, log=log, dcd=dcd, rst=rst,
+                                   overwrite=overwrite)
 
         self.energy = None  # Need to save energy
         self.logger.info("StandardGCMCSphereSampler object initialised")
@@ -1068,7 +1062,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
     """
     def __init__(self, system, topology, temperature, integrator, adams=None,
                  excessChemicalPotential=-6.09*unit.kilocalories_per_mole, standardVolume=30.345*unit.angstroms**3,
-                 adamsShift=0.0, nPertSteps=1, nPropStepsPerPert=1, timeStep=2 * unit.femtoseconds, lambdas=None, waterName="HOH",
+                 adamsShift=0.0, nPertSteps=1, nPropStepsPerPert=1, timeStep=2 * unit.femtoseconds, lambdas=None,
                  ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None, sphereCentre=None,
                  log='gcmc.log', dcd=None, rst=None, overwrite=False):
         """
@@ -1105,8 +1099,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             Time step to use for non-equilibrium integration during the propagation steps
         lambdas : list
             Series of lambda values corresponding to the pathway over which the molecules are perturbed
-        waterName : str
-            Name of the water residues. Default is 'HOH'
         ghostFile : str
             Name of a file to write out the residue IDs of ghost water molecules. This is
             useful if you want to visualise the sampling, as you can then remove these waters
@@ -1131,9 +1123,9 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         # Initialise base class
         GCMCSphereSampler.__init__(self, system, topology, temperature, adams=adams,
                                    excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
-                                   adamsShift=adamsShift, waterName=waterName, ghostFile=ghostFile,
-                                   referenceAtoms=referenceAtoms, sphereRadius=sphereRadius, sphereCentre=sphereCentre,
-                                   log=log, dcd=dcd, rst=rst, overwrite=overwrite)
+                                   adamsShift=adamsShift, ghostFile=ghostFile, referenceAtoms=referenceAtoms,
+                                   sphereRadius=sphereRadius, sphereCentre=sphereCentre, log=log, dcd=dcd, rst=rst,
+                                   overwrite=overwrite)
 
         self.velocities = None  # Need to store velocities for this type of sampling
 
@@ -1419,7 +1411,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
     """
     def __init__(self, system, topology, temperature, adams=None,
                  excessChemicalPotential=-6.09*unit.kilocalories_per_mole,
-                 standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, waterName="HOH", boxVectors=None,
+                 standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, boxVectors=None,
                  ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, rst=None, overwrite=False):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
@@ -1444,8 +1436,6 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
             Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
-        waterName : str
-            Name of the water residues. Default is 'HOH'
         boxVectors : simtk.unit.Quantity
             Box vectors for the simulation cell
         ghostFile : str
@@ -1462,9 +1452,8 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
             Overwrite any data already present
         """
         # Initialise base
-        BaseGrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, waterName=waterName,
-                                                     ghostFile=ghostFile, log=log, dcd=dcd, rst=rst,
-                                                     overwrite=overwrite)
+        BaseGrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, ghostFile=ghostFile, log=log,
+                                                     dcd=dcd, rst=rst, overwrite=overwrite)
 
         # Read in simulation box lengths
         self.simulation_box = np.array([boxVectors[0, 0]._value,
@@ -1609,7 +1598,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
     Class to carry out instantaneous GCMC moves in OpenMM
     """
     def __init__(self, system, topology, temperature, adams=None, excessChemicalPotential=-6.09*unit.kilocalories_per_mole,
-                 standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, waterName="HOH", boxVectors=None,
+                 standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, boxVectors=None,
                  ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, rst=None, overwrite=False):
         """
         Initialise the object to be used for sampling instantaneous water insertion/deletion moves
@@ -1634,8 +1623,6 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
             Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
-        waterName : str
-            Name of the water residues. Default is 'HOH'
         boxVectors : simtk.unit.Quantity
             Box vectors for the simulation cell
         ghostFile : str
@@ -1654,8 +1641,8 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         # Initialise base class - don't need any more initialisation for the instantaneous sampler
         GCMCSystemSampler.__init__(self, system, topology, temperature, adams=adams,
                                    excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
-                                   adamsShift=adamsShift, waterName=waterName, boxVectors=boxVectors,
-                                   ghostFile=ghostFile, log=log, dcd=dcd, rst=rst, overwrite=overwrite)
+                                   adamsShift=adamsShift, boxVectors=boxVectors, ghostFile=ghostFile, log=log, dcd=dcd,
+                                   rst=rst, overwrite=overwrite)
 
         self.energy = None  # Need to save energy
         self.logger.info("StandardGCMCSystemSampler object initialised")
@@ -1765,7 +1752,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
     """
     def __init__(self, system, topology, temperature, integrator, adams=None,
                  excessChemicalPotential=-6.09*unit.kilocalories_per_mole, standardVolume=30.345*unit.angstroms**3,
-                 adamsShift=0.0, nPertSteps=1, nPropStepsPerPert=1, timeStep=2 * unit.femtoseconds, waterName="HOH", boxVectors=None,
+                 adamsShift=0.0, nPertSteps=1, nPropStepsPerPert=1, timeStep=2 * unit.femtoseconds, boxVectors=None,
                  ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, rst=None, overwrite=False,
                  lambdas=None):
         """
@@ -1802,8 +1789,6 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             Time step to use for non-equilibrium integration during the propagation steps
         lambdas : list
             Series of lambda values corresponding to the pathway over which the molecules are perturbed
-        waterName : str
-            Name of the water residues. Default is 'HOH'
         boxVectors : simtk.unit.Quantity
             Box vectors for the simulation cell
         ghostFile : str
@@ -1822,8 +1807,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         # Initialise base class
         GCMCSystemSampler.__init__(self, system, topology, temperature, adams=adams,
                                    excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
-                                   adamsShift=adamsShift, waterName=waterName, boxVectors=boxVectors,
-                                   ghostFile=ghostFile, log=log, dcd=dcd, rst=rst, overwrite=overwrite)
+                                   adamsShift=adamsShift, boxVectors=boxVectors, ghostFile=ghostFile, log=log, dcd=dcd,
+                                   rst=rst, overwrite=overwrite)
 
         # Load in extra NCMC variables
         if lambdas is not None:
