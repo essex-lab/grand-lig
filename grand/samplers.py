@@ -7,7 +7,6 @@ This module is written to execute GCMC moves with water molecules in OpenMM, via
 Sampler objects.
 
 Marley Samways
-Ollie Melling
 """
 
 import numpy as np
@@ -18,7 +17,6 @@ import parmed
 from copy import deepcopy
 from simtk import unit
 from simtk import openmm
-from openmmtools.integrators import NonequilibriumLangevinIntegrator
 
 from grand.utils import random_rotation_matrix
 from grand.utils import PDBRestartReporter
@@ -30,7 +28,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
     Base class for carrying out GCMC moves in OpenMM.
     All other Sampler objects are derived from this
     """
-    def __init__(self, system, topology, temperature, ghostFile="gcmc-ghost-wats.txt", log='gcmc.log',
+    def __init__(self, system, topology, temperature, waterName="HOH", ghostFile="gcmc-ghost-wats.txt", log='gcmc.log',
                  dcd=None, rst=None, overwrite=False):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
@@ -43,6 +41,8 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             Topology object for the system to be simulated
         temperature : simtk.unit.Quantity
             Temperature of the simulation, must be in appropriate units
+        waterName : str
+            Name of the water residues. Default is 'HOH'
         ghostFile : str
             Name of a file to write out the residue IDs of ghost water molecules. This is
             useful if you want to visualise the sampling, as you can then remove these waters
@@ -98,11 +98,10 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.acceptance_probabilities = []  # Store acceptance probabilities
         
         # Get parameters for the water model
-        self.water_name = "HOH"
-        self.water_params = self.getWaterParameters(self.water_name)
+        self.water_params = self.getWaterParameters(waterName)
 
         # Get water residue IDs & assign statuses to each
-        self.water_resids = self.getWaterResids(self.water_name)  # All waters
+        self.water_resids = self.getWaterResids(waterName)  # All waters
         self.water_status = np.ones_like(self.water_resids)  # 1 indicates on, 0 indicates off
         self.gcmc_resids = []  # GCMC waters
         self.gcmc_status = []  # 1 indicates on, 0 indicates off
@@ -198,37 +197,41 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         # Get a list of all water and non-water atom IDs
         water_atom_ids = []
-        nonwater_atom_ids = []
         for resid, residue in enumerate(self.topology.residues()):
             if resid in self.water_resids:
                 for atom in residue.atoms():
                     water_atom_ids.append(atom.index)
-            else:
-                for atom in residue.atoms():
-                    nonwater_atom_ids.append(atom.index)
 
-        # Copy all water-water and water-nonwater steric interactions into the custom force
+        # Copy all steric interactions into the custom force, and remove them from the original force
         for atom_idx in range(self.nonbonded_force.getNumParticles()):
             # Get atom parameters
             [charge, sigma, epsilon] = self.nonbonded_force.getParticleParameters(atom_idx)
+
             # Make sure that sigma is not equal to zero
             if np.isclose(sigma._value, 0.0):
                 sigma = 1.0 * unit.angstrom
+
             # Add particle to the custom force (with lambda=1 for now)
             custom_sterics.addParticle([sigma, epsilon, 1.0])
-            # Disable steric interactions of waters in the original force by setting epsilon=0
-            # We keep the charges for PME purposes
-            if atom_idx in water_atom_ids:
-                self.nonbonded_force.setParticleParameters(atom_idx, charge, sigma, abs(0))
+
+            # Disable steric interactions in the original force by setting epsilon=0 (keep the charges for PME purposes)
+            self.nonbonded_force.setParticleParameters(atom_idx, charge, sigma, abs(0))
 
         # Copy over all exceptions into the new force as exclusions
+        # Exceptions between non-water atoms will be excluded here, and handled by the NonbondedForce
+        # If exceptions (other than ignored interactions) are found involving water atoms, we have a problem
         for exception_idx in range(self.nonbonded_force.getNumExceptions()):
             [i, j, chargeprod, sigma, epsilon] = self.nonbonded_force.getExceptionParameters(exception_idx)
+
+            # If epsilon is greater than zero, this is a non-zero exception, which must be checked
+            if epsilon > 0.0 * unit.kilojoule_per_mole:
+                if i in water_atom_ids or j in water_atom_ids:
+                    raise Exception("Non-zero exception interaction found involving water atoms ({} & {}). grand is"
+                                    " not currently able to support this".format(i, j))
+
             custom_sterics.addExclusion(i, j)
 
-        # Define interaction groups for the custom force and add to the system
-        custom_sterics.addInteractionGroup(water_atom_ids, water_atom_ids)
-        custom_sterics.addInteractionGroup(water_atom_ids, nonwater_atom_ids)
+        # Add the custom force to the system
         self.system.addForce(custom_sterics)
         self.custom_nb_force = custom_sterics
 
@@ -452,8 +455,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         n : int
             Number of moves to execute
         """
-        error_msg = ("GrandCanonicalMonteCarloSampler is not designed to sample! Use StandardGCMCSampler or "
-                     "NonequilibriumGCMCSampler")
+        error_msg = ("GrandCanonicalMonteCarloSampler is not designed to sample!")
         self.logger.error(error_msg)
         raise NotImplementedError(error_msg)
 
@@ -468,7 +470,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
     """
     def __init__(self, system, topology, temperature, adams=None,
                  excessChemicalPotential=-6.09*unit.kilocalories_per_mole,
-                 standardVolume=30.345*unit.angstroms**3, adamsShift=0.0,
+                 standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, waterName="HOH",
                  ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None, sphereCentre=None,
                  log='gcmc.log', dcd=None, rst=None, overwrite=False):
         """
@@ -494,6 +496,8 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
             Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
+        waterName : str
+            Name of the water residues. Default is 'HOH'
         ghostFile : str
             Name of a file to write out the residue IDs of ghost water molecules. This is
             useful if you want to visualise the sampling, as you can then remove these waters
@@ -516,8 +520,9 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
             Overwrite any data already present
         """
         # Initialise base
-        BaseGrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, ghostFile=ghostFile,
-                                                     log=log, dcd=dcd, rst=rst, overwrite=overwrite)
+        BaseGrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, waterName=waterName,
+                                                     ghostFile=ghostFile, log=log, dcd=dcd, rst=rst,
+                                                     overwrite=overwrite)
 
         # Initialise variables specific to the GCMC sphere
         self.sphere_radius = sphereRadius
@@ -677,6 +682,16 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
         self.positions = deepcopy(state.getPositions(asNumpy=True))
         box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
+
+        # Check the symmetry of the box - currently only tolerate cuboidal boxes
+        # All off-diagonal box vector components must be zero
+        for i in range(3):
+            for j in range(3):
+                if i == j:
+                    continue
+                if not np.isclose(box_vectors[i, j]._value, 0.0):
+                    raise Exception("grand only accepts cuboidal simulation cells at this time.")
+
         self.simulation_box = np.array([box_vectors[0, 0]._value,
                                         box_vectors[1, 1]._value,
                                         box_vectors[2, 2]._value]) * unit.nanometer
@@ -891,7 +906,7 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
     Class to carry out instantaneous GCMC moves in OpenMM
     """
     def __init__(self, system, topology, temperature, adams=None, excessChemicalPotential=-6.09*unit.kilocalories_per_mole,
-                 standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, ghostFile="gcmc-ghost-wats.txt",
+                 standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, waterName="HOH", ghostFile="gcmc-ghost-wats.txt",
                  referenceAtoms=None, sphereRadius=None, sphereCentre=None, log='gcmc.log', dcd=None, rst=None,
                  overwrite=False):
         """
@@ -917,6 +932,8 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
             Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
+        waterName : str
+            Name of the water residues. Default is 'HOH'
         ghostFile : str
             Name of a file to write out the residue IDs of ghost water molecules. This is
             useful if you want to visualise the sampling, as you can then remove these waters
@@ -941,9 +958,9 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
         # Initialise base class - don't need any more initialisation for the instantaneous sampler
         GCMCSphereSampler.__init__(self, system, topology, temperature, adams=adams,
                                    excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
-                                   adamsShift=adamsShift, ghostFile=ghostFile, referenceAtoms=referenceAtoms,
-                                   sphereRadius=sphereRadius, sphereCentre=sphereCentre, log=log, dcd=dcd, rst=rst,
-                                   overwrite=overwrite)
+                                   adamsShift=adamsShift, waterName=waterName, ghostFile=ghostFile,
+                                   referenceAtoms=referenceAtoms, sphereRadius=sphereRadius, sphereCentre=sphereCentre,
+                                   log=log, dcd=dcd, rst=rst, overwrite=overwrite)
 
         self.energy = None  # Need to save energy
         self.logger.info("StandardGCMCSphereSampler object initialised")
@@ -1054,354 +1071,6 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
 
 
 ########################################################################################################################
-
-class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
-    """
-    Class to carry out GCMC moves in OpenMM, using nonequilibrium candidate Monte Carlo (NCMC)
-    to boost acceptance rates
-    """
-    def __init__(self, system, topology, temperature, integrator, adams=None,
-                 excessChemicalPotential=-6.09*unit.kilocalories_per_mole, standardVolume=30.345*unit.angstroms**3,
-                 adamsShift=0.0, nPertSteps=1, nPropStepsPerPert=1, timeStep=2 * unit.femtoseconds, lambdas=None,
-                 ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None, sphereCentre=None,
-                 log='gcmc.log', dcd=None, rst=None, overwrite=False):
-        """
-        Initialise the object to be used for sampling NCMC-enhanced water insertion/deletion moves
-
-        Parameters
-        ----------
-        system : simtk.openmm.System
-            System object to be used for the simulation
-        topology : simtk.openmm.app.Topology
-            Topology object for the system to be simulated
-        temperature : simtk.unit.Quantity
-            Temperature of the simulation, must be in appropriate units
-        integrator : simtk.openmm.CustomIntegrator
-            Integrator to use to propagate the dynamics of the system. Currently want to make sure that this
-            is the customised Langevin integrator found in openmmtools which uses BAOAB (VRORV) splitting.
-        adams : float
-            Adams B value for the simulation (dimensionless). Default is None,
-            if None, the B value is calculated from the box volume and chemical
-            potential
-        excessChemicalPotential : simtk.unit.Quantity
-            Excess chemical potential of the system that the simulation should be in equilibrium with, default is
-            -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
-            simulation parameters.
-        standardVolume : simtk.unit.Quantity
-            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
-        adamsShift : float
-            Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
-        nPertSteps : int
-            Number of pertubation steps over which to shift lambda between 0 and 1 (or vice versa).
-        nPropStepsPerPert : int
-            Number of propagation steps to carry out for
-        timeStep : simtk.unit.Quantity
-            Time step to use for non-equilibrium integration during the propagation steps
-        lambdas : list
-            Series of lambda values corresponding to the pathway over which the molecules are perturbed
-        ghostFile : str
-            Name of a file to write out the residue IDs of ghost water molecules. This is
-            useful if you want to visualise the sampling, as you can then remove these waters
-            from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
-        referenceAtoms : list
-            List containing dictionaries describing the atoms to use as the centre of the GCMC region
-            Must contain 'name' and 'resname' as keys, and optionally 'resid' (recommended) and 'chain'
-            e.g. [{'name': 'C1', 'resname': 'LIG', 'resid': '123'}]
-        sphereRadius : simtk.unit.Quantity
-            Radius of the spherical GCMC region
-        sphereCentre : simtk.unit.Quantity
-            Coordinates around which the GCMC sphere is based
-        log : str
-            Name of the log file to write out
-        dcd : str
-            Name of the DCD file to write the system out to
-        rst : str
-            Name of the restart file to write out (.pdb or .rst7)
-        overwrite : bool
-            Indicates whether to overwrite already existing data
-        """
-        # Initialise base class
-        GCMCSphereSampler.__init__(self, system, topology, temperature, adams=adams,
-                                   excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
-                                   adamsShift=adamsShift, ghostFile=ghostFile, referenceAtoms=referenceAtoms,
-                                   sphereRadius=sphereRadius, sphereCentre=sphereCentre, log=log, dcd=dcd, rst=rst,
-                                   overwrite=overwrite)
-
-        self.velocities = None  # Need to store velocities for this type of sampling
-
-        # Load in extra NCMC variables
-        if lambdas is not None:
-            # Read in set of lambda values, if specified
-            assert np.isclose(lambdas[0], 0.0) and np.isclose(lambdas[-1], 1.0), "Lambda series must start at 0 and end at 1"
-            self.lambdas = lambdas
-            self.n_pert_steps = len(self.lambdas) - 1
-        else:
-            # Otherwise, assume they are evenly distributed
-            self.n_pert_steps = nPertSteps
-            self.lambdas = np.linspace(0.0, 1.0, self.n_pert_steps + 1)
-
-        self.n_pert_steps = nPertSteps
-        self.n_prop_steps_per_pert = nPropStepsPerPert
-        self.time_step = timeStep.in_units_of(unit.picosecond)
-        self.protocol_time = (self.n_pert_steps + 1) * self.n_prop_steps_per_pert * self.time_step
-        self.logger.info("Each NCMC move will be executed over a total of {}".format(self.protocol_time))
-
-        self.insert_works = []  # Store work values of moves
-        self.delete_works = []
-        self.n_explosions = 0
-        self.n_left_sphere = 0  # Number of moves rejected because the water left the sphere
-
-        # Define a compound integrator
-        self.compound_integrator = openmm.CompoundIntegrator()
-        # Add the MD integrator
-        self.compound_integrator.addIntegrator(integrator)
-        # Create and add the nonequilibrium integrator
-        self.ncmc_integrator = NonequilibriumLangevinIntegrator(temperature=temperature,
-                                                                collision_rate=1.0/unit.picosecond,
-                                                                timestep=self.time_step, splitting="V R O R V")
-        self.compound_integrator.addIntegrator(self.ncmc_integrator)
-        # Set the compound integrator to the MD integrator
-        self.compound_integrator.setCurrentIntegrator(0)
-
-        self.logger.info("NonequilibriumGCMCSphereSampler object initialised")
-
-    def move(self, context, n=1):
-        """
-        Carry out a nonequilibrium GCMC move
-
-        Parameters
-        ----------
-        context : simtk.openmm.Context
-            Current context of the simulation
-        n : int
-            Number of moves to execute
-        """
-        # Read in positions
-        self.context = context
-        state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
-        self.positions = deepcopy(state.getPositions(asNumpy=True))
-        self.velocities = deepcopy(state.getVelocities(asNumpy=True))
-
-        # Update GCMC region based on current state
-        self.updateGCMCSphere(state)
-
-        # Set to NCMC integrator
-        self.compound_integrator.setCurrentIntegrator(1)
-
-        #  Execute moves
-        for i in range(n):
-            # Insert or delete a water, based on random choice
-            if np.random.randint(2) == 1:
-                # Attempt to insert a water
-                self.insertionMove()
-            else:
-                # Attempt to delete a water
-                self.deletionMove()
-            self.n_moves += 1
-            self.Ns.append(self.N)
-
-        # Set to MD integrator
-        self.compound_integrator.setCurrentIntegrator(0)
-
-        return None
-
-    def insertionMove(self):
-        """
-        Carry out a nonequilibrium insertion move for a random water molecule
-        """
-        # Store initial positions
-        old_positions = deepcopy(self.positions)
-
-        # Choose a random site in the sphere to insert a water
-        new_positions, gcmc_id, wat_id, atom_indices = self.insertRandomWater()
-
-        # Get resid of the water to insert
-        insert_water = self.gcmc_resids[gcmc_id]
-
-        # Need to update the context positions
-        self.context.setPositions(new_positions)
-
-        # Start running perturbation and propagation kernels
-        protocol_work = 0.0 * unit.kilocalories_per_mole
-        explosion = False
-        self.ncmc_integrator.step(self.n_prop_steps_per_pert)
-        for i in range(self.n_pert_steps):
-            state = self.context.getState(getEnergy=True)
-            energy_initial = state.getPotentialEnergy()
-            # Adjust interactions of this water
-            self.adjustSpecificWater(atom_indices, self.lambdas[i+1])
-            state = self.context.getState(getEnergy=True)
-            energy_final = state.getPotentialEnergy()
-            protocol_work += energy_final - energy_initial
-            # Propagate the system
-            try:
-                self.ncmc_integrator.step(self.n_prop_steps_per_pert)
-            except:
-                print("Caught explosion!")
-                explosion = True
-                self.n_explosions += 1
-                break
-
-        # Store the protocol work
-        #self.logger.info("Insertion work = {}".format(protocol_work))
-        self.insert_works.append(protocol_work)
-
-        # Update variables and GCMC sphere
-        #self.gcmc_status[gcmc_id] = 1
-        self.water_status[wat_id] = 1
-        state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
-        self.positions = state.getPositions(asNumpy=True)
-        self.updateGCMCSphere(state)
-
-        # Check which waters are still in the GCMC sphere
-        gcmc_wats_new = [wat for i, wat in enumerate(self.gcmc_resids) if self.gcmc_status[i] == 1]
-
-        # Calculate acceptance probability
-        if insert_water not in gcmc_wats_new:
-            # If the inserted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
-            acc_prob = -1
-            self.n_left_sphere += 1
-            self.logger.info("Move rejected due to water leaving the GCMC sphere")
-        elif explosion:
-            acc_prob = -1
-            self.logger.info("Move rejected due to an instability during integration")
-        else:
-            # Calculate acceptance probability based on protocol work
-            acc_prob = np.exp(self.B) * np.exp(-protocol_work/self.kT) / self.N  # Here N is the new value
-
-        self.acceptance_probabilities.append(acc_prob)
-
-        # Update or reset the system, depending on whether the move is accepted or rejected
-        if acc_prob < np.random.rand() or np.isnan(acc_prob):
-            # Need to revert the changes made if the move is to be rejected
-            self.adjustSpecificWater(atom_indices, 0.0)
-            self.context.setPositions(old_positions)
-            self.context.setVelocities(-self.velocities)  # Reverse velocities on rejection
-            self.positions = deepcopy(old_positions)
-            state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
-            #self.gcmc_status[gcmc_id] = 0
-            self.water_status[wat_id] = 0
-            self.updateGCMCSphere(state)
-        else:
-            # Update some variables if move is accepted
-            self.N = len(gcmc_wats_new)
-            self.n_accepted += 1
-            state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
-            self.positions = deepcopy(state.getPositions(asNumpy=True))
-            self.velocities = deepcopy(state.getVelocities(asNumpy=True))
-            self.updateGCMCSphere(state)
-
-        return None
-
-    def deletionMove(self):
-        """
-        Carry out a nonequilibrium deletion move for a random water molecule
-        """
-        # Store initial positions
-        old_positions = deepcopy(self.positions)
-
-        # Choose a random water in the sphere to be deleted
-        gcmc_id, wat_id, atom_indices = self.deleteRandomWater()
-        # Deletion may not be possible
-        if gcmc_id is None:
-            return None
-
-        # Get resid of the water to be deleted
-        delete_water = self.gcmc_resids[gcmc_id]
-
-        # Start running perturbation and propagation kernels
-        protocol_work = 0.0 * unit.kilocalories_per_mole
-        explosion = False
-        self.ncmc_integrator.step(self.n_prop_steps_per_pert)
-        for i in range(self.n_pert_steps):
-            state = self.context.getState(getEnergy=True)
-            energy_initial = state.getPotentialEnergy()
-            # Adjust interactions of this water
-            self.adjustSpecificWater(atom_indices, self.lambdas[-(2+i)])
-            state = self.context.getState(getEnergy=True)
-            energy_final = state.getPotentialEnergy()
-            protocol_work += energy_final - energy_initial
-            # Propagate the system
-            try:
-                self.ncmc_integrator.step(self.n_prop_steps_per_pert)
-            except:
-                print("Caught explosion!")
-                explosion = True
-                self.n_explosions += 1
-                break
-
-        # Get the protocol work
-        #self.logger.info("Deletion work = {}".format(protocol_work))
-        self.delete_works.append(protocol_work)
-
-        # Update variables and GCMC sphere
-        #self.gcmc_status[gcmc_id] = 1  # Leaving the water as 'on' here to check
-        self.water_status[wat_id] = 1  # that the deleted water doesn't leave
-        state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
-        self.positions = state.getPositions(asNumpy=True)
-        old_N = self.N
-        self.updateGCMCSphere(state)
-
-        # Check which waters are still in the GCMC sphere
-        gcmc_wats_new = [wat for i, wat in enumerate(self.gcmc_resids) if self.gcmc_status[i] == 1]
-
-        # Calculate acceptance probability
-        if delete_water not in gcmc_wats_new:
-            # If the deleted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
-            acc_prob = 0
-            self.n_left_sphere += 1
-            self.logger.info("Move rejected due to water leaving the GCMC sphere")
-        elif explosion:
-            acc_prob = 0
-            self.logger.info("Move rejected due to an instability during integration")
-        else:
-            # Calculate acceptance probability based on protocol work
-            acc_prob = old_N * np.exp(-self.B) * np.exp(-protocol_work/self.kT)  # N is the old value
-
-        self.acceptance_probabilities.append(acc_prob)
-
-        # Update or reset the system, depending on whether the move is accepted or rejected
-        if acc_prob < np.random.rand() or np.isnan(acc_prob):
-            # Need to revert the changes made if the move is to be rejected
-            self.adjustSpecificWater(atom_indices, 1.0)
-            self.context.setPositions(old_positions)
-            self.context.setVelocities(-self.velocities)  # Reverse velocities on rejection
-            self.positions = deepcopy(old_positions)
-            state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
-            self.updateGCMCSphere(state)
-        else:
-            # Update some variables if move is accepted
-            #self.gcmc_status[gcmc_id] = 0
-            self.water_status[wat_id] = 0
-            self.N = len(gcmc_wats_new) - 1  # Accounting for the deleted water
-            self.n_accepted += 1
-            state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
-            self.positions = deepcopy(state.getPositions(asNumpy=True))
-            self.velocities = deepcopy(state.getVelocities(asNumpy=True))
-            self.updateGCMCSphere(state)
-
-        return None
-
-    def reset(self):
-        """
-        Reset counted values (such as number of total or accepted moves) to zero
-        """
-        self.logger.info('Resetting any tracked variables...')
-        self.n_accepted = 0
-        self.n_moves = 0
-        self.Ns = []
-        self.acceptance_probabilities = []
-
-        # NCMC-specific variables
-        self.insert_works = []
-        self.delete_works = []
-        self.n_explosions = 0
-        self.n_left_sphere = 0
-
-        return None
-
-
-########################################################################################################################
 ########################################################################################################################
 ########################################################################################################################
 
@@ -1411,7 +1080,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
     """
     def __init__(self, system, topology, temperature, adams=None,
                  excessChemicalPotential=-6.09*unit.kilocalories_per_mole,
-                 standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, boxVectors=None,
+                 standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, waterName="HOH", boxVectors=None,
                  ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, rst=None, overwrite=False):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
@@ -1436,6 +1105,8 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
             Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
+        waterName : str
+            Name of the water residues. Default is 'HOH'
         boxVectors : simtk.unit.Quantity
             Box vectors for the simulation cell
         ghostFile : str
@@ -1452,8 +1123,9 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
             Overwrite any data already present
         """
         # Initialise base
-        BaseGrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, ghostFile=ghostFile, log=log,
-                                                     dcd=dcd, rst=rst, overwrite=overwrite)
+        BaseGrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, waterName=waterName,
+                                                     ghostFile=ghostFile, log=log, dcd=dcd, rst=rst,
+                                                     overwrite=overwrite)
 
         # Read in simulation box lengths
         self.simulation_box = np.array([boxVectors[0, 0]._value,
@@ -1496,6 +1168,16 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
         self.positions = deepcopy(state.getPositions(asNumpy=True))
         box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
+
+        # Check the symmetry of the box - currently only tolerate cuboidal boxes
+        # All off-diagonal box vector components must be zero
+        for i in range(3):
+            for j in range(3):
+                if i == j:
+                    continue
+                if not np.isclose(box_vectors[i, j]._value, 0.0):
+                    raise Exception("grand only accepts cuboidal simulation cells at this time.")
+
         self.simulation_box = np.array([box_vectors[0, 0]._value,
                                         box_vectors[1, 1]._value,
                                         box_vectors[2, 2]._value]) * unit.nanometer
@@ -1598,7 +1280,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
     Class to carry out instantaneous GCMC moves in OpenMM
     """
     def __init__(self, system, topology, temperature, adams=None, excessChemicalPotential=-6.09*unit.kilocalories_per_mole,
-                 standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, boxVectors=None,
+                 standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, waterName="HOH", boxVectors=None,
                  ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, rst=None, overwrite=False):
         """
         Initialise the object to be used for sampling instantaneous water insertion/deletion moves
@@ -1623,6 +1305,8 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
             Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
+        waterName : str
+            Name of the water residues. Default is 'HOH'
         boxVectors : simtk.unit.Quantity
             Box vectors for the simulation cell
         ghostFile : str
@@ -1641,8 +1325,8 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         # Initialise base class - don't need any more initialisation for the instantaneous sampler
         GCMCSystemSampler.__init__(self, system, topology, temperature, adams=adams,
                                    excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
-                                   adamsShift=adamsShift, boxVectors=boxVectors, ghostFile=ghostFile, log=log, dcd=dcd,
-                                   rst=rst, overwrite=overwrite)
+                                   adamsShift=adamsShift, waterName=waterName, boxVectors=boxVectors,
+                                   ghostFile=ghostFile, log=log, dcd=dcd, rst=rst, overwrite=overwrite)
 
         self.energy = None  # Need to save energy
         self.logger.info("StandardGCMCSystemSampler object initialised")
@@ -1739,289 +1423,5 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
             self.n_accepted += 1
             # Update energy
             self.energy = final_energy
-
-        return None
-
-
-########################################################################################################################
-
-class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
-    """
-    Class to carry out GCMC moves in OpenMM, using nonequilibrium candidate Monte Carlo (NCMC)
-    to boost acceptance rates
-    """
-    def __init__(self, system, topology, temperature, integrator, adams=None,
-                 excessChemicalPotential=-6.09*unit.kilocalories_per_mole, standardVolume=30.345*unit.angstroms**3,
-                 adamsShift=0.0, nPertSteps=1, nPropStepsPerPert=1, timeStep=2 * unit.femtoseconds, boxVectors=None,
-                 ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, rst=None, overwrite=False,
-                 lambdas=None):
-        """
-        Initialise the object to be used for sampling NCMC-enhanced water insertion/deletion moves
-
-        Parameters
-        ----------
-        system : simtk.openmm.System
-            System object to be used for the simulation
-        topology : simtk.openmm.app.Topology
-            Topology object for the system to be simulated
-        temperature : simtk.unit.Quantity
-            Temperature of the simulation, must be in appropriate units
-        integrator : simtk.openmm.CustomIntegrator
-            Integrator to use to propagate the dynamics of the system. Currently want to make sure that this
-            is the customised Langevin integrator found in openmmtools which uses BAOAB (VRORV) splitting.
-        adams : float
-            Adams B value for the simulation (dimensionless). Default is None,
-            if None, the B value is calculated from the box volume and chemical
-            potential
-        excessChemicalPotential : simtk.unit.Quantity
-            Excess chemical potential of the system that the simulation should be in equilibrium with, default is
-            -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
-            simulation parameters.
-        standardVolume : simtk.unit.Quantity
-            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
-        adamsShift : float
-            Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
-        nPertSteps : int
-            Number of pertubation steps over which to shift lambda between 0 and 1 (or vice versa).
-        nPropStepsPerPert : int
-            Number of propagation steps to carry out for
-        timeStep : simtk.unit.Quantity
-            Time step to use for non-equilibrium integration during the propagation steps
-        lambdas : list
-            Series of lambda values corresponding to the pathway over which the molecules are perturbed
-        boxVectors : simtk.unit.Quantity
-            Box vectors for the simulation cell
-        ghostFile : str
-            Name of a file to write out the residue IDs of ghost water molecules. This is
-            useful if you want to visualise the sampling, as you can then remove these waters
-            from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
-        log : str
-            Name of the log file to write out
-        dcd : str
-            Name of the DCD file to write the system out to
-        rst : str
-            Name of the restart file to write out (.pdb or .rst7)
-        overwrite : bool
-            Indicates whether to overwrite already existing data
-        """
-        # Initialise base class
-        GCMCSystemSampler.__init__(self, system, topology, temperature, adams=adams,
-                                   excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
-                                   adamsShift=adamsShift, boxVectors=boxVectors, ghostFile=ghostFile, log=log, dcd=dcd,
-                                   rst=rst, overwrite=overwrite)
-
-        # Load in extra NCMC variables
-        if lambdas is not None:
-            # Read in set of lambda values, if specified
-            assert np.isclose(lambdas[0], 0.0) and np.isclose(lambdas[-1], 1.0), "Lambda series must start at 0 and end at 1"
-            self.lambdas = lambdas
-            self.n_pert_steps = len(self.lambdas) - 1
-        else:
-            # Otherwise, assume they are evenly distributed
-            self.n_pert_steps = nPertSteps
-            self.lambdas = np.linspace(0.0, 1.0, self.n_pert_steps + 1)
-
-        self.n_prop_steps_per_pert = nPropStepsPerPert
-        self.time_step = timeStep.in_units_of(unit.picosecond)
-        self.protocol_time = (self.n_pert_steps + 1) * self.n_prop_steps_per_pert * self.time_step
-        self.logger.info("Each NCMC move will be executed over a total of {}".format(self.protocol_time))
-
-        self.velocities = None  # Need to store velocities for this type of sampling
-
-        self.insert_works = []  # Store work values of moves
-        self.delete_works = []
-        self.n_explosions = 0
-
-        # Define a compound integrator
-        self.compound_integrator = openmm.CompoundIntegrator()
-        # Add the MD integrator
-        self.compound_integrator.addIntegrator(integrator)
-        # Create and add the nonequilibrium integrator
-        self.ncmc_integrator = NonequilibriumLangevinIntegrator(temperature=temperature,
-                                                                collision_rate=1.0/unit.picosecond,
-                                                                timestep=self.time_step, splitting="V R O R V")
-        self.compound_integrator.addIntegrator(self.ncmc_integrator)
-        # Set the compound integrator to the MD integrator
-        self.compound_integrator.setCurrentIntegrator(0)
-
-        self.logger.info("NonequilibriumGCMCSystemSampler object initialised")
-
-    def move(self, context, n=1):
-        """
-        Carry out a nonequilibrium GCMC move
-
-        Parameters
-        ----------
-        context : simtk.openmm.Context
-            Current context of the simulation
-        n : int
-            Number of moves to execute
-        """
-        # Read in positions
-        self.context = context
-        state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
-        self.positions = deepcopy(state.getPositions(asNumpy=True))
-        self.velocities = deepcopy(state.getVelocities(asNumpy=True))
-
-        # Set to NCMC integrator
-        self.compound_integrator.setCurrentIntegrator(1)
-
-        #  Execute moves
-        for i in range(n):
-            # Insert or delete a water, based on random choice
-            if np.random.randint(2) == 1:
-                # Attempt to insert a water
-                self.insertionMove()
-            else:
-                # Attempt to delete a water
-                self.deletionMove()
-            self.n_moves += 1
-            self.Ns.append(self.N)
-
-        # Set to MD integrator
-        self.compound_integrator.setCurrentIntegrator(0)
-
-        return None
-
-    def insertionMove(self):
-        """
-        Carry out a nonequilibrium insertion move for a random water molecule
-        """
-        # Insert a ghost water to a random site
-        new_positions, gcmc_id, wat_id, atom_indices = self.insertRandomWater()
-
-        # Need to update the context positions
-        self.context.setPositions(new_positions)
-
-        # Start running perturbation and propagation kernels
-        protocol_work = 0.0 * unit.kilocalories_per_mole
-        explosion = False
-        self.ncmc_integrator.step(self.n_prop_steps_per_pert)
-        for i in range(self.n_pert_steps):
-            state = self.context.getState(getEnergy=True)
-            energy_initial = state.getPotentialEnergy()
-            # Adjust interactions of this water
-            self.adjustSpecificWater(atom_indices, self.lambdas[i+1])
-            state = self.context.getState(getEnergy=True)
-            energy_final = state.getPotentialEnergy()
-            protocol_work += energy_final - energy_initial
-            # Propagate the system
-            try:
-                self.ncmc_integrator.step(self.n_prop_steps_per_pert)
-            except:
-                print("Caught explosion!")
-                explosion = True
-                self.n_explosions += 1
-                break
-
-        # Get the protocol work
-        #self.logger.info("Insertion work = {}".format(protocol_work))
-        self.insert_works.append(protocol_work)
-
-        if explosion:
-            acc_prob = -1
-            self.logger.info("Move rejected due to an instability during integration")
-        else:
-            # Calculate acceptance probability based on protocol work
-            acc_prob = np.exp(self.B) * np.exp(-protocol_work/self.kT) / (self.N + 1)  # Here N is the old value
-
-        self.acceptance_probabilities.append(acc_prob)
-
-        # Update or reset the system, depending on whether the move is accepted or rejected
-        if acc_prob < np.random.rand() or np.isnan(acc_prob):
-            # Need to revert the changes made if the move is to be rejected
-            self.adjustSpecificWater(atom_indices, 0.0)
-            self.context.setPositions(self.positions)
-            self.context.setVelocities(-self.velocities)  # Reverse velocities on rejection
-            self.positions = deepcopy(self.positions)
-        else:
-            # Update some variables if move is accepted
-            self.N += 1
-            self.n_accepted += 1
-            state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
-            self.positions = deepcopy(state.getPositions(asNumpy=True))
-            self.velocities = deepcopy(state.getVelocities(asNumpy=True))
-            self.gcmc_status[gcmc_id] = 1
-            self.water_status[wat_id] = 1
-
-        return None
-
-    def deletionMove(self):
-        """
-        Carry out a nonequilibrium deletion move for a random water molecule
-        """
-        # Choose a random water to be deleted
-        gcmc_id, wat_id, atom_indices = self.deleteRandomWater()
-        # Deletion may not be possible
-        if gcmc_id is None:
-            return None
-
-        # Start running perturbation and propagation kernels
-        protocol_work = 0.0 * unit.kilocalories_per_mole
-        explosion = False
-        self.ncmc_integrator.step(self.n_prop_steps_per_pert)
-        for i in range(self.n_pert_steps):
-            state = self.context.getState(getEnergy=True)
-            energy_initial = state.getPotentialEnergy()
-            # Adjust interactions of this water
-            self.adjustSpecificWater(atom_indices, self.lambdas[-(2+i)])
-            state = self.context.getState(getEnergy=True)
-            energy_final = state.getPotentialEnergy()
-            protocol_work += energy_final - energy_initial
-            # Propagate the system
-            try:
-                self.ncmc_integrator.step(self.n_prop_steps_per_pert)
-            except:
-                print("Caught explosion!")
-                explosion = True
-                self.n_explosions += 1
-                break
-
-        # Get the protocol work
-        #self.logger.info("Deletion work = {}".format(protocol_work))
-        self.delete_works.append(protocol_work)
-
-        if explosion:
-            acc_prob = 0
-            self.logger.info("Move rejected due to an instability during integration")
-        else:
-            # Calculate acceptance probability based on protocol work
-            acc_prob = self.N * np.exp(-self.B) * np.exp(-protocol_work/self.kT)  # N is the old value
-
-        self.acceptance_probabilities.append(acc_prob)
-
-        # Update or reset the system, depending on whether the move is accepted or rejected
-        if acc_prob < np.random.rand() or np.isnan(acc_prob):
-            # Need to revert the changes made if the move is to be rejected
-            self.adjustSpecificWater(atom_indices, 1.0)
-            self.context.setPositions(self.positions)
-            self.context.setVelocities(-self.velocities)  # Reverse velocities on rejection
-            self.positions = deepcopy(self.positions)
-        else:
-            # Update some variables if move is accepted
-            self.gcmc_status[gcmc_id] = 0
-            self.water_status[wat_id] = 0
-            self.N -= 1
-            self.n_accepted += 1
-            state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
-            self.positions = deepcopy(state.getPositions(asNumpy=True))
-            self.velocities = deepcopy(state.getVelocities(asNumpy=True))
-
-        return None
-
-    def reset(self):
-        """
-        Reset counted values (such as number of total or accepted moves) to zero
-        """
-        self.logger.info('Resetting any tracked variables...')
-        self.n_accepted = 0
-        self.n_moves = 0
-        self.Ns = []
-        self.acceptance_probabilities = []
-
-        # NCMC-specific variables
-        self.insert_works = []
-        self.delete_works = []
-        self.n_explosions = 0
 
         return None

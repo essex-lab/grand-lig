@@ -7,3 +7,4 @@ sphinx:
 # Conda environment
 conda:
   environment: docs/source/environment.yml
+
