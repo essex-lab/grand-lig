@@ -6,6 +6,8 @@
 
 # _grand_ : Grand Canonical Water Sampling in OpenMM
 
+*PRIVATE REPO FOR DEVELOPMENT*
+
 ### Background
 
 This Python module is designed to be run with OpenMM in order to simulate grand
