@@ -98,11 +98,10 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.acceptance_probabilities = []  # Store acceptance probabilities
         
         # Get parameters for the water model
-        self.water_name = "HOH"
-        self.water_params = self.getWaterParameters(self.water_name)
+        self.water_params = self.getWaterParameters("HOH")
 
         # Get water residue IDs & assign statuses to each
-        self.water_resids = self.getWaterResids(self.water_name)  # All waters
+        self.water_resids = self.getWaterResids("HOH")  # All waters
         self.water_status = np.ones_like(self.water_resids)  # 1 indicates on, 0 indicates off
         self.gcmc_resids = []  # GCMC waters
         self.gcmc_status = []  # 1 indicates on, 0 indicates off
@@ -198,37 +197,41 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         # Get a list of all water and non-water atom IDs
         water_atom_ids = []
-        nonwater_atom_ids = []
         for resid, residue in enumerate(self.topology.residues()):
             if resid in self.water_resids:
                 for atom in residue.atoms():
                     water_atom_ids.append(atom.index)
-            else:
-                for atom in residue.atoms():
-                    nonwater_atom_ids.append(atom.index)
 
-        # Copy all water-water and water-nonwater steric interactions into the custom force
+        # Copy all steric interactions into the custom force, and remove them from the original force
         for atom_idx in range(self.nonbonded_force.getNumParticles()):
             # Get atom parameters
             [charge, sigma, epsilon] = self.nonbonded_force.getParticleParameters(atom_idx)
+
             # Make sure that sigma is not equal to zero
             if np.isclose(sigma._value, 0.0):
                 sigma = 1.0 * unit.angstrom
+
             # Add particle to the custom force (with lambda=1 for now)
             custom_sterics.addParticle([sigma, epsilon, 1.0])
-            # Disable steric interactions of waters in the original force by setting epsilon=0
-            # We keep the charges for PME purposes
-            if atom_idx in water_atom_ids:
-                self.nonbonded_force.setParticleParameters(atom_idx, charge, sigma, abs(0))
+
+            # Disable steric interactions in the original force by setting epsilon=0 (keep the charges for PME purposes)
+            self.nonbonded_force.setParticleParameters(atom_idx, charge, sigma, abs(0))
 
         # Copy over all exceptions into the new force as exclusions
+        # Exceptions between non-water atoms will be excluded here, and handled by the NonbondedForce
+        # If exceptions (other than ignored interactions) are found involving water atoms, we have a problem
         for exception_idx in range(self.nonbonded_force.getNumExceptions()):
             [i, j, chargeprod, sigma, epsilon] = self.nonbonded_force.getExceptionParameters(exception_idx)
+
+            # If epsilon is greater than zero, this is a non-zero exception, which must be checked
+            if epsilon > 0.0 * unit.kilojoule_per_mole:
+                if i in water_atom_ids or j in water_atom_ids:
+                    raise Exception("Non-zero exception interaction found involving water atoms ({} & {}). grand is"
+                                    " not currently able to support this".format(i, j))
+
             custom_sterics.addExclusion(i, j)
 
-        # Define interaction groups for the custom force and add to the system
-        custom_sterics.addInteractionGroup(water_atom_ids, water_atom_ids)
-        custom_sterics.addInteractionGroup(water_atom_ids, nonwater_atom_ids)
+        # Add the custom force to the system
         self.system.addForce(custom_sterics)
         self.custom_nb_force = custom_sterics
 
@@ -452,8 +455,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         n : int
             Number of moves to execute
         """
-        error_msg = ("GrandCanonicalMonteCarloSampler is not designed to sample! Use StandardGCMCSampler or "
-                     "NonequilibriumGCMCSampler")
+        error_msg = ("GrandCanonicalMonteCarloSampler is not designed to sample!")
         self.logger.error(error_msg)
         raise NotImplementedError(error_msg)
 
@@ -517,7 +519,8 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         """
         # Initialise base
         BaseGrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, ghostFile=ghostFile,
-                                                     log=log, dcd=dcd, rst=rst, overwrite=overwrite)
+                                                     log=log, dcd=dcd, rst=rst,
+                                                     overwrite=overwrite)
 
         # Initialise variables specific to the GCMC sphere
         self.sphere_radius = sphereRadius
@@ -677,6 +680,16 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
         self.positions = deepcopy(state.getPositions(asNumpy=True))
         box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
+
+        # Check the symmetry of the box - currently only tolerate cuboidal boxes
+        # All off-diagonal box vector components must be zero
+        for i in range(3):
+            for j in range(3):
+                if i == j:
+                    continue
+                if not np.isclose(box_vectors[i, j]._value, 0.0):
+                    raise Exception("grand only accepts cuboidal simulation cells at this time.")
+
         self.simulation_box = np.array([box_vectors[0, 0]._value,
                                         box_vectors[1, 1]._value,
                                         box_vectors[2, 2]._value]) * unit.nanometer
@@ -1188,7 +1201,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         # Set to NCMC integrator
         self.compound_integrator.setCurrentIntegrator(1)
 
-        #  Execute moves
+        #  Execute moves
         for i in range(n):
             # Insert or delete a water, based on random choice
             if np.random.randint(2) == 1:
@@ -1496,6 +1509,16 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
         self.positions = deepcopy(state.getPositions(asNumpy=True))
         box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
+
+        # Check the symmetry of the box - currently only tolerate cuboidal boxes
+        # All off-diagonal box vector components must be zero
+        for i in range(3):
+            for j in range(3):
+                if i == j:
+                    continue
+                if not np.isclose(box_vectors[i, j]._value, 0.0):
+                    raise Exception("grand only accepts cuboidal simulation cells at this time.")
+
         self.simulation_box = np.array([box_vectors[0, 0]._value,
                                         box_vectors[1, 1]._value,
                                         box_vectors[2, 2]._value]) * unit.nanometer
@@ -1641,8 +1664,8 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         # Initialise base class - don't need any more initialisation for the instantaneous sampler
         GCMCSystemSampler.__init__(self, system, topology, temperature, adams=adams,
                                    excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
-                                   adamsShift=adamsShift, boxVectors=boxVectors, ghostFile=ghostFile, log=log, dcd=dcd,
-                                   rst=rst, overwrite=overwrite)
+                                   adamsShift=adamsShift, boxVectors=boxVectors, ghostFile=ghostFile, log=log,
+                                   dcd=dcd, rst=rst, overwrite=overwrite)
 
         self.energy = None  # Need to save energy
         self.logger.info("StandardGCMCSystemSampler object initialised")
@@ -1866,7 +1889,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         # Set to NCMC integrator
         self.compound_integrator.setCurrentIntegrator(1)
 
-        #  Execute moves
+        #  Execute moves
         for i in range(n):
             # Insert or delete a water, based on random choice
             if np.random.randint(2) == 1:
