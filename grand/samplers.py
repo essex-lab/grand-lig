@@ -224,6 +224,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             [i, j, chargeprod, sigma, epsilon] = self.nonbonded_force.getExceptionParameters(exception_idx)
 
             # If epsilon is greater than zero, this is a non-zero exception, which must be checked
+            # NEED TO FIGURE OUT A WAY TO COPY THESE INTO CUSTOMBONDFORCE OBJECTS...
             if epsilon > 0.0 * unit.kilojoule_per_mole:
                 if i in water_atom_ids or j in water_atom_ids:
                     raise Exception("Non-zero exception interaction found involving water atoms ({} & {}). grand is"
