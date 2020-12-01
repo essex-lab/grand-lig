@@ -256,11 +256,15 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         for exception_idx in range(self.nonbonded_force.getNumExceptions()):
             [i, j, chargeprod, sigma, epsilon] = self.nonbonded_force.getExceptionParameters(exception_idx)
 
+            # Make sure that sigma is not equal to zero
+            if np.isclose(sigma._value, 0.0):
+                sigma = 1.0 * unit.angstrom
+
             # Copy this over as an exclusion so it isn't counted by the CustomNonbonded Force
             custom_sterics.addExclusion(i, j)
 
             # If epsilon is greater than zero, this is an exception, not an exclusion
-            if epsilon > 0.0 * unit.kilojoule_per_mole:
+            if abs(chargeprod._value) > 0.0 or epsilon > 0.0 * unit.kilojoule_per_mole:
                 #
                 # NEED TO ADD SOME CHECKS TO MAKE SURE THAT THERE ARE NO INTER-MOLECULAR EXCEPTIONS
                 #
@@ -269,7 +273,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
                 if i not in water_atom_ids and j not in water_atom_ids:
                     continue
 
-                # Make clear that exceptions
+                # Make clear that exceptions are decoupled
                 alchemical_except = True
 
                 # Add this exception to the sterics and electrostatics - set lambda to 1 for now
