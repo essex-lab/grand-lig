@@ -50,7 +50,8 @@ def get_lambda_values(lambda_in):
     return lambda_vdw, lambda_ele
 
 
-def calc_mu_ex(system, topology, positions, resname, box_vectors, temperature, n_lambdas, n_samples, n_equil, log_file):
+def calc_mu_ex(system, topology, positions, resname, box_vectors, temperature, n_lambdas, n_samples, n_equil, log_file,
+               pressure=None):
     """
     Calculate the excess chemical potential of a water molecule in a given system,
     as the hydration free energy, using MBAR
@@ -77,6 +78,8 @@ def calc_mu_ex(system, topology, positions, resname, box_vectors, temperature, n
         Number of MD steps to run between each sample
     log_file : str
         Name of the log file to write out
+    pressure : simtk.unit.Quantity
+        Pressure of the simulation, will default to NVT
 
     Returns
     -------
@@ -98,6 +101,10 @@ def calc_mu_ex(system, topology, positions, resname, box_vectors, temperature, n
                                                                     overwrite=True)
     # Remove unneeded ghost file
     os.remove('calc_mu-ghosts.txt')
+
+    # Add barostat, if needed
+    if pressure is not None:
+        system.addForce(MonteCarloBarostat(pressure, temperature, 25))
 
     # IDs of the atoms to switch on/off
     ligand_resid = None
