@@ -19,6 +19,7 @@ from copy import deepcopy
 from simtk import unit
 from simtk import openmm
 from openmmtools.integrators import NonequilibriumLangevinIntegrator
+from openmmtools.constants import ONE_4PI_EPS0
 
 from grand.utils import random_rotation_matrix
 from grand.utils import PDBRestartReporter
@@ -98,17 +99,18 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.acceptance_probabilities = []  # Store acceptance probabilities
         
         # Get parameters for the water model
-        self.water_params = self.getWaterParameters("HOH")
+        self.water_params = self.getWaterParameters("L01")
 
         # Get water residue IDs & assign statuses to each
-        self.water_resids = self.getWaterResids("HOH")  # All waters
+        self.water_resids = self.getWaterResids("L01")  # All waters
         self.water_status = np.ones_like(self.water_resids)  # 1 indicates on, 0 indicates off
         self.gcmc_resids = []  # GCMC waters
         self.gcmc_status = []  # 1 indicates on, 0 indicates off
 
-        # Need to create a customised force to handle softcore steric interactions of water molecules
-        # This should prevent any 0/0 energy evaluations
+        # Need to create customised forces to handle softcore steric interactions of water molecules
         self.custom_nb_force = None
+        self.vdw_except_force = None
+        self.ele_except_force = None
         self.customiseForces()
 
         # Need to open the file to store ghost water IDs
@@ -167,16 +169,16 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             raise Exception("Currently only supporting PME for long range electrostatics")
 
         # Define the energy expression for the softcore sterics
-        energy_expression = ("U;"
-                             "U = (lambda^soft_a) * 4 * epsilon * x * (x-1.0);"  # Softcore energy
-                             "x = (sigma/reff)^6;"  # Define x as sigma/r(effective)
-                             # Calculate effective distance
-                             "reff = sigma*((soft_alpha*(1.0-lambda)^soft_b + (r/sigma)^soft_c))^(1/soft_c);"
-                             # Define combining rules
-                             "sigma = 0.5*(sigma1+sigma2); epsilon = sqrt(epsilon1*epsilon2); lambda = lambda1*lambda2")
+        lj_energy = ("U;"
+                     "U = (lambda^soft_a) * 4 * epsilon * x * (x-1.0);"  # Softcore energy
+                     "x = (sigma/reff)^6;"  # Define x as sigma/r(effective)
+                     # Calculate effective distance
+                     "reff = sigma*((soft_alpha*(1.0-lambda)^soft_b + (r/sigma)^soft_c))^(1/soft_c)")
+        # Define combining rules
+        lj_combining = "; sigma = 0.5*(sigma1+sigma2); epsilon = sqrt(epsilon1*epsilon2); lambda = lambda1*lambda2"
 
         # Create a customised sterics force
-        custom_sterics = openmm.CustomNonbondedForce(energy_expression)
+        custom_sterics = openmm.CustomNonbondedForce(lj_energy + lj_combining)
         # Add necessary particle parameters
         custom_sterics.addPerParticleParameter("sigma")
         custom_sterics.addPerParticleParameter("epsilon")
@@ -217,24 +219,78 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             # Disable steric interactions in the original force by setting epsilon=0 (keep the charges for PME purposes)
             self.nonbonded_force.setParticleParameters(atom_idx, charge, sigma, abs(0))
 
-        # Copy over all exceptions into the new force as exclusions
-        # Exceptions between non-water atoms will be excluded here, and handled by the NonbondedForce
-        # If exceptions (other than ignored interactions) are found involving water atoms, we have a problem
+        # Define force for the steric exceptions
+        steric_exceptions = openmm.CustomBondForce(lj_energy)  # Same energy expression as before, but no combining rules needed
+        # Parameters per exception
+        steric_exceptions.addPerBondParameter('sigma')
+        steric_exceptions.addPerBondParameter('epsilon')
+        steric_exceptions.addPerBondParameter('lambda')
+        # Set softcore parameters
+        steric_exceptions.addGlobalParameter('soft_alpha', 0.5)
+        steric_exceptions.addGlobalParameter('soft_a', 1)
+        steric_exceptions.addGlobalParameter('soft_b', 1)
+        steric_exceptions.addGlobalParameter('soft_c', 6)
+
+        # Define force for the electrostatic exceptions
+        # Electrostatic softcore energy expression - use softcores to prevent possible explosions in these forces
+        ele_energy = ("U;"
+                      "U = ((lambda^soft_d) * chargeprod * one_4pi_eps0) / reff;"
+                      # Calculate effective distance
+                      "reff = sigma * ((soft_beta * (1.0 - lambda)^soft_e + (r/sigma)^soft_f))^(1/soft_f);"
+                      # Define 1/(4*pi*eps)
+                      "one_4pi_eps0 = {}".format(ONE_4PI_EPS0))
+        electrostatic_exceptions = openmm.CustomBondForce(ele_energy)
+        # Parameters per exception
+        electrostatic_exceptions.addPerBondParameter('chargeprod')
+        electrostatic_exceptions.addPerBondParameter('sigma')
+        electrostatic_exceptions.addPerBondParameter('lambda')
+        # Set softcore parameters
+        electrostatic_exceptions.addGlobalParameter('soft_beta', 0.0)
+        electrostatic_exceptions.addGlobalParameter('soft_d', 1)
+        electrostatic_exceptions.addGlobalParameter('soft_e', 1)
+        electrostatic_exceptions.addGlobalParameter('soft_f', 2)
+
+        alchemical_except = False  # Indicate any exceptions are found which may be decoupled
+
+        # Copy over all exceptions into the new force as exclusions and add to the exception forces, where necessary
         for exception_idx in range(self.nonbonded_force.getNumExceptions()):
             [i, j, chargeprod, sigma, epsilon] = self.nonbonded_force.getExceptionParameters(exception_idx)
 
-            # If epsilon is greater than zero, this is a non-zero exception, which must be checked
-            # NEED TO FIGURE OUT A WAY TO COPY THESE INTO CUSTOMBONDFORCE OBJECTS...
-            if epsilon > 0.0 * unit.kilojoule_per_mole:
-                if i in water_atom_ids or j in water_atom_ids:
-                    raise Exception("Non-zero exception interaction found involving water atoms ({} & {}). grand is"
-                                    " not currently able to support this".format(i, j))
-
+            # Copy this over as an exclusion so it isn't counted by the CustomNonbonded Force
             custom_sterics.addExclusion(i, j)
+
+            # If epsilon is greater than zero, this is an exception, not an exclusion
+            if epsilon > 0.0 * unit.kilojoule_per_mole:
+                #
+                # NEED TO ADD SOME CHECKS TO MAKE SURE THAT THERE ARE NO INTER-MOLECULAR EXCEPTIONS
+                #
+
+                # Ignore this exception if it's not for one of the residues of interest
+                if i not in water_atom_ids and j not in water_atom_ids:
+                    continue
+
+                # Make clear that exceptions
+                alchemical_except = True
+
+                # Add this exception to the sterics and electrostatics - set lambda to 1 for now
+                steric_exceptions.addBond(i, j, [sigma, epsilon, 1.0])
+                electrostatic_exceptions.addBond(i, j, [chargeprod, sigma, 1.0])
+
+                # Set this exception to non-interacting in the original NonbondedForce, so that it isn't double counted
+                self.nonbonded_force.setExceptionParameters(exception_idx, i, j, abs(0.0), sigma, abs(0.0))
 
         # Add the custom force to the system
         self.system.addForce(custom_sterics)
         self.custom_nb_force = custom_sterics
+
+        # Add the exception forces to the system, if needed
+        if alchemical_except:
+            # Add the sterics
+            self.system.addForce(steric_exceptions)
+            self.vdw_except_force = steric_exceptions
+            # Add the electrostatics
+            self.system.addForce(electrostatic_exceptions)
+            self.ele_except_force = electrostatic_exceptions
 
         return None
 
