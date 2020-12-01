@@ -3,7 +3,7 @@
 """
 Description
 -----------
-This module is written to execute GCMC moves with water molecules in OpenMM, via a series of
+This module is written to execute GCMC moves with molecules in OpenMM, via a series of
 Sampler objects.
 
 Marley Samways
@@ -31,10 +31,10 @@ class BaseGrandCanonicalMonteCarloSampler(object):
     Base class for carrying out GCMC moves in OpenMM.
     All other Sampler objects are derived from this
     """
-    def __init__(self, system, topology, temperature, ghostFile="gcmc-ghost-wats.txt", log='gcmc.log',
+    def __init__(self, system, topology, temperature, resname="HOH", ghostFile="gcmc-ghost-wats.txt", log='gcmc.log',
                  dcd=None, rst=None, overwrite=False):
         """
-        Initialise the object to be used for sampling water insertion/deletion moves
+        Initialise the object to be used for sampling insertion/deletion moves
 
         Parameters
         ----------
@@ -44,9 +44,11 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             Topology object for the system to be simulated
         temperature : simtk.unit.Quantity
             Temperature of the simulation, must be in appropriate units
+        resname : str
+            Resname of the molecule of interest. Default = "HOH"
         ghostFile : str
-            Name of a file to write out the residue IDs of ghost water molecules. This is
-            useful if you want to visualise the sampling, as you can then remove these waters
+            Name of a file to write out the residue IDs of ghost molecules. This is
+            useful if you want to visualise the sampling, as you can then remove these molecules
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
         log : str
             Log file to write out
@@ -81,7 +83,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         self.logger.info("kT = {}".format(self.kT.in_units_of(unit.kilocalorie_per_mole)))
 
-        # Find NonbondedForce - needs to be updated to switch waters on/off
+        # Find NonbondedForce - needs to be updated to switch molecules on/off
         for f in range(system.getNumForces()):
             force = system.getForce(f)
             if force.__class__.__name__ == "NonbondedForce":
@@ -98,22 +100,28 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.n_accepted = 0
         self.acceptance_probabilities = []  # Store acceptance probabilities
         
-        # Get parameters for the water model
-        self.water_params = self.getWaterParameters("L01")
+        # Get parameters for the model
+        self.mol_params = self.getMoleculeParameters(resname)
 
-        # Get water residue IDs & assign statuses to each
-        self.water_resids = self.getWaterResids("L01")  # All waters
-        self.water_status = np.ones_like(self.water_resids)  # 1 indicates on, 0 indicates off
-        self.gcmc_resids = []  # GCMC waters
+        # Get residue IDs & assign statuses to each
+        self.mol_resids = self.getMoleculeResids(resname)  # All molecules
+        self.mol_status = np.ones_like(self.mol_resids)  # 1 indicates on, 0 indicates off
+        self.gcmc_resids = []  # GCMC molecules
         self.gcmc_status = []  # 1 indicates on, 0 indicates off
 
-        # Need to create customised forces to handle softcore steric interactions of water molecules
+        # Need to create customised forces to handle softcore steric interactions of molecules
         self.custom_nb_force = None
         self.vdw_except_force = None
         self.ele_except_force = None
         self.customiseForces()
 
-        # Need to open the file to store ghost water IDs
+        # Get the atom IDs and exceptions for each molecule
+        self.mol_atom_ids = {}
+        self.mol_vdw_excepts = {}
+        self.mol_ele_excepts = {}
+        self.getMoleculeExceptions(resname)
+
+        # Need to open the file to store ghost molecule IDs
         self.ghost_file = ghostFile
         # Check whether to overwrite if the file already exists
         if os.path.isfile(self.ghost_file) and not overwrite:
@@ -161,8 +169,8 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
     def customiseForces(self):
         """
-        Create a CustomNonbondedForce to handle water-water interactions and modify the original NonbondedForce
-        to ignore water interactions
+        Create a CustomNonbondedForce to handle interactions and modify the original NonbondedForce
+        to ignore vdW interactions
         """
         #  Need to make sure that the electrostatics are handled using PME (for now)
         if self.nonbonded_force.getNonbondedMethod() != openmm.NonbondedForce.PME:
@@ -197,12 +205,12 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         custom_sterics.addGlobalParameter('soft_b', 1)
         custom_sterics.addGlobalParameter('soft_c', 6)
 
-        # Get a list of all water and non-water atom IDs
-        water_atom_ids = []
+        # Get a list of all molecule and non-molecule atom IDs
+        mol_atom_ids = []
         for resid, residue in enumerate(self.topology.residues()):
-            if resid in self.water_resids:
+            if resid in self.mol_resids:
                 for atom in residue.atoms():
-                    water_atom_ids.append(atom.index)
+                    mol_atom_ids.append(atom.index)
 
         # Copy all steric interactions into the custom force, and remove them from the original force
         for atom_idx in range(self.nonbonded_force.getNumParticles()):
@@ -270,7 +278,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
                 #
 
                 # Ignore this exception if it's not for one of the residues of interest
-                if i not in water_atom_ids and j not in water_atom_ids:
+                if i not in mol_atom_ids and j not in mol_atom_ids:
                     continue
 
                 # Make clear that exceptions are decoupled
@@ -310,40 +318,40 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         
         return None
 
-    def getWaterParameters(self, water_resname="HOH"):
+    def getMoleculeParameters(self, resname):
         """
         Get the non-bonded parameters for each of the atoms in the water model used
 
         Parameters
         ----------
-        water_resname : str
-            Name of the water residues
+        wresname : str
+            Name of the molecule residues
     
         Returns
         -------
         wat_params : list
             List of dictionaries containing the charge, sigma and epsilon for each water atom
         """
-        wat_params = []  # Store parameters in a list
+        mol_params = []  # Store parameters in a list
         for residue in self.topology.residues():
-            if residue.name == water_resname:
+            if residue.name == resname:
                 for atom in residue.atoms():
                     # Store the parameters of each atom
                     atom_params = self.nonbonded_force.getParticleParameters(atom.index)
-                    wat_params.append({'charge' : atom_params[0],
+                    mol_params.append({'charge' : atom_params[0],
                                        'sigma' : atom_params[1],
                                        'epsilon' : atom_params[2]})
                 break  # Don't need to continue past the first instance
-        return wat_params
+        return mol_params
 
-    def getWaterResids(self, water_resname="HOH"):
+    def getMoleculeResids(self, resname):
         """
-        Get the residue IDs of all water molecules in the system
+        Get the residue IDs of all molecule molecules in the system
 
         Parameters
         ----------
-        water_resname : str
-            Name of the water residues
+        resname : str
+            Name of the molecule residues
 
         Returns
         -------
@@ -352,11 +360,65 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         """
         resid_list = []
         for resid, residue in enumerate(self.topology.residues()):
-            if residue.name == water_resname:
+            if residue.name == resname:
                 resid_list.append(resid)
         return resid_list
 
-    def deleteGhostWaters(self, ghostResids=None, ghostFile=None):
+    def getMoleculeExceptions(self, resname):
+        """
+        Find out the IDs of atoms and exceptions belonging to each molecule
+
+        Parameters
+        ----------
+        resname : str
+            Name of the residue of interest
+        """
+        for resid, residue in enumerate(self.topology.residues()):
+            # Only interested in GCMC molecules
+            if resid not in self.mol_resids:
+                continue
+
+            # Loop over atoms to get the IDs for this molecule
+            atom_ids = []
+            for atom in residue.atoms():
+                atom_ids.append(atom.index)
+
+            # Loop over vdW exceptions to find those which correspond to this molecule
+            vdw_exceptions = []
+            for b in range(self.vdw_except_force.getNumBonds()):
+                # Get the parameters for this 'bond'
+                i, j, [sigma, epsilon, lambda_value] = self.vdw_except_force.getBondParameters(b)
+
+                # Make sure that we don't have inter-molecular exceptions
+                if (i in atom_ids and j not in atom_ids) or (i not in atom_ids and j in atom_ids):
+                    raise Exception("Currently not supporting inter-molecular exceptions")
+
+                # Check if this corresponds to the molecule
+                if i in atom_ids and j in atom_ids:
+                    vdw_exceptions.append(b)
+
+            # Loop over vdW exceptions to find those which correspond to this molecule
+            ele_exceptions = []
+            for b in range(self.ele_except_force.getNumBonds()):
+                # Get the parameters for this 'bond'
+                i, j, [chargeprod, sigma, lambda_value] = self.ele_except_force.getBondParameters(b)
+
+                # Make sure that we don't have inter-molecular exceptions
+                if (i in atom_ids and j not in atom_ids) or (i not in atom_ids and j in atom_ids):
+                    raise Exception("Currently not supporting inter-molecular exceptions")
+
+                # Check if this corresponds to the molecule
+                if i in atom_ids and j in atom_ids:
+                    ele_exceptions.append(b)
+
+            # Save these IDs
+            self.mol_atom_ids[resid] = atom_ids
+            self.mol_vdw_excepts[resid] = vdw_exceptions
+            self.mol_ele_excepts[resid] = ele_exceptions
+
+        return None
+
+    def deleteGhostMolecules(self, ghostResids=None, ghostFile=None):
         """
         Switch off nonbonded interactions involving the ghost molecules initially added
         This function should be executed before beginning the simulation, to prevent any
@@ -367,15 +429,15 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         context : simtk.openmm.Context
             Current context of the simulation
         ghostResids : list
-            List of residue IDs corresponding to the ghost waters added
+            List of residue IDs corresponding to the ghost molecules added
         ghostFile : str
-            File containing residue IDs of ghost waters. Will switch off those on the
+            File containing residue IDs of ghost molecules. Will switch off those on the
             last line. This will be useful in restarting simulations
 
         Returns
         -------
         context : simtk.openmm.Context
-            Updated context, with ghost waters switched off
+            Updated context, with ghost molecules switched off
         """
         # Get a list of all ghost residue IDs supplied from list and file
         ghost_resids = []
@@ -394,45 +456,46 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         # Add ghost residues to list of GCMC residues
         for resid in ghost_resids:
             self.gcmc_resids.append(resid)
-        self.gcmc_status = np.ones_like(self.gcmc_resids, dtype=np.int_)  # Store status of each GCMC water
+        self.gcmc_status = np.ones_like(self.gcmc_resids, dtype=np.int_)  # Store status of each GCMC molecule
 
-        # Switch off the interactions involving ghost waters
+        # Switch off the interactions involving ghost molecules
         for resid, residue in enumerate(self.topology.residues()):
             if resid in ghost_resids:
-                #  Switch off nonbonded interactions involving this water
+                #  Switch off nonbonded interactions involving this molecule
                 atom_ids = []
                 for i, atom in enumerate(residue.atoms()):
                     atom_ids.append(atom.index)
-                self.adjustSpecificWater(atom_ids, 0.0)
-                # Mark that this water has been switched off
+                self.adjustSpecificMolecule(atom_ids, 0.0)
+                # Mark that this molecule has been switched off
                 gcmc_id = np.where(np.array(self.gcmc_resids) == resid)[0]
-                wat_id = np.where(np.array(self.water_resids) == resid)[0]
+                wat_id = np.where(np.array(self.mol_resids) == resid)[0]
                 self.gcmc_status[gcmc_id] = 0
-                self.water_status[wat_id] = 0
+                self.mol_status[wat_id] = 0
 
         # Calculate N
         self.N = np.sum(self.gcmc_status)
 
         return None
 
-    def adjustSpecificWater(self, atoms, new_lambda):
+    def adjustSpecificMolecule(self, resid, new_lambda):
         """
-        Adjust the coupling of a specific water molecule, by adjusting the lambda value
+        Adjust the coupling of a specific molecule, by adjusting the lambda value
 
         Parameters
         ----------
-        atoms : list
-            List of the atom indices of the water to be adjusted
+        resid : int
+            List of the atom indices of the molecule to be adjusted
         new_lambda : float
             Value to set lambda to for this particle
         """
         # Get lambda values
         lambda_vdw, lambda_ele = get_lambda_values(new_lambda)
 
-        # Loop over parameters
+        # Update per-atom nonbonded parameters first
+        atoms = self.mol_atom_ids[resid]
         for i, atom_idx in enumerate(atoms):
             # Obtain original parameters
-            atom_params = self.water_params[i]
+            atom_params = self.mol_params[i]
             # Update charge in NonbondedForce
             self.nonbonded_force.setParticleParameters(atom_idx,
                                                        charge=(lambda_ele * atom_params["charge"]),
@@ -445,6 +508,28 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         # Update context with new parameters
         self.nonbonded_force.updateParametersInContext(self.context)
         self.custom_nb_force.updateParametersInContext(self.context)
+
+        # Update the exceptions, where relevant
+        if self.vdw_except_force is not None:
+            # Update vdW exceptions
+            vdw_exceptions = self.mol_vdw_excepts[resid]
+            for exception_id in vdw_exceptions:
+                # Get atom IDs and parameters
+                i, j, [sigma, epsilon, old_lambda] = self.vdw_except_force.getBondParameters(exception_id)
+                # Set the new value of lambda
+                self.vdw_except_force.setBondParameters(exception_id, i, j, [sigma, epsilon, lambda_vdw])
+
+            # Update electrostatic exceptions
+            ele_exceptions = self.mol_ele_excepts[resid]
+            for exception_id in ele_exceptions:
+                # Get atom IDs and parameters
+                i, j, [chargeprod, sigma, old_lambda] = self.ele_except_force.getBondParameters(exception_id)
+                # Set the new value of lambda
+                self.ele_except_force.setBondParameters(exception_id, i, j, [chargeprod, sigma, lambda_ele])
+
+            # Update context with new parameters
+            self.vdw_except_force.updateParametersInContext(self.context)
+            self.ele_except_force.updateParametersInContext(self.context)
         
         return None
 
@@ -472,8 +557,8 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         print(msg)
         self.logger.info(msg)
 
-        # Write to the file describing which waters are ghosts through the trajectory
-        self.writeGhostWaterResids()
+        # Write to the file describing which molecules are ghosts through the trajectory
+        self.writeGhostMoleculeResids()
 
         # Append to the DCD and update the restart file
         state = simulation.context.getState(getPositions=True, getVelocities=True)
@@ -484,12 +569,12 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         return None
 
-    def writeGhostWaterResids(self):
+    def writeGhostMoleculeResids(self):
         """
-        Write out a comma-separated list of the residue IDs of waters which are
+        Write out a comma-separated list of the residue IDs of molecules which are
         non-interacting, so that they can be removed from visualisations. It is important 
         to execute this function when writing to trajectory files, so that each line
-        in the ghost water file corresponds to a frame in the trajectory
+        in the ghost molecule file corresponds to a frame in the trajectory
         """
         # Need to write this function
         with open(self.ghost_file, 'a') as f:

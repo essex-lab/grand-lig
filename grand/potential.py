@@ -50,7 +50,7 @@ def get_lambda_values(lambda_in):
     return lambda_vdw, lambda_ele
 
 
-def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas, n_samples, n_equil, log_file):
+def calc_mu_ex(system, topology, positions, resname, box_vectors, temperature, n_lambdas, n_samples, n_equil, log_file):
     """
     Calculate the excess chemical potential of a water molecule in a given system,
     as the hydration free energy, using MBAR
@@ -63,6 +63,8 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
         Topology of the system
     positions : simtk.unit.Quantity
         Initial positions for the simulation
+    resname : str
+        Resname of the molecule to decouple
     box_vectors : simtk.unit.Quantity
         Periodic box vectors for the system
     temperature : simtk.unit.Quantity
@@ -90,7 +92,7 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
 
     # Define a GCMC sampler object, just to allow easy switching of a water - won't use this to sample
     gcmc_mover = grand.samplers.BaseGrandCanonicalMonteCarloSampler(system=system, topology=topology,
-                                                                    temperature=temperature,
+                                                                    temperature=temperature, resname=resname,
                                                                     log=log_file,
                                                                     ghostFile='calc_mu-ghosts.txt',
                                                                     overwrite=True)
@@ -102,11 +104,13 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
     system.addForce(MonteCarloBarostat(pressure, temperature, 25))
 
     # IDs of the atoms to switch on/off
-    wat_ids = []
-    for residue in topology.residues():
-        for atom in residue.atoms():
-            wat_ids.append(atom.index)
-        break  # Make sure to stop after the first water
+    ligand_resid = None
+    for resid, residue in enumerate(topology.residues()):
+        if residue.name == resname:
+            ligand_resid = resid
+            break  # Make sure to stop after the first water
+    if ligand_resid is None:
+        raise Exception("Residue {} not found!".format(resname))
 
     # Define the platform, first try CUDA, then OpenCL, then CPU
     try:
@@ -125,6 +129,8 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
     simulation.context.setVelocitiesToTemperature(temperature)
     simulation.context.setPeriodicBoxVectors(*box_vectors)
 
+    print('Simulation created')
+
     # Make sure the GCMC sampler has access to the Context
     gcmc_mover.context = simulation.context
 
@@ -134,8 +140,9 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
     # Simulate the system at each lambda window
     for i in range(n_lambdas):
         # Set lambda values
+        print('Simulating at lambda = {:.4f}'.format(np.round(lambdas[i], 4)))
         gcmc_mover.logger.info('Simulating at lambda = {:.4f}'.format(np.round(lambdas[i], 4)))
-        gcmc_mover.adjustSpecificWater(wat_ids, lambdas[i])
+        gcmc_mover.adjustSpecificMolecule(ligand_resid, lambdas[i])
         for k in range(n_samples):
             # Run production MD
             simulation.step(n_equil)
@@ -144,13 +151,13 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
             # Calculate energy at each lambda value
             for j in range(n_lambdas):
                 # Set lambda value
-                gcmc_mover.adjustSpecificWater(wat_ids, lambdas[j])
+                gcmc_mover.adjustSpecificMolecule(ligand_resid, lambdas[j])
                 # Calculate energy
                 #U[i, j, k] = simulation.context.getState(getEnergy=True).getPotentialEnergy() / gcmc_mover.kT
                 # Calculate energy (with volume correction)
                 U[i, j, k] = (simulation.context.getState(getEnergy=True).getPotentialEnergy() + (pressure * volume * AVOGADRO_CONSTANT_NA) ) / gcmc_mover.kT
             # Reset lambda value
-            gcmc_mover.adjustSpecificWater(wat_ids, lambdas[i])
+            gcmc_mover.adjustSpecificMolecule(ligand_resid, lambdas[i])
 
     # Calculate equilibration & number of uncorrelated samples
     N_k = np.zeros(n_lambdas, np.int32)
@@ -184,7 +191,7 @@ def calc_mu_ex(system, topology, positions, box_vectors, temperature, n_lambdas,
     return dG
 
 
-def calc_std_volume(system, topology, positions, box_vectors, temperature, n_samples, n_equil):
+def calc_std_volume(system, topology, positions, resname, box_vectors, temperature, n_samples, n_equil):
     """
     Calculate the standard volume of a given system and parameters, this is the effective volume
     of a single molecule
@@ -197,6 +204,8 @@ def calc_std_volume(system, topology, positions, box_vectors, temperature, n_sam
         Topology of the system
     positions : simtk.unit.Quantity
         Initial positions for the simulation
+    resname : str
+        Name of the molecule of interest
     box_vectors : simtk.unit.Quantity
         Periodic box vectors for the system
     temperature : simtk.unit.Quantity
@@ -234,7 +243,8 @@ def calc_std_volume(system, topology, positions, box_vectors, temperature, n_sam
     # Count number of residues
     n_molecules = 0
     for residue in topology.residues():
-        n_molecules += 1
+        if residue.name == resname:
+            n_molecules += 1
 
     # Collect volume samples
     volume_list = []
