@@ -99,10 +99,6 @@ def calc_mu_ex(system, topology, positions, resname, box_vectors, temperature, n
     # Remove unneeded ghost file
     os.remove('calc_mu-ghosts.txt')
 
-    # Testing with barostat
-    pressure = 1 * bar
-    system.addForce(MonteCarloBarostat(pressure, temperature, 25))
-
     # IDs of the atoms to switch on/off
     ligand_resid = None
     for resid, residue in enumerate(topology.residues()):
