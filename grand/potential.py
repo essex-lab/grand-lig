@@ -156,9 +156,10 @@ def calc_mu_ex(system, topology, positions, resname, box_vectors, temperature, n
                 # Set lambda value
                 gcmc_mover.adjustSpecificMolecule(ligand_resid, lambdas[j])
                 # Calculate energy
-                #U[i, j, k] = simulation.context.getState(getEnergy=True).getPotentialEnergy() / gcmc_mover.kT
-                # Calculate energy (with volume correction)
-                U[i, j, k] = (simulation.context.getState(getEnergy=True).getPotentialEnergy() + (pressure * volume * AVOGADRO_CONSTANT_NA) ) / gcmc_mover.kT
+                U[i, j, k] = simulation.context.getState(getEnergy=True).getPotentialEnergy() / gcmc_mover.kT
+                # Add volume correction, if needed
+                if pressure is not None:
+                    U[i, j, k] += (pressure * volume * AVOGADRO_CONSTANT_NA) / gcmc_mover.kT
             # Reset lambda value
             gcmc_mover.adjustSpecificMolecule(ligand_resid, lambdas[i])
 
