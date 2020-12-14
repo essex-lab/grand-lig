@@ -636,6 +636,10 @@ def create_custom_forces(system, topology, resnames):
         system.addForce(steric_exceptions)
         # Add the electrostatics
         system.addForce(electrostatic_exceptions)
+    else:
+        # Set these forces to None, if they are not needed
+        steric_exceptions = None
+        electrostatic_exceptions = None
 
     return param_dict, custom_sterics, electrostatic_exceptions, steric_exceptions
 
