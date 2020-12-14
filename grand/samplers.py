@@ -8,6 +8,7 @@ Sampler objects.
 
 Marley Samways
 Ollie Melling
+Will Poole
 """
 
 import numpy as np
@@ -19,11 +20,9 @@ from copy import deepcopy
 from simtk import unit
 from simtk import openmm
 from openmmtools.integrators import NonequilibriumLangevinIntegrator
-from openmmtools.constants import ONE_4PI_EPS0
 
-from grand.utils import random_rotation_matrix
-from grand.utils import PDBRestartReporter
-from grand.potential import get_lambda_values
+from grand import utils
+from grand import potential
 
 
 class BaseGrandCanonicalMonteCarloSampler(object):
@@ -32,7 +31,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
     All other Sampler objects are derived from this
     """
     def __init__(self, system, topology, temperature, resname="HOH", ghostFile="gcmc-ghost-wats.txt", log='gcmc.log',
-                 dcd=None, rst=None, overwrite=False):
+                 createCustomForces=True, dcd=None, rst=None, overwrite=False):
         """
         Initialise the object to be used for sampling insertion/deletion moves
 
@@ -52,6 +51,9 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
         log : str
             Log file to write out
+        createCustomForces : bool
+            If True (default), will create CustomForce objects to handle interaction switching. If False, these forces
+            must be created elsewhere
         dcd : str
             Name of the DCD file to write the system out to
         rst : str
@@ -99,9 +101,6 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.n_moves = 0
         self.n_accepted = 0
         self.acceptance_probabilities = []  # Store acceptance probabilities
-        
-        # Get parameters for the model
-        self.mol_params = self.getMoleculeParameters(resname)
 
         # Get residue IDs & assign statuses to each
         self.mol_resids = self.getMoleculeResids(resname)  # All molecules
@@ -109,17 +108,28 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.gcmc_resids = []  # GCMC molecules
         self.gcmc_status = []  # 1 indicates on, 0 indicates off
 
-        # Need to create customised forces to handle softcore steric interactions of molecules
+        # Need to customised forces to handle softcore steric interactions and exceptions
+        self.mol_params = []
         self.custom_nb_force = None
         self.vdw_except_force = None
         self.ele_except_force = None
-        self.customiseForces()
-
-        # Get the atom IDs and exceptions for each molecule
         self.mol_atom_ids = {}
         self.mol_vdw_excepts = {}
         self.mol_ele_excepts = {}
-        self.getMoleculeExceptions(resname)
+
+        # Create the custom forces, if requested (default)
+        if createCustomForces:
+            # Get molecule parameters
+            self.mol_params = self.getMoleculeParameters(resname)
+            # Create the custom forces
+            self.custom_nb_force, self.ele_except_force, self.vdw_except_force = utils.create_custom_forces(system,
+                                                                                                            topology,
+                                                                                                            [resname])
+            # Also need to assign exception IDs to each molecule ID
+            self.getMoleculeExceptions()
+        else:
+            self.logger.info("Custom Force objects not created in Sampler __init__() function. These must be set "
+                             "using the self.setCustomForces() function!")
 
         # Need to open the file to store ghost molecule IDs
         self.ghost_file = ghostFile
@@ -158,7 +168,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
                 if rst_ext == '.rst7':
                     self.restart = parmed.openmm.reporters.RestartReporter(rst, 0)
                 elif rst_ext == '.pdb':
-                    self.restart = PDBRestartReporter(rst, self.topology)
+                    self.restart = utils.PDBRestartReporter(rst, self.topology)
                 else:
                     self.logger.error("File extension {} not recognised for restart file".format(rst))
                     raise Exception("File extension {} not recognised for restart file".format(rst))
@@ -167,142 +177,40 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         self.logger.info("BaseGrandCanonicalMonteCarloSampler object initialised")
 
-    def customiseForces(self):
+    def setCustomForces(self, param_list, custom_nb_force, elec_bond_force, steric_bond_force):
         """
-        Create a CustomNonbondedForce to handle interactions and modify the original NonbondedForce
-        to ignore vdW interactions
+        Set the custom force objects to forces created elsewhere - if createCustomForces was set to False, this function
+        must be run before the Simulation object is created
+
+        Parameters
+        ----------
+        param_list : list
+            List of parameters for each atom (in correct order) - each entry must be a dictionary containing 'charge',
+            'sigma', and 'epsilon'
+        custom_sterics : simtk.openmm.CustomNonbondedForce
+            Handles the softcore LJ interactions
+        electrostatc_exceptions : simtk.openmm.CustomBondForce
+            Handles the electrostatic exceptions (if relevant, None otherwise)
+        steric_exceptions : simtk.openmm.CustomBondForce
+            Handles the steric exceptions (if relevant, None otherwise)
         """
-        #  Need to make sure that the electrostatics are handled using PME (for now)
-        if self.nonbonded_force.getNonbondedMethod() != openmm.NonbondedForce.PME:
-            raise Exception("Currently only supporting PME for long range electrostatics")
+        # Set the molecule parameters
+        self.mol_params = param_list
 
-        # Define the energy expression for the softcore sterics
-        lj_energy = ("U;"
-                     "U = (lambda^soft_a) * 4 * epsilon * x * (x-1.0);"  # Softcore energy
-                     "x = (sigma/reff)^6;"  # Define x as sigma/r(effective)
-                     # Calculate effective distance
-                     "reff = sigma*((soft_alpha*(1.0-lambda)^soft_b + (r/sigma)^soft_c))^(1/soft_c)")
-        # Define combining rules
-        lj_combining = "; sigma = 0.5*(sigma1+sigma2); epsilon = sqrt(epsilon1*epsilon2); lambda = lambda1*lambda2"
+        # Check that the Forces haven't already been created - don't want to worry about overwriting for the time being
+        if any([force is not None for force in [self.custom_nb_force, self.ele_except_force, self.vdw_except_force]]):
+            raise Exception("Error! Custom Force objects have already been assigned!")
 
-        # Create a customised sterics force
-        custom_sterics = openmm.CustomNonbondedForce(lj_energy + lj_combining)
-        # Add necessary particle parameters
-        custom_sterics.addPerParticleParameter("sigma")
-        custom_sterics.addPerParticleParameter("epsilon")
-        custom_sterics.addPerParticleParameter("lambda")
-        # Assume that the system is periodic (for now)
-        custom_sterics.setNonbondedMethod(openmm.CustomNonbondedForce.CutoffPeriodic)
-        # Transfer properties from the original force
-        custom_sterics.setUseSwitchingFunction(self.nonbonded_force.getUseSwitchingFunction())
-        custom_sterics.setCutoffDistance(self.nonbonded_force.getCutoffDistance())
-        custom_sterics.setSwitchingDistance(self.nonbonded_force.getSwitchingDistance())
-        self.nonbonded_force.setUseDispersionCorrection(False)
-        custom_sterics.setUseLongRangeCorrection(self.nonbonded_force.getUseDispersionCorrection())
-        # Set softcore parameters
-        custom_sterics.addGlobalParameter('soft_alpha', 0.5)
-        custom_sterics.addGlobalParameter('soft_a', 1)
-        custom_sterics.addGlobalParameter('soft_b', 1)
-        custom_sterics.addGlobalParameter('soft_c', 6)
+        # Set the forces to the appropriate objects
+        self.custom_nb_force = custom_nb_force
+        self.ele_except_force = elec_bond_force
+        self.vdw_except_force = steric_bond_force
 
-        # Get a list of all molecule and non-molecule atom IDs
-        mol_atom_ids = []
-        for resid, residue in enumerate(self.topology.residues()):
-            if resid in self.mol_resids:
-                for atom in residue.atoms():
-                    mol_atom_ids.append(atom.index)
+        # Read in which Exceptions correspond to which molecules
+        self.getMoleculeExceptions()
 
-        # Copy all steric interactions into the custom force, and remove them from the original force
-        for atom_idx in range(self.nonbonded_force.getNumParticles()):
-            # Get atom parameters
-            [charge, sigma, epsilon] = self.nonbonded_force.getParticleParameters(atom_idx)
-
-            # Make sure that sigma is not equal to zero
-            if np.isclose(sigma._value, 0.0):
-                sigma = 1.0 * unit.angstrom
-
-            # Add particle to the custom force (with lambda=1 for now)
-            custom_sterics.addParticle([sigma, epsilon, 1.0])
-
-            # Disable steric interactions in the original force by setting epsilon=0 (keep the charges for PME purposes)
-            self.nonbonded_force.setParticleParameters(atom_idx, charge, sigma, abs(0))
-
-        # Define force for the steric exceptions
-        steric_exceptions = openmm.CustomBondForce(lj_energy)  # Same energy expression as before, but no combining rules needed
-        # Parameters per exception
-        steric_exceptions.addPerBondParameter('sigma')
-        steric_exceptions.addPerBondParameter('epsilon')
-        steric_exceptions.addPerBondParameter('lambda')
-        # Set softcore parameters
-        steric_exceptions.addGlobalParameter('soft_alpha', 0.5)
-        steric_exceptions.addGlobalParameter('soft_a', 1)
-        steric_exceptions.addGlobalParameter('soft_b', 1)
-        steric_exceptions.addGlobalParameter('soft_c', 6)
-
-        # Define force for the electrostatic exceptions
-        # Electrostatic softcore energy expression - use softcores to prevent possible explosions in these forces
-        ele_energy = ("U;"
-                      "U = ((lambda^soft_d) * chargeprod * one_4pi_eps0) / reff;"
-                      # Calculate effective distance
-                      "reff = sigma * ((soft_beta * (1.0 - lambda)^soft_e + (r/sigma)^soft_f))^(1/soft_f);"
-                      # Define 1/(4*pi*eps)
-                      "one_4pi_eps0 = {}".format(ONE_4PI_EPS0))
-        electrostatic_exceptions = openmm.CustomBondForce(ele_energy)
-        # Parameters per exception
-        electrostatic_exceptions.addPerBondParameter('chargeprod')
-        electrostatic_exceptions.addPerBondParameter('sigma')
-        electrostatic_exceptions.addPerBondParameter('lambda')
-        # Set softcore parameters
-        electrostatic_exceptions.addGlobalParameter('soft_beta', 0.0)
-        electrostatic_exceptions.addGlobalParameter('soft_d', 1)
-        electrostatic_exceptions.addGlobalParameter('soft_e', 1)
-        electrostatic_exceptions.addGlobalParameter('soft_f', 2)
-
-        alchemical_except = False  # Indicate any exceptions are found which may be decoupled
-
-        # Copy over all exceptions into the new force as exclusions and add to the exception forces, where necessary
-        for exception_idx in range(self.nonbonded_force.getNumExceptions()):
-            [i, j, chargeprod, sigma, epsilon] = self.nonbonded_force.getExceptionParameters(exception_idx)
-
-            # Make sure that sigma is not equal to zero
-            if np.isclose(sigma._value, 0.0):
-                sigma = 1.0 * unit.angstrom
-
-            # Copy this over as an exclusion so it isn't counted by the CustomNonbonded Force
-            custom_sterics.addExclusion(i, j)
-
-            # If epsilon is greater than zero, this is an exception, not an exclusion
-            if abs(chargeprod._value) > 0.0 or epsilon > 0.0 * unit.kilojoule_per_mole:
-                #
-                # NEED TO ADD SOME CHECKS TO MAKE SURE THAT THERE ARE NO INTER-MOLECULAR EXCEPTIONS
-                #
-
-                # Ignore this exception if it's not for one of the residues of interest
-                if i not in mol_atom_ids and j not in mol_atom_ids:
-                    continue
-
-                # Make clear that exceptions are decoupled
-                alchemical_except = True
-
-                # Add this exception to the sterics and electrostatics - set lambda to 1 for now
-                steric_exceptions.addBond(i, j, [sigma, epsilon, 1.0])
-                electrostatic_exceptions.addBond(i, j, [chargeprod, sigma, 1.0])
-
-                # Set this exception to non-interacting in the original NonbondedForce, so that it isn't double counted
-                self.nonbonded_force.setExceptionParameters(exception_idx, i, j, abs(0.0), sigma, abs(0.0))
-
-        # Add the custom force to the system
-        self.system.addForce(custom_sterics)
-        self.custom_nb_force = custom_sterics
-
-        # Add the exception forces to the system, if needed
-        if alchemical_except:
-            # Add the sterics
-            self.system.addForce(steric_exceptions)
-            self.vdw_except_force = steric_exceptions
-            # Add the electrostatics
-            self.system.addForce(electrostatic_exceptions)
-            self.ele_except_force = electrostatic_exceptions
+        # Report to logger that this has been sorted
+        self.logger.info("Custom Force objects assigned.")
 
         return None
 
@@ -364,14 +272,9 @@ class BaseGrandCanonicalMonteCarloSampler(object):
                 resid_list.append(resid)
         return resid_list
 
-    def getMoleculeExceptions(self, resname):
+    def getMoleculeExceptions(self):
         """
         Find out the IDs of atoms and exceptions belonging to each molecule
-
-        Parameters
-        ----------
-        resname : str
-            Name of the residue of interest
         """
         for resid, residue in enumerate(self.topology.residues()):
             # Only interested in GCMC molecules
@@ -489,7 +392,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             Value to set lambda to for this particle
         """
         # Get lambda values
-        lambda_vdw, lambda_ele = get_lambda_values(new_lambda)
+        lambda_vdw, lambda_ele = potential.get_lambda_values(new_lambda)
 
         # Update per-atom nonbonded parameters first
         atoms = self.mol_atom_ids[resid]
@@ -618,7 +521,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
                  excessChemicalPotential=-6.09*unit.kilocalories_per_mole,
                  standardVolume=30.345*unit.angstroms**3, adamsShift=0.0,
                  ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None, sphereCentre=None,
-                 log='gcmc.log', dcd=None, rst=None, overwrite=False):
+                 log='gcmc.log', createCustomForces=True, dcd=None, rst=None, overwrite=False):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
 
@@ -656,6 +559,9 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
             Coordinates around which the GCMC sphere is based
         log : str
             Log file to write out
+        createCustomForces : bool
+            If True (default), will create CustomForce objects to handle interaction switching. If False, these forces
+            must be created elsewhere
         dcd : str
             Name of the DCD file to write the system out to
         rst : str
@@ -665,7 +571,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         """
         # Initialise base
         BaseGrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, ghostFile=ghostFile,
-                                                     log=log, dcd=dcd, rst=rst,
+                                                     log=log, createCustomForces=createCustomForces, dcd=dcd, rst=rst,
                                                      overwrite=overwrite)
 
         # Initialise variables specific to the GCMC sphere
@@ -997,7 +903,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         insert_point = self.sphere_centre + (
                 self.sphere_radius * np.power(np.random.rand(), 1.0 / 3) * rand_nums) / np.linalg.norm(rand_nums)
         #  Generate a random rotation matrix
-        R = random_rotation_matrix()
+        R = utils.random_rotation_matrix()
         new_positions = deepcopy(self.positions)
         for i, index in enumerate(atom_indices):
             #  Translate coordinates to an origin defined by the oxygen atom, and normalise
@@ -1051,8 +957,8 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
     """
     def __init__(self, system, topology, temperature, adams=None, excessChemicalPotential=-6.09*unit.kilocalories_per_mole,
                  standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, ghostFile="gcmc-ghost-wats.txt",
-                 referenceAtoms=None, sphereRadius=None, sphereCentre=None, log='gcmc.log', dcd=None, rst=None,
-                 overwrite=False):
+                 referenceAtoms=None, sphereRadius=None, sphereCentre=None, log='gcmc.log', createCustomForces=True,
+                 dcd=None, rst=None, overwrite=False):
         """
         Initialise the object to be used for sampling instantaneous water insertion/deletion moves
 
@@ -1090,6 +996,9 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
             Coordinates around which the GCMC sphere is based
         log : str
             Name of the log file to write out
+        createCustomForces : bool
+            If True (default), will create CustomForce objects to handle interaction switching. If False, these forces
+            must be created elsewhere
         dcd : str
             Name of the DCD file to write the system out to
         rst : str
@@ -1101,8 +1010,8 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
         GCMCSphereSampler.__init__(self, system, topology, temperature, adams=adams,
                                    excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
                                    adamsShift=adamsShift, ghostFile=ghostFile, referenceAtoms=referenceAtoms,
-                                   sphereRadius=sphereRadius, sphereCentre=sphereCentre, log=log, dcd=dcd, rst=rst,
-                                   overwrite=overwrite)
+                                   sphereRadius=sphereRadius, sphereCentre=sphereCentre, log=log,
+                                   createCustomForces=createCustomForces, dcd=dcd, rst=rst, overwrite=overwrite)
 
         self.energy = None  # Need to save energy
         self.logger.info("StandardGCMCSphereSampler object initialised")
@@ -1223,7 +1132,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                  excessChemicalPotential=-6.09*unit.kilocalories_per_mole, standardVolume=30.345*unit.angstroms**3,
                  adamsShift=0.0, nPertSteps=1, nPropStepsPerPert=1, timeStep=2 * unit.femtoseconds, lambdas=None,
                  ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None, sphereCentre=None,
-                 log='gcmc.log', dcd=None, rst=None, overwrite=False):
+                 log='gcmc.log', createCustomForces=True, dcd=None, rst=None, overwrite=False):
         """
         Initialise the object to be used for sampling NCMC-enhanced water insertion/deletion moves
 
@@ -1272,6 +1181,9 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             Coordinates around which the GCMC sphere is based
         log : str
             Name of the log file to write out
+        createCustomForces : bool
+            If True (default), will create CustomForce objects to handle interaction switching. If False, these forces
+            must be created elsewhere
         dcd : str
             Name of the DCD file to write the system out to
         rst : str
@@ -1283,8 +1195,8 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         GCMCSphereSampler.__init__(self, system, topology, temperature, adams=adams,
                                    excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
                                    adamsShift=adamsShift, ghostFile=ghostFile, referenceAtoms=referenceAtoms,
-                                   sphereRadius=sphereRadius, sphereCentre=sphereCentre, log=log, dcd=dcd, rst=rst,
-                                   overwrite=overwrite)
+                                   sphereRadius=sphereRadius, sphereCentre=sphereCentre, log=log,
+                                   createCustomForces=createCustomForces, dcd=dcd, rst=rst, overwrite=overwrite)
 
         self.velocities = None  # Need to store velocities for this type of sampling
 
@@ -1571,7 +1483,8 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
     def __init__(self, system, topology, temperature, adams=None,
                  excessChemicalPotential=-6.09*unit.kilocalories_per_mole,
                  standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, boxVectors=None,
-                 ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, rst=None, overwrite=False):
+                 ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, createCustomForces=True, rst=None,
+                 overwrite=False):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
 
@@ -1603,6 +1516,9 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
         log : str
             Log file to write out
+        createCustomForces : bool
+            If True (default), will create CustomForce objects to handle interaction switching. If False, these forces
+            must be created elsewhere
         dcd : str
             Name of the DCD file to write the system out to
         rst : str
@@ -1612,7 +1528,8 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
         """
         # Initialise base
         BaseGrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, ghostFile=ghostFile, log=log,
-                                                     dcd=dcd, rst=rst, overwrite=overwrite)
+                                                     createCustomForces=createCustomForces, dcd=dcd, rst=rst,
+                                                     overwrite=overwrite)
 
         # Read in simulation box lengths
         self.simulation_box = np.array([boxVectors[0, 0]._value,
@@ -1714,7 +1631,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
         # Select a point to insert the water (based on O position)
         insert_point = np.random.rand(3) * self.simulation_box
         #  Generate a random rotation matrix
-        R = random_rotation_matrix()
+        R = utils.random_rotation_matrix()
         new_positions = deepcopy(self.positions)
         for i, index in enumerate(atom_indices):
             #  Translate coordinates to an origin defined by the oxygen atom, and normalise
@@ -1768,7 +1685,8 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
     """
     def __init__(self, system, topology, temperature, adams=None, excessChemicalPotential=-6.09*unit.kilocalories_per_mole,
                  standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, boxVectors=None,
-                 ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, rst=None, overwrite=False):
+                 ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', createCustomForces=True, dcd=None, rst=None,
+                 overwrite=False):
         """
         Initialise the object to be used for sampling instantaneous water insertion/deletion moves
 
@@ -1800,6 +1718,9 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
         log : str
             Name of the log file to write out
+        createCustomForces : bool
+            If True (default), will create CustomForce objects to handle interaction switching. If False, these forces
+            must be created elsewhere
         dcd : str
             Name of the DCD file to write the system out to
         rst : str
@@ -1811,7 +1732,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         GCMCSystemSampler.__init__(self, system, topology, temperature, adams=adams,
                                    excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
                                    adamsShift=adamsShift, boxVectors=boxVectors, ghostFile=ghostFile, log=log,
-                                   dcd=dcd, rst=rst, overwrite=overwrite)
+                                   createCustomForces=createCustomForces, dcd=dcd, rst=rst, overwrite=overwrite)
 
         self.energy = None  # Need to save energy
         self.logger.info("StandardGCMCSystemSampler object initialised")
@@ -1922,8 +1843,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
     def __init__(self, system, topology, temperature, integrator, adams=None,
                  excessChemicalPotential=-6.09*unit.kilocalories_per_mole, standardVolume=30.345*unit.angstroms**3,
                  adamsShift=0.0, nPertSteps=1, nPropStepsPerPert=1, timeStep=2 * unit.femtoseconds, boxVectors=None,
-                 ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, rst=None, overwrite=False,
-                 lambdas=None):
+                 ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', createCustomForces=True, dcd=None, rst=None,
+                 overwrite=False, lambdas=None):
         """
         Initialise the object to be used for sampling NCMC-enhanced water insertion/deletion moves
 
@@ -1966,6 +1887,9 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
         log : str
             Name of the log file to write out
+        createCustomForces : bool
+            If True (default), will create CustomForce objects to handle interaction switching. If False, these forces
+            must be created elsewhere
         dcd : str
             Name of the DCD file to write the system out to
         rst : str
@@ -1976,8 +1900,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         # Initialise base class
         GCMCSystemSampler.__init__(self, system, topology, temperature, adams=adams,
                                    excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
-                                   adamsShift=adamsShift, boxVectors=boxVectors, ghostFile=ghostFile, log=log, dcd=dcd,
-                                   rst=rst, overwrite=overwrite)
+                                   adamsShift=adamsShift, boxVectors=boxVectors, ghostFile=ghostFile, log=log,
+                                   createCustomForces=createCustomForces, dcd=dcd, rst=rst, overwrite=overwrite)
 
         # Load in extra NCMC variables
         if lambdas is not None:
