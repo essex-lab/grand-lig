@@ -122,9 +122,9 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             # Get molecule parameters
             self.mol_params = self.getMoleculeParameters(resname)
             # Create the custom forces
-            self.custom_nb_force, self.ele_except_force, self.vdw_except_force = utils.create_custom_forces(system,
-                                                                                                            topology,
-                                                                                                            [resname])
+            _, self.custom_nb_force, self.ele_except_force, self.vdw_except_force = utils.create_custom_forces(system,
+                                                                                                               topology,
+                                                                                                               [resname])
             # Also need to assign exception IDs to each molecule ID
             self.getMoleculeExceptions()
         else:
