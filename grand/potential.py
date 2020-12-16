@@ -162,7 +162,7 @@ def calc_mu_ex(system, topology, positions, resname, box_vectors, temperature, n
                     U[i, j, k] += (pressure * volume * AVOGADRO_CONSTANT_NA) / gcmc_mover.kT
             # Reset lambda value
             gcmc_mover.adjustSpecificMolecule(ligand_resid, lambdas[i])
-
+    np.save('U_matrix.npy', U)
     # Calculate equilibration & number of uncorrelated samples
     N_k = np.zeros(n_lambdas, np.int32)
     for i in range(n_lambdas):
