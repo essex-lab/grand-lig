@@ -113,10 +113,13 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.custom_nb_force = None
         self.vdw_except_force = None
         self.ele_except_force = None
-        self.mol_atom_ids = {}  # Store atom IDs for each molecule
-        self.mol_heavy_ids = {}  # Store heavy atom IDs for each molecule
         self.mol_vdw_excepts = {}  # Store the vdW exception IDs for each molecule
         self.mol_ele_excepts = {}  # Store the electrostatic exception IDs for each molecule
+
+        # Check get atom IDs for each molecule
+        self.mol_atom_ids = {}  # Store atom IDs for each molecule
+        self.mol_heavy_ids = {}  # Store heavy atom IDs for each molecule
+        self.getMoleculeAtoms()
 
         # Create the custom forces, if requested (default)
         if createCustomForces:
@@ -131,9 +134,6 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         else:
             self.logger.info("Custom Force objects not created in Sampler __init__() function. These must be set "
                              "using the self.setCustomForces() function!")
-
-        # Check which atoms are heavy atoms (these are used to define the insertion and deletion points)
-        self.getHeavyAtoms()
 
         # Need to open the file to store ghost molecule IDs
         self.ghost_file = ghostFile
@@ -327,21 +327,31 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         return None
 
-    def getHeavyAtoms(self):
+    def getMoleculeAtoms(self):
         """
-        Store heavy atom IDs for each molecule of interest
+        Get all atom IDs for each molecule, noting heavy atoms in a second list
         """
         # Get the elements for all atoms in the system
         elements = [atom.element for atom in self.topology.atoms()]
 
-        # For each residue of interest, store a subset of atom IDs which correspond to heavy atoms
-        for resid in self.mol_resids:
+        # For each residue, get the IDs of all atoms, and also separately those of heavy atoms
+        for resid, residue in enumerate(self.topology.residues()):
+            all_atoms = []
             heavy_atoms = []
-            # Check whether each atom index corresponds to H
-            for atom_id in self.mol_atom_ids[resid]:
-                if elements[atom_id] != 'H':
-                    heavy_atoms.append(atom_id)
-            # Add the heavy atom IDs to the dictionary
+
+            # Make sure we care about this residue
+            if resid not in self.mol_resids:
+                continue
+
+            for atom in residue.atoms():
+                # Add to the atom list
+                all_atoms.append(atom.index)
+                # Add to the heavy list, if appropriate
+                if elements[atom.index] != 'H':
+                    heavy_atoms.append(atom.index)
+
+            # Update the dictionaries for this residue
+            self.mol_atom_ids[resid] = all_atoms
             self.mol_heavy_ids[resid] = heavy_atoms
 
         return None
@@ -1652,13 +1662,19 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
 
         # Select a point to insert the molecule (based on centre of heavy atoms)
         insert_point = np.random.rand(3) * self.simulation_box
+
         # Calculate centre of geometry (COG), based on heavy atoms
         heavy_atoms = self.mol_heavy_ids[insert_mol]
-        heavy_cog = sum([self.positions[i] for i in heavy_atoms]) / len(heavy_atoms)
+        heavy_cog = np.zeros(3) * unit.angstroms
+        for index in heavy_atoms:
+            heavy_cog += self.positions[index]
+        heavy_cog /= len(heavy_atoms)
+
         #  Generate a random rotation matrix
         R = utils.random_rotation_matrix()
-        new_positions = deepcopy(self.positions)
+
         # Scramble the molecule
+        new_positions = deepcopy(self.positions)
         for index in self.mol_atom_ids[insert_mol]:
             #  Translate coordinates to an origin defined by the COG, and normalise
             atom_position = self.positions[index] - heavy_cog
