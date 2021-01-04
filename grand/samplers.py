@@ -109,13 +109,14 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.gcmc_status = []  # 1 indicates on, 0 indicates off
 
         # Need to customised forces to handle softcore steric interactions and exceptions
-        self.mol_params = []
+        self.mol_params = []  # Stores nonbonded parameters for each atom
         self.custom_nb_force = None
         self.vdw_except_force = None
         self.ele_except_force = None
-        self.mol_atom_ids = {}
-        self.mol_vdw_excepts = {}
-        self.mol_ele_excepts = {}
+        self.mol_atom_ids = {}  # Store atom IDs for each molecule
+        self.mol_heavy_ids = {}  # Store heavy atom IDs for each molecule
+        self.mol_vdw_excepts = {}  # Store the vdW exception IDs for each molecule
+        self.mol_ele_excepts = {}  # Store the electrostatic exception IDs for each molecule
 
         # Create the custom forces, if requested (default)
         if createCustomForces:
@@ -130,6 +131,9 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         else:
             self.logger.info("Custom Force objects not created in Sampler __init__() function. These must be set "
                              "using the self.setCustomForces() function!")
+
+        # Check which atoms are heavy atoms (these are used to define the insertion and deletion points)
+        self.getHeavyAtoms()
 
         # Need to open the file to store ghost molecule IDs
         self.ghost_file = ghostFile
@@ -320,6 +324,25 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             self.mol_atom_ids[resid] = atom_ids
             self.mol_vdw_excepts[resid] = vdw_exceptions
             self.mol_ele_excepts[resid] = ele_exceptions
+
+        return None
+
+    def getHeavyAtoms(self):
+        """
+        Store heavy atom IDs for each molecule of interest
+        """
+        # Get the elements for all atoms in the system
+        elements = [atom.element for atom in self.topology.atoms()]
+
+        # For each residue of interest, store a subset of atom IDs which correspond to heavy atoms
+        for resid in self.mol_resids:
+            heavy_atoms = []
+            # Check whether each atom index corresponds to H
+            for atom_id in self.mol_atom_ids[resid]:
+                if elements[atom_id] != 'H':
+                    heavy_atoms.append(atom_id)
+            # Add the heavy atom IDs to the dictionary
+            self.mol_heavy_ids[resid] = heavy_atoms
 
         return None
 
@@ -1482,7 +1505,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
     """
     Base class for carrying out GCMC moves in OpenMM, sampling the whole system with GCMC
     """
-    def __init__(self, system, topology, temperature, adams=None,
+    def __init__(self, system, topology, temperature, resname="HOH", adams=None,
                  excessChemicalPotential=-6.09*unit.kilocalories_per_mole,
                  standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, boxVectors=None,
                  ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, createCustomForces=True, rst=None,
@@ -1498,16 +1521,18 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
             Topology object for the system to be simulated
         temperature : simtk.unit.Quantity
             Temperature of the simulation, must be in appropriate units
+        resname : str
+            Resname of the molecule of interest. Default = "HOH"
         adams : float
             Adams B value for the simulation (dimensionless). Default is None,
             if None, the B value is calculated from the box volume and chemical
             potential
         excessChemicalPotential : simtk.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
-            -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
-            simulation parameters.
+            -6.09 kcal/mol (water). This should be the hydration free energy of the molecule, and may need to be changed
         standardVolume : simtk.unit.Quantity
-            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
+            Standard volume of the molecule - corresponds to the volume per molecule in bulk solution. The default value is
+            30.345 A^3 (water)
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         boxVectors : simtk.unit.Quantity
@@ -1528,8 +1553,8 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
         overwrite : bool
             Overwrite any data already present
         """
-        # Initialise base
-        BaseGrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, ghostFile=ghostFile, log=log,
+        BaseGrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, resname=resname,
+                                                     ghostFile=ghostFile, log=log,
                                                      createCustomForces=createCustomForces, dcd=dcd, rst=rst,
                                                      overwrite=overwrite)
 
@@ -1565,8 +1590,8 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
             List of residue IDs corresponding to the ghost waters added
         """
         if len(ghostResids) == 0 or ghostResids is None:
-            self.logger.error("No ghost waters given! Cannot insert waters without any ghosts!")
-            raise Exception("No ghost waters given! Cannot insert waters without any ghosts!")
+            self.logger.error("No ghost molecules given! Cannot insert molecules without any ghosts!")
+            raise Exception("No ghost molecules given! Cannot insert molecules without any ghosts!")
         # Load context into sampler
         self.context = context
 
@@ -1599,7 +1624,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
 
         return None
 
-    def insertRandomWater(self):
+    def insertRandomMolecule(self):
         """
         Translate a random ghost to a random point in the simulation box to allow subsequent insertion
 
@@ -1607,76 +1632,75 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
         -------
         new_positions : simtk.unit.Quantity
             Positions following the 'insertion' of the ghost water
+        insert_mol : int
+            Resid of the molecule to insert
         gcmc_id : int
             GCMC ID for this molecule
-        wat_id : int
-            Overall ID for this water
-        atom_indices : list
-            List of the atom IDs for this molecule
+        mol_id : int
+            Overall ID for this molecule
         """
         # Select a ghost water to insert
-        ghost_wats = np.where(self.gcmc_status == 0)[0]
+        ghost_mols = np.where(self.gcmc_status == 0)[0]
         # Check that there are any ghosts present
-        if len(ghost_wats) == 0:
-            self.logger.error("No ghost water molecules left, so insertion moves cannot occur - add more ghost waters")
-            raise Exception("No ghost water molecules left, so insertion moves cannot occur - add more ghost waters")
+        if len(ghost_mols) == 0:
+            self.logger.error("No ghost molecules left, so insertion moves cannot occur - add more ghosts")
+            raise Exception("No ghost molecules left, so insertion moves cannot occur - add more ghosts")
 
-        gcmc_id = np.random.choice(ghost_wats)  # Position in list of GCMC waters
-        insert_water = self.gcmc_resids[gcmc_id]
-        wat_id = np.where(np.array(self.mol_resids) == insert_water)[0][0]  # Position in list of all waters
-        atom_indices = []
-        for resid, residue in enumerate(self.topology.residues()):
-            if resid == insert_water:
-                for atom in residue.atoms():
-                    atom_indices.append(atom.index)
+        gcmc_id = np.random.choice(ghost_mols)  # Position in list of GCMC waters
+        insert_mol = self.gcmc_resids[gcmc_id]
+        mol_id = np.where(np.array(self.mol_resids) == insert_mol)[0][0]  # Position in list of all molecules
 
-        # Select a point to insert the water (based on O position)
+        # Select a point to insert the molecule (based on centre of heavy atoms)
         insert_point = np.random.rand(3) * self.simulation_box
+        # Calculate centre of geometry (COG), based on heavy atoms
+        heavy_atoms = self.mol_heavy_ids[insert_mol]
+        heavy_cog = sum([self.positions[i] for i in heavy_atoms]) / len(heavy_atoms)
         #  Generate a random rotation matrix
         R = utils.random_rotation_matrix()
         new_positions = deepcopy(self.positions)
-        for i, index in enumerate(atom_indices):
-            #  Translate coordinates to an origin defined by the oxygen atom, and normalise
-            atom_position = self.positions[index] - self.positions[atom_indices[0]]
-            # Rotate about the oxygen position
-            if i != 0:
-                vec_length = np.linalg.norm(atom_position)
+        # Scramble the molecule
+        for index in self.mol_atom_ids[insert_mol]:
+            #  Translate coordinates to an origin defined by the COG, and normalise
+            atom_position = self.positions[index] - heavy_cog
+
+            # Rotate about the COG
+            vec_length = np.linalg.norm(atom_position)
+            # If the length of the vector is zero, then we don't need to rotate, as it is sat on the COG
+            if vec_length != 0.0 * unit.angstroms:
                 atom_position = atom_position / vec_length
                 # Rotate coordinates & restore length
                 atom_position = vec_length * np.dot(R, atom_position) * unit.nanometer
+
             # Translate to new position
             new_positions[index] = atom_position + insert_point
 
-        return new_positions, insert_water, gcmc_id, wat_id, atom_indices
+        return new_positions, insert_mol, gcmc_id, mol_id
 
-    def deleteRandomWater(self):
+    def deleteRandomMolecule(self):
         """
         Choose a random water to be deleted
 
         Returns
         -------
+        delete_mol : int
+            Resid of the molecule to delete
         gcmc_id : int
             GCMC ID for this molecule
         wat_id : int
-            Overall ID for this water
+            Overall ID for this molecule
         atom_indices : list
             List of the atom IDs for this molecule
         """
-        # Cannot carry out deletion if there are no GCMC waters on
+        # Cannot carry out deletion if there are no GCMC molecules on
         if np.sum(self.gcmc_status) == 0:
             return None, None, None
 
         # Select a water residue to delete
-        gcmc_id = np.random.choice(np.where(self.gcmc_status == 1)[0])  # Position in list of GCMC waters
-        delete_water = self.gcmc_resids[gcmc_id]
-        wat_id = np.where(np.array(self.mol_resids) == delete_water)[0][0]  # Position in list of all waters
-        atom_indices = []
-        for resid, residue in enumerate(self.topology.residues()):
-            if resid == delete_water:
-                for atom in residue.atoms():
-                    atom_indices.append(atom.index)
+        gcmc_id = np.random.choice(np.where(self.gcmc_status == 1)[0])  # Position in list of GCMC molecules
+        delete_mol = self.gcmc_resids[gcmc_id]
+        mol_id = np.where(np.array(self.mol_resids) == delete_mol)[0][0]  # Position in list of all molecules
 
-        return delete_water, gcmc_id, wat_id, atom_indices
+        return delete_mol, gcmc_id, mol_id
 
 
 ########################################################################################################################
@@ -1685,7 +1709,8 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
     """
     Class to carry out instantaneous GCMC moves in OpenMM
     """
-    def __init__(self, system, topology, temperature, adams=None, excessChemicalPotential=-6.09*unit.kilocalories_per_mole,
+    def __init__(self, system, topology, temperature, resname="HOH", adams=None,
+                 excessChemicalPotential=-6.09*unit.kilocalories_per_mole,
                  standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, boxVectors=None,
                  ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', createCustomForces=True, dcd=None, rst=None,
                  overwrite=False):
@@ -1700,16 +1725,19 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
             Topology object for the system to be simulated
         temperature : simtk.unit.Quantity
             Temperature of the simulation, must be in appropriate units
+        resname : str
+            Resname of the molecule of interest. Default = "HOH"
         adams : float
             Adams B value for the simulation (dimensionless). Default is None,
             if None, the B value is calculated from the box volume and chemical
             potential
         excessChemicalPotential : simtk.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
-            -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
-            simulation parameters.
+            -6.09 kcal/mol (water). This should be the hydration free energy of the molecule, and may need to be
+            changed
         standardVolume : simtk.unit.Quantity
-            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
+            Standard volume of the molecule - corresponds to the volume per molecule in bulk solution. The default value is
+            30.345 A^3 (water)
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         boxVectors : simtk.unit.Quantity
@@ -1731,7 +1759,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
             Indicates whether to overwrite already existing data
         """
         # Initialise base class - don't need any more initialisation for the instantaneous sampler
-        GCMCSystemSampler.__init__(self, system, topology, temperature, adams=adams,
+        GCMCSystemSampler.__init__(self, system, topology, temperature, resname=resname, adams=adams,
                                    excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
                                    adamsShift=adamsShift, boxVectors=boxVectors, ghostFile=ghostFile, log=log,
                                    createCustomForces=createCustomForces, dcd=dcd, rst=rst, overwrite=overwrite)
@@ -1775,10 +1803,10 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         Carry out a random water insertion move on the current system
         """
         # Insert a ghost water to a random site
-        new_positions, insert_water, gcmc_id, wat_id, atom_indices = self.insertRandomWater()
+        new_positions, insert_mol, gcmc_id, mol_id = self.insertRandomMolecule()
 
         # Recouple this water
-        self.adjustSpecificMolecule(insert_water, 1.0)
+        self.adjustSpecificMolecule(insert_mol, 1.0)
 
         self.context.setPositions(new_positions)
         # Calculate new system energy and acceptance probability
@@ -1789,13 +1817,13 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             # Need to revert the changes made if the move is to be rejected
             # Switch off nonbonded interactions involving this water
-            self.adjustSpecificMolecule(insert_water, 0.0)
+            self.adjustSpecificMolecule(insert_mol, 0.0)
             self.context.setPositions(self.positions)  # Not sure this is necessary...
         else:
             # Update some variables if move is accepted
             self.positions = deepcopy(new_positions)
             self.gcmc_status[gcmc_id] = 1
-            self.mol_status[wat_id] = 1
+            self.mol_status[mol_id] = 1
             self.N += 1
             self.n_accepted += 1
             # Update energy
@@ -1808,13 +1836,13 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         Carry out a random water deletion move on the current system
         """
         # Choose a random water to be deleted
-        delete_water, gcmc_id, wat_id, atom_indices = self.deleteRandomWater()
+        delete_mol, gcmc_id, mol_id = self.deleteRandomMolecule()
         # Deletion may not be possible
         if gcmc_id is None:
             return None
 
         # Switch water off
-        self.adjustSpecificMolecule(delete_water, 0.0)
+        self.adjustSpecificMolecule(delete_mol, 0.0)
         # Calculate energy of new state and acceptance probability
         final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
         acc_prob = self.N * np.exp(-self.B) * np.exp(-(final_energy - self.energy) / self.kT)
@@ -1822,11 +1850,11 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
 
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             # Switch the water back on if the move is rejected
-            self.adjustSpecificMolecule(delete_water, 1.0)
+            self.adjustSpecificMolecule(delete_mol, 1.0)
         else:
             # Update some variables if move is accepted
             self.gcmc_status[gcmc_id] = 0
-            self.mol_status[wat_id] = 0
+            self.mol_status[mol_id] = 0
             self.N -= 1
             self.n_accepted += 1
             # Update energy
@@ -1842,7 +1870,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
     Class to carry out GCMC moves in OpenMM, using nonequilibrium candidate Monte Carlo (NCMC)
     to boost acceptance rates
     """
-    def __init__(self, system, topology, temperature, integrator, adams=None,
+    def __init__(self, system, topology, temperature, integrator, resname="HOH", adams=None,
                  excessChemicalPotential=-6.09*unit.kilocalories_per_mole, standardVolume=30.345*unit.angstroms**3,
                  adamsShift=0.0, nPertSteps=1, nPropStepsPerPert=1, timeStep=2 * unit.femtoseconds, boxVectors=None,
                  ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', createCustomForces=True, dcd=None, rst=None,
@@ -1861,6 +1889,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         integrator : simtk.openmm.CustomIntegrator
             Integrator to use to propagate the dynamics of the system. Currently want to make sure that this
             is the customised Langevin integrator found in openmmtools which uses BAOAB (VRORV) splitting.
+        resname : str
+            Resname of the molecule of interest. Default = "HOH"
         adams : float
             Adams B value for the simulation (dimensionless). Default is None,
             if None, the B value is calculated from the box volume and chemical
@@ -1900,7 +1930,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             Indicates whether to overwrite already existing data
         """
         # Initialise base class
-        GCMCSystemSampler.__init__(self, system, topology, temperature, adams=adams,
+        GCMCSystemSampler.__init__(self, system, topology, temperature, resname=resname, adams=adams,
                                    excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
                                    adamsShift=adamsShift, boxVectors=boxVectors, ghostFile=ghostFile, log=log,
                                    createCustomForces=createCustomForces, dcd=dcd, rst=rst, overwrite=overwrite)
@@ -1983,7 +2013,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         Carry out a nonequilibrium insertion move for a random water molecule
         """
         # Insert a ghost water to a random site
-        new_positions, gcmc_id, wat_id, atom_indices = self.insertRandomWater()
+        new_positions, insert_mol, gcmc_id, mol_id = self.insertRandomMolecule()
 
         # Need to update the context positions
         self.context.setPositions(new_positions)
@@ -1996,7 +2026,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             state = self.context.getState(getEnergy=True)
             energy_initial = state.getPotentialEnergy()
             # Adjust interactions of this water
-            self.adjustSpecificMolecule(atom_indices, self.lambdas[i+1])
+            self.adjustSpecificMolecule(insert_mol, self.lambdas[i+1])
             state = self.context.getState(getEnergy=True)
             energy_final = state.getPotentialEnergy()
             protocol_work += energy_final - energy_initial
@@ -2025,7 +2055,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         # Update or reset the system, depending on whether the move is accepted or rejected
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             # Need to revert the changes made if the move is to be rejected
-            self.adjustSpecificMolecule(atom_indices, 0.0)
+            self.adjustSpecificMolecule(insert_mol, 0.0)
             self.context.setPositions(self.positions)
             self.context.setVelocities(-self.velocities)  # Reverse velocities on rejection
             self.positions = deepcopy(self.positions)
@@ -2037,7 +2067,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             self.positions = deepcopy(state.getPositions(asNumpy=True))
             self.velocities = deepcopy(state.getVelocities(asNumpy=True))
             self.gcmc_status[gcmc_id] = 1
-            self.mol_status[wat_id] = 1
+            self.mol_status[mol_id] = 1
 
         return None
 
@@ -2046,7 +2076,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         Carry out a nonequilibrium deletion move for a random water molecule
         """
         # Choose a random water to be deleted
-        gcmc_id, wat_id, atom_indices = self.deleteRandomWater()
+        delete_mol, gcmc_id, mol_id = self.deleteRandomMolecule()
         # Deletion may not be possible
         if gcmc_id is None:
             return None
@@ -2059,7 +2089,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             state = self.context.getState(getEnergy=True)
             energy_initial = state.getPotentialEnergy()
             # Adjust interactions of this water
-            self.adjustSpecificMolecule(atom_indices, self.lambdas[-(2+i)])
+            self.adjustSpecificMolecule(delete_mol, self.lambdas[-(2+i)])
             state = self.context.getState(getEnergy=True)
             energy_final = state.getPotentialEnergy()
             protocol_work += energy_final - energy_initial
@@ -2088,14 +2118,14 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         # Update or reset the system, depending on whether the move is accepted or rejected
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             # Need to revert the changes made if the move is to be rejected
-            self.adjustSpecificMolecule(atom_indices, 1.0)
+            self.adjustSpecificMolecule(delete_mol, 1.0)
             self.context.setPositions(self.positions)
             self.context.setVelocities(-self.velocities)  # Reverse velocities on rejection
             self.positions = deepcopy(self.positions)
         else:
             # Update some variables if move is accepted
             self.gcmc_status[gcmc_id] = 0
-            self.mol_status[wat_id] = 0
+            self.mol_status[mol_id] = 0
             self.N -= 1
             self.n_accepted += 1
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
