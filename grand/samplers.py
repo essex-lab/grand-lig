@@ -1974,16 +1974,17 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         self.n_explosions = 0
 
         # Define a compound integrator
-        self.compound_integrator = openmm.CompoundIntegrator()
+        #self.compound_integrator = openmm.CompoundIntegrator()
         # Add the MD integrator
-        self.compound_integrator.addIntegrator(integrator)
+        #self.compound_integrator.addIntegrator(integrator)
         # Create and add the nonequilibrium integrator
-        self.ncmc_integrator = NonequilibriumLangevinIntegrator(temperature=temperature,
-                                                                collision_rate=1.0/unit.picosecond,
-                                                                timestep=self.time_step, splitting="V R O R V")
-        self.compound_integrator.addIntegrator(self.ncmc_integrator)
+        #self.ncmc_integrator = NonequilibriumLangevinIntegrator(temperature=temperature,
+        #                                                        collision_rate=1.0/unit.picosecond,
+        #                                                        timestep=self.time_step, splitting="V R O R V")
+        #self.compound_integrator.addIntegrator(self.ncmc_integrator)
         # Set the compound integrator to the MD integrator
-        self.compound_integrator.setCurrentIntegrator(0)
+        #self.compound_integrator.setCurrentIntegrator(0)
+        self.integrator = integrator
 
         self.logger.info("NonequilibriumGCMCSystemSampler object initialised")
 
@@ -2005,7 +2006,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         self.velocities = deepcopy(state.getVelocities(asNumpy=True))
 
         # Set to NCMC integrator
-        self.compound_integrator.setCurrentIntegrator(1)
+        #self.compound_integrator.setCurrentIntegrator(1)
 
         #  Execute moves
         for i in range(n):
@@ -2020,7 +2021,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             self.Ns.append(self.N)
 
         # Set to MD integrator
-        self.compound_integrator.setCurrentIntegrator(0)
+        #self.compound_integrator.setCurrentIntegrator(0)
 
         return None
 
@@ -2037,7 +2038,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         # Start running perturbation and propagation kernels
         protocol_work = 0.0 * unit.kilocalories_per_mole
         explosion = False
-        self.ncmc_integrator.step(self.n_prop_steps_per_pert)
+        #self.ncmc_integrator.step(self.n_prop_steps_per_pert)
+        self.integrator.step(self.n_prop_steps_per_pert)
         for i in range(self.n_pert_steps):
             state = self.context.getState(getEnergy=True)
             energy_initial = state.getPotentialEnergy()
@@ -2048,7 +2050,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             protocol_work += energy_final - energy_initial
             # Propagate the system
             try:
-                self.ncmc_integrator.step(self.n_prop_steps_per_pert)
+                #self.ncmc_integrator.step(self.n_prop_steps_per_pert)
+                self.integrator.step(self.n_prop_steps_per_pert)
             except:
                 print("Caught explosion!")
                 explosion = True
@@ -2100,7 +2103,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         # Start running perturbation and propagation kernels
         protocol_work = 0.0 * unit.kilocalories_per_mole
         explosion = False
-        self.ncmc_integrator.step(self.n_prop_steps_per_pert)
+        #self.ncmc_integrator.step(self.n_prop_steps_per_pert)
+        self.integrator.step(self.n_prop_steps_per_pert)
         for i in range(self.n_pert_steps):
             state = self.context.getState(getEnergy=True)
             energy_initial = state.getPotentialEnergy()
@@ -2111,7 +2115,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             protocol_work += energy_final - energy_initial
             # Propagate the system
             try:
-                self.ncmc_integrator.step(self.n_prop_steps_per_pert)
+                #self.ncmc_integrator.step(self.n_prop_steps_per_pert)
+                self.integrator.step(self.n_prop_steps_per_pert)
             except:
                 print("Caught explosion!")
                 explosion = True
