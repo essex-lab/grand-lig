@@ -68,11 +68,11 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             else:
                 raise Exception("File {} already exists, not overwriting...".format(log))
 
-        self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(log)
         self.logger.setLevel(logging.DEBUG)
         file_handler = logging.FileHandler(log)
         file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - {}: %(message)s'.format(resname)))
+        file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s : %(message)s'))
         self.logger.addHandler(file_handler)
 
         # Set important variables here
