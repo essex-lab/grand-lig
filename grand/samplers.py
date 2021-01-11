@@ -72,7 +72,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.logger.setLevel(logging.DEBUG)
         file_handler = logging.FileHandler(log)
         file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s: %(message)s'))
+        file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - {}: %(message)s'.format(resname)))
         self.logger.addHandler(file_handler)
 
         # Set important variables here
