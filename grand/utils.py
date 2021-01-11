@@ -81,15 +81,15 @@ def get_data_file(filename):
         raise Exception("{} does not exist!".format(filepath))
 
 
-def add_ghosts(topology, positions, ff='tip3p', n=10, pdb='gcmc-extra-wats.pdb'):
+def add_ghosts(topology, positions, molfile='tip3p.pdb', n=10, pdb='gcmc-extra-wats.pdb'):
     """
-    Function to add water molecules to a topology, as extras for GCMC
+    Function to add molecules to a topology, as extras for GCMC
     This is to avoid changing the number of particles throughout a simulation
     Instead, we can just switch between 'ghost' and 'real' waters...
 
     Notes
     -----
-    Could do with a more elegant way to add many waters. Adding them one by one
+    Could do with a more elegant way to add many molecules. Adding them one by one
     results in them all being added to different chains. This won't affect
     correctness, but doesn't look nice.
 
@@ -99,12 +99,11 @@ def add_ghosts(topology, positions, ff='tip3p', n=10, pdb='gcmc-extra-wats.pdb')
         Topology of the initial system
     positions : simtk.unit.Quantity
         Atomic coordinates of the initial system
-    ff : str
-        Water forcefield to use. Currently the only options
-        are 'tip3p', 'spce' or 'tip4pew'. Should be the same
-        as used for the solvent
+    molfile : str
+        Name of the file defining the molecule to insert. Must be a
+        PDB file containing a single molecule
     n : int
-        Number of waters to add to the system
+        Number of ghosts to add to the system
     pdb : str
         Name of the PDB file to write containing the updated system
         This will be useful for visualising the results obtained.
@@ -117,7 +116,7 @@ def add_ghosts(topology, positions, ff='tip3p', n=10, pdb='gcmc-extra-wats.pdb')
         Atomic positions of the system after modification
     ghosts : list
         List of the residue numbers (counting from 0) of the ghost
-        waters added to the system.
+        molecules added to the system.
     """
     # Create a Modeller instance of the system
     modeller = app.Modeller(topology=topology, positions=positions)
@@ -127,25 +126,39 @@ def add_ghosts(topology, positions, ff='tip3p', n=10, pdb='gcmc-extra-wats.pdb')
                          box_vectors[1][1]._value,
                          box_vectors[2][2]._value]) * unit.nanometer
 
-    # Load topology of water model 
-    assert ff.lower() in ['spce', 'tip3p', 'tip4pew'], "Water model must be SPCE, TIP3P or TIP4Pew!"
-    water = app.PDBFile(file=get_data_file("{}.pdb".format(ff.lower())))
+    # Make sure that this molecule file exists
+    if not os.path.isfile(molfile):
+        # If not, check if it exists in the data directory
+        if os.path.isfile(get_data_file(molfile)):
+            molfile = get_data_file(molfile)
+        else:
+            # Raise an error otherwise
+            raise Exception("File {} does not exist".format(molfile))
 
-    # Add multiple copies of the same water, then write out a pdb (for visualisation)
+    # Load the PDB for the molecule
+    molecule = app.PDBFile(molfile)
+
+    # Calculate the centre of geometry
+    cog = np.zeros(3) * unit.nanometers
+    for i in range(len(molecule.positions)):
+        cog += molecule.positions[i]
+    cog /= len(molecule.positions)
+
+    # Add multiple copies of the same molecule, then write out a pdb (for visualisation)
     ghosts = []
     for i in range(n):
-        # Need a slightly more elegant way than this as each water is written to a different chain...
-        # Read in template water positions
-        positions = water.positions
+        # Need a slightly more elegant way than this as each molecule is written to a different chain...
+        # Read in template molecule positions
+        positions = molecule.positions
 
-        # Need to translate the water to a random point in the simulation box
+        # Need to translate the molecule to a random point in the simulation box
         new_centre = np.random.rand(3) * box_size
-        new_positions = deepcopy(water.positions)
+        new_positions = deepcopy(molecule.positions)
         for i in range(len(positions)):
-            new_positions[i] = positions[i] + new_centre - positions[0]
+            new_positions[i] = positions[i] + new_centre - cog
 
         # Add the water to the model and include the resid in a list
-        modeller.add(addTopology=water.topology, addPositions=new_positions)
+        modeller.add(addTopology=molecule.topology, addPositions=new_positions)
         ghosts.append(modeller.topology._numResidues - 1)
 
     # Get chain IDs of new waters
@@ -159,7 +172,7 @@ def add_ghosts(topology, positions, ff='tip3p', n=10, pdb='gcmc-extra-wats.pdb')
         with open(pdb, 'w') as f:
             app.PDBFile.writeFile(topology=modeller.topology, positions=modeller.positions, file=f)
 
-        # Want to correct the residue IDs of the added waters as this can sometimes cause issues
+        # Want to correct the residue IDs of the added molecules as this can sometimes cause issues
         with open(pdb, 'r') as f:
             lines = f.readlines()
 
@@ -187,9 +200,9 @@ def add_ghosts(topology, positions, ff='tip3p', n=10, pdb='gcmc-extra-wats.pdb')
 
 def remove_ghosts(topology, positions, ghosts=None, pdb='gcmc-removed-ghosts.pdb'):
     """
-    Function to remove ghost water molecules from a topology, after a simulation.
-    This is so that a structure can then be used to run further analysis without ghost
-    waters disturbing the system.
+    Function to remove ghost molecules from a topology, after a simulation.
+    This is so that a structure can then be used to run further analysis without ghosts
+    disturbing the system.
 
     Parameters
     ----------
@@ -198,7 +211,7 @@ def remove_ghosts(topology, positions, ghosts=None, pdb='gcmc-removed-ghosts.pdb
     positions : simtk.unit.Quantity
         Atomic coordinates of the initial system
     ghosts : list
-        List of residue IDs for the ghost waters to be deleted
+        List of residue IDs for the ghost molecules to be deleted
     pdb : str
         Name of the PDB file to write containing the updated system
         This will be useful for visualising the results obtained.
@@ -210,19 +223,19 @@ def remove_ghosts(topology, positions, ghosts=None, pdb='gcmc-removed-ghosts.pdb
     modeller.positions : simtk.unit.Quantity
         Atomic positions of the system after modification
     """
-    # Do nothing if no ghost waters are specified
+    # Do nothing if no ghost molecules are specified
     if ghosts is None:
-        raise Exception("No ghost waters defined! Nothing to do.")
+        raise Exception("No ghost molecules defined! Nothing to do.")
 
     # Create a Modeller instance
     modeller = app.Modeller(topology=topology, positions=positions)
 
     # Find the residues which need to be removed, and delete them
-    delete_waters = []  # Residue objects for waters to be deleted
+    delete_mols = []  # Residue objects for molecules to be deleted
     for resid, residue in enumerate(modeller.topology.residues()):
         if resid in ghosts:
-            delete_waters.append(residue)
-    modeller.delete(toDelete=delete_waters)
+            delete_mols.append(residue)
+    modeller.delete(toDelete=delete_mols)
 
     # Save PDB file
     if pdb is not None:
