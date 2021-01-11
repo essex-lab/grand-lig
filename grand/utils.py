@@ -287,7 +287,7 @@ def convert_conc_to_volume(conc):
     conc = conc.in_units_of(unit.molar)
 
     # Convert to volume per molecule
-    v_per_mol = (1 / (conc * unit.AVOGADRO_CONSTANT_NA)).in_units_of(angstroms ** 3)
+    v_per_mol = (1 / (conc * unit.AVOGADRO_CONSTANT_NA)).in_units_of(unit.angstroms ** 3)
 
     return v_per_mol
 
