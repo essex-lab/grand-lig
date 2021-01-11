@@ -268,6 +268,30 @@ def read_ghosts_from_file(ghost_file):
     return ghost_resids
 
 
+def convert_conc_to_volume(conc):
+    """
+    Calculate the volume per molecule from a given concentration
+    (can be calculated exactly by rearrangement)
+
+    Parameters
+    ----------
+    conc : simtk.unit.Quantity
+        Concentration of interest
+
+    Returns
+    -------
+    v_per_mol : simtk.unit.Quantity
+        Volume per molecule
+    """
+    # Make sure that the concentration has units of M - this should raise an error otherwise
+    conc = conc.in_units_of(unit.molar)
+
+    # Convert to volume per molecule
+    v_per_mol = (1 / (conc * unit.AVOGADRO_CONSTANT_NA)).in_units_of(angstroms ** 3)
+
+    return v_per_mol
+
+
 def read_prepi(filename):
     """
     Function to read in some atomic data and bonding information from an AMBER prepi file
