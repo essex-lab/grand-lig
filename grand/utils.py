@@ -578,7 +578,7 @@ def create_custom_forces(system, topology, resnames):
     custom_sterics.addGlobalParameter('soft_b', 1)
     custom_sterics.addGlobalParameter('soft_c', 6)
 
-    # Get a list of all molecule and non-molecule atom IDs
+    # Get a list of all molecule atom IDs
     mol_atom_ids = []
     for residue in topology.residues():
         if residue.name in resnames:
@@ -600,6 +600,7 @@ def create_custom_forces(system, topology, resnames):
         # Disable steric interactions in the original force by setting epsilon=0 (keep the charges for PME purposes)
         nonbonded_force.setParticleParameters(atom_idx, charge, sigma, abs(0))
 
+    '''
     # Define force for the steric exceptions
     steric_exceptions = openmm.CustomBondForce(lj_energy)  # Same energy expression as before, but no combining rules needed
     # Parameters per exception
@@ -632,6 +633,35 @@ def create_custom_forces(system, topology, resnames):
     electrostatic_exceptions.addGlobalParameter('soft_f', 2)
 
     alchemical_except = False  # Indicate any exceptions are found which may be decoupled
+    '''
+
+    # Make sure all intramolecular interactions for the molecules of interest are set to exceptions, so they aren't switched off
+    for residue in topology.residues():
+        if residue.name in resnames:
+            # Get a list of atom IDs for this residue
+            atom_ids = []
+            for atom in residue.atoms():
+                atom_ids.append(atom.index)
+            # Loop over all possible interactions between atoms in this molecule
+            for x, atom_x in enumerate(atom_ids):
+                for atom_y in atom_ids[x+1:]:
+                    # Check if there is an exception already for this interaction
+                    except_id = None
+                    for exception_idx in range(nonbonded_force.getNumExceptions()):
+                        [i, j, chargeprod, sigma, epsilon] = nonbonded_force.getExceptionParameters(exception_idx)
+                        if atom_x in [i, j] and atom_y in [i, j]:
+                            except_id = exception_idx
+                            break
+                    # Add an exception if there is not one already
+                    if except_id is None:
+                        [charge_x, sigma_x, epsilon_x] = nonbonded_force.getParticleParameters(atom_x)
+                        [charge_y, sigma_y, epsilon_y] = nonbonded_force.getParticleParameters(atom_y)
+                        # Combine parameters (Lorentz-Berthelot)
+                        chargeprod = charge_x * charge_y
+                        sigma = 0.5 * (sigma_x + sigma_y)
+                        epsilon = (epsilon_x * epsilon_y).sqrt()
+                        # Create the exception
+                        nonbonded_force.addException(atom_x, atom_y, chargeprod, sigma, epsilon)
 
     # Copy over all exceptions into the new force as exclusions and add to the exception forces, where necessary
     for exception_idx in range(nonbonded_force.getNumExceptions()):
@@ -644,6 +674,7 @@ def create_custom_forces(system, topology, resnames):
         # Copy this over as an exclusion so it isn't counted by the CustomNonbonded Force
         custom_sterics.addExclusion(i, j)
 
+        '''
         # If epsilon is greater than zero, this is an exception, not an exclusion
         if abs(chargeprod._value) > 0.0 or epsilon > 0.0 * unit.kilojoule_per_mole:
             #
@@ -663,10 +694,12 @@ def create_custom_forces(system, topology, resnames):
 
             # Set this exception to non-interacting in the original NonbondedForce, so that it isn't double counted
             nonbonded_force.setExceptionParameters(exception_idx, i, j, abs(0.0), sigma, abs(0.0))
+        '''
 
     # Add the custom force to the system
     system.addForce(custom_sterics)
 
+    '''
     # Add the exception forces to the system, if needed
     if alchemical_except:
         # Add the sterics
@@ -677,8 +710,10 @@ def create_custom_forces(system, topology, resnames):
         # Set these forces to None, if they are not needed
         steric_exceptions = None
         electrostatic_exceptions = None
+    '''
 
-    return param_dict, custom_sterics, electrostatic_exceptions, steric_exceptions
+    #return param_dict, custom_sterics, electrostatic_exceptions, steric_exceptions
+    return param_dict, custom_sterics, None, None
 
 
 def random_rotation_matrix():
