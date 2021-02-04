@@ -50,10 +50,10 @@ def get_lambda_values(lambda_in):
     return lambda_vdw, lambda_ele
 
 
-def calc_mu_ex(system, topology, positions, resname, box_vectors, temperature, n_lambdas, n_samples, n_equil, log_file,
-               pressure=None):
+def calc_mu_ex(system, topology, positions, resname, resid, box_vectors, temperature, n_lambdas, n_samples, n_equil,
+               log_file, pressure=None):
     """
-    Calculate the excess chemical potential of a water molecule in a given system,
+    Calculate the excess chemical potential of a molecule in a given system,
     as the hydration free energy, using MBAR
 
     Parameters
@@ -65,7 +65,9 @@ def calc_mu_ex(system, topology, positions, resname, box_vectors, temperature, n
     positions : simtk.unit.Quantity
         Initial positions for the simulation
     resname : str
-        Resname of the molecule to decouple
+        Resname of the molecule to couple
+    resid : int
+        Resid of the residue to couple
     box_vectors : simtk.unit.Quantity
         Periodic box vectors for the system
     temperature : simtk.unit.Quantity
@@ -91,7 +93,7 @@ def calc_mu_ex(system, topology, positions, resname, box_vectors, temperature, n
 
     # Name the log file, if not already done
     if log_file is None:
-        'dG-{}l-{}sa-{}st.log'.format(n_lambdas, n_samples, n_equil)
+        'dG.log'
 
     # Define a GCMC sampler object, just to allow easy switching of a water - won't use this to sample
     gcmc_mover = grand.samplers.BaseGrandCanonicalMonteCarloSampler(system=system, topology=topology,
@@ -105,15 +107,6 @@ def calc_mu_ex(system, topology, positions, resname, box_vectors, temperature, n
     # Add barostat, if needed
     if pressure is not None:
         system.addForce(MonteCarloBarostat(pressure, temperature, 25))
-
-    # IDs of the atoms to switch on/off
-    ligand_resid = None
-    for resid, residue in enumerate(topology.residues()):
-        if residue.name == resname:
-            ligand_resid = resid
-            break  # Make sure to stop after the first water
-    if ligand_resid is None:
-        raise Exception("Residue {} not found!".format(resname))
 
     # Define the platform, first try CUDA, then OpenCL, then CPU
     try:
@@ -137,7 +130,7 @@ def calc_mu_ex(system, topology, positions, resname, box_vectors, temperature, n
     # Make sure the GCMC sampler has access to the Context
     gcmc_mover.context = simulation.context
 
-    lambdas = np.linspace(1.0, 0.0, n_lambdas)  # Lambda values to use
+    lambdas = np.linspace(0.0, 1.0, n_lambdas)  # Lambda values to use
     U = np.zeros((n_lambdas, n_lambdas, n_samples))  # Energy values calculated
 
     # Simulate the system at each lambda window
@@ -145,7 +138,7 @@ def calc_mu_ex(system, topology, positions, resname, box_vectors, temperature, n
         # Set lambda values
         print('Simulating at lambda = {:.4f}'.format(np.round(lambdas[i], 4)))
         gcmc_mover.logger.info('Simulating at lambda = {:.4f}'.format(np.round(lambdas[i], 4)))
-        gcmc_mover.adjustSpecificMolecule(ligand_resid, lambdas[i])
+        gcmc_mover.adjustSpecificMolecule(resid, lambdas[i])
         for k in range(n_samples):
             # Run production MD
             simulation.step(n_equil)
@@ -154,15 +147,15 @@ def calc_mu_ex(system, topology, positions, resname, box_vectors, temperature, n
             # Calculate energy at each lambda value
             for j in range(n_lambdas):
                 # Set lambda value
-                gcmc_mover.adjustSpecificMolecule(ligand_resid, lambdas[j])
+                gcmc_mover.adjustSpecificMolecule(resid, lambdas[j])
                 # Calculate energy
                 U[i, j, k] = simulation.context.getState(getEnergy=True).getPotentialEnergy() / gcmc_mover.kT
-                # Add volume correction, if needed
-                if pressure is not None:
-                    U[i, j, k] += (pressure * volume * AVOGADRO_CONSTANT_NA) / gcmc_mover.kT
             # Reset lambda value
-            gcmc_mover.adjustSpecificMolecule(ligand_resid, lambdas[i])
+            gcmc_mover.adjustSpecificMolecule(resid, lambdas[i])
+
+    # Save the numpy matrix (for now)
     np.save('U_matrix.npy', U)
+
     # Calculate equilibration & number of uncorrelated samples
     N_k = np.zeros(n_lambdas, np.int32)
     for i in range(n_lambdas):
@@ -178,11 +171,11 @@ def calc_mu_ex(system, topology, positions, resname, box_vectors, temperature, n
     ddeltaG_ij = results[1]
 
     # Extract overall free energy change
-    dG = -deltaG_ij[0, -1]
+    dG = deltaG_ij[0, -1]
 
     # Write out intermediate free energies
     for i in range(n_lambdas):
-        dG_i = (-deltaG_ij[0, i] * gcmc_mover.kT).in_units_of(kilocalorie_per_mole)
+        dG_i = (deltaG_ij[0, i] * gcmc_mover.kT).in_units_of(kilocalorie_per_mole)
         gcmc_mover.logger.info('Free energy ({:.3f} -> {:.3f}) = {}'.format(lambdas[0], lambdas[i], dG_i))
 
     # Convert free energy to kcal/mol
@@ -195,10 +188,10 @@ def calc_mu_ex(system, topology, positions, resname, box_vectors, temperature, n
     return dG
 
 
-def calc_std_volume(system, topology, positions, resname, box_vectors, temperature, n_samples, n_equil):
+def calc_avg_volume(system, topology, positions, box_vectors, temperature, n_samples, n_equil):
     """
-    Calculate the standard volume of a given system and parameters, this is the effective volume
-    of a single molecule
+    Calculate the average volume of each species in a given system and parameters, this is the volume
+    per molecule & will also return concentration
 
     Parameters
     ----------
@@ -208,8 +201,6 @@ def calc_std_volume(system, topology, positions, resname, box_vectors, temperatu
         Topology of the system
     positions : simtk.unit.Quantity
         Initial positions for the simulation
-    resname : str
-        Name of the molecule of interest
     box_vectors : simtk.unit.Quantity
         Periodic box vectors for the system
     temperature : simtk.unit.Quantity
@@ -221,8 +212,11 @@ def calc_std_volume(system, topology, positions, resname, box_vectors, temperatu
 
     Returns
     -------
-    std_volume : simtk.unit.Quantity
-        Calculated free energy value
+    avg_vol_dict : dict
+        Dictionary storing the average volume per molecule for each species
+    conc_dict : dict
+        Dictionary storing the average concentration for each species (directly related to average volume, but
+        returning both for convenience)
     """
     # Use the BAOAB integrator to sample the equilibrium distribution
     integrator = openmmtools.integrators.BAOABIntegrator(temperature, 1.0 / picosecond, 0.002 * picoseconds)
@@ -245,10 +239,15 @@ def calc_std_volume(system, topology, positions, resname, box_vectors, temperatu
     simulation.context.setPeriodicBoxVectors(*box_vectors)
 
     # Count number of residues
-    n_molecules = 0
+    n_dict = {}  # Store the number of molecules for each species
     for residue in topology.residues():
-        if residue.name == resname:
-            n_molecules += 1
+        resname = residue.name
+        # Create a dictionary if there is not already one
+        if resname not in n_dict.keys():
+            n_dict[resname] = 0
+
+        # Add to the count
+        n_dict[resname] += 1
 
     # Collect volume samples
     volume_list = []
@@ -259,9 +258,22 @@ def calc_std_volume(system, topology, positions, resname, box_vectors, temperatu
         state = simulation.context.getState(getPositions=True)
         box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
         volume = box_vectors[0, 0] * box_vectors[1, 1] * box_vectors[2, 2]
-        volume_list.append(volume / n_molecules)
+        volume_list.append(volume)
 
-    # Calculate mean volume per molecule
-    std_volume = sum(volume_list) / len(volume_list)
+    # Calculate mean volume
+    mean_volume = sum(volume_list) / len(volume_list)
 
-    return std_volume
+    # Calculate average volume for each molecule of each species
+    avg_vol_dict = {}
+    for resname in n_dict.keys():
+        avg_vol = mean_volume / n_dict[resname]
+        avg_vol_dict[resname] = avg_vol
+
+    # Calculate average concentration for each species
+    conc_dict = {}
+    for resname in n_dict.keys():
+        n_moles = n_dict[resname] / AVOGADRO_CONSTANT_NA
+        conc = n_moles / mean_volume
+        conc_dict[resname] = conc
+
+    return avg_vol_dict, conc_dict
