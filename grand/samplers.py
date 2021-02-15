@@ -94,7 +94,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             elif "Barostat" in force.__class__.__name__:
                 self.logger.error("GCMC must be used at constant volume - {} cannot be used!".format(force.__class__.__name__))
                 raise Exception("GCMC must be used at constant volume - {} cannot be used!".format(force.__class__.__name__))
-        
+
         # Set GCMC-specific variables
         self.N = 0  # Initialise N as zero
         self.Ns = []  # Store all observed values of N
@@ -130,6 +130,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
                                                                                                                topology,
                                                                                                                [resname])
             # Also need to assign exception IDs to each molecule ID
+            print('3')
             self.getMoleculeExceptions()
         else:
             self.logger.info("Custom Force objects not created in Sampler __init__() function. These must be set "
@@ -621,7 +622,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
     """
     def __init__(self, system, topology, temperature, adams=None,
                  excessChemicalPotential=-6.09*unit.kilocalories_per_mole,
-                 standardVolume=30.345*unit.angstroms**3, adamsShift=0.0,
+                 standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, resname='HOH',
                  ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None, sphereCentre=None,
                  log='gcmc.log', createCustomForces=True, dcd=None, rst=None, overwrite=False):
         """
@@ -647,6 +648,8 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
             Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
+        resname : str
+            Resname of the molecule of interest. Default = "HOH"
         ghostFile : str
             Name of a file to write out the residue IDs of ghost water molecules. This is
             useful if you want to visualise the sampling, as you can then remove these waters
@@ -672,7 +675,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
             Overwrite any data already present
         """
         # Initialise base
-        BaseGrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, ghostFile=ghostFile,
+        BaseGrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, resname=resname, ghostFile=ghostFile,
                                                      log=log, createCustomForces=createCustomForces, dcd=dcd, rst=rst,
                                                      overwrite=overwrite)
 
@@ -1190,7 +1193,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
     def __init__(self, system, topology, temperature, integrator, adams=None,
                  excessChemicalPotential=-6.09*unit.kilocalories_per_mole, standardVolume=30.345*unit.angstroms**3,
                  adamsShift=0.0, nPertSteps=1, nPropStepsPerPert=1, timeStep=2 * unit.femtoseconds, lambdas=None,
-                 ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None, sphereCentre=None,
+                 resname='HOH', ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None, sphereCentre=None,
                  log='gcmc.log', createCustomForces=True, dcd=None, rst=None, overwrite=False):
         """
         Initialise the object to be used for sampling NCMC-enhanced water insertion/deletion moves
@@ -1226,6 +1229,8 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             Time step to use for non-equilibrium integration during the propagation steps
         lambdas : list
             Series of lambda values corresponding to the pathway over which the molecules are perturbed
+        resname : str
+            Resname of the molecule of interest. Default = "HOH"
         ghostFile : str
             Name of a file to write out the residue IDs of ghost water molecules. This is
             useful if you want to visualise the sampling, as you can then remove these waters
@@ -1253,7 +1258,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         # Initialise base class
         GCMCSphereSampler.__init__(self, system, topology, temperature, adams=adams,
                                    excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
-                                   adamsShift=adamsShift, ghostFile=ghostFile, referenceAtoms=referenceAtoms,
+                                   adamsShift=adamsShift, resname=resname, ghostFile=ghostFile, referenceAtoms=referenceAtoms,
                                    sphereRadius=sphereRadius, sphereCentre=sphereCentre, log=log,
                                    createCustomForces=createCustomForces, dcd=dcd, rst=rst, overwrite=overwrite)
 
@@ -1352,7 +1357,8 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         # Start running perturbation and propagation kernels
         protocol_work = 0.0 * unit.kilocalories_per_mole
         explosion = False
-        self.ncmc_integrator.step(self.n_prop_steps_per_pert)
+        #self.ncmc_integrator.step(self.n_prop_steps_per_pert)
+        self.integrator.step(self.n_prop_steps_per_pert)
         for i in range(self.n_pert_steps):
             state = self.context.getState(getEnergy=True)
             energy_initial = state.getPotentialEnergy()
@@ -1363,7 +1369,8 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             protocol_work += energy_final - energy_initial
             # Propagate the system
             try:
-                self.ncmc_integrator.step(self.n_prop_steps_per_pert)
+                #self.ncmc_integrator.step(self.n_prop_steps_per_pert)
+                self.integrator.step(self.n_prop_steps_per_pert)
             except:
                 print("Caught explosion!")
                 explosion = True
@@ -1437,7 +1444,8 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         # Start running perturbation and propagation kernels
         protocol_work = 0.0 * unit.kilocalories_per_mole
         explosion = False
-        self.ncmc_integrator.step(self.n_prop_steps_per_pert)
+        #self.ncmc_integrator.step(self.n_prop_steps_per_pert)
+        self.integrator.step(self.n_prop_steps_per_pert)
         for i in range(self.n_pert_steps):
             state = self.context.getState(getEnergy=True)
             energy_initial = state.getPotentialEnergy()
@@ -1448,7 +1456,8 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             protocol_work += energy_final - energy_initial
             # Propagate the system
             try:
-                self.ncmc_integrator.step(self.n_prop_steps_per_pert)
+                #self.ncmc_integrator.step(self.n_prop_steps_per_pert)
+                self.integrator.step(self.n_prop_steps_per_pert)
             except:
                 print("Caught explosion!")
                 explosion = True
