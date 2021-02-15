@@ -532,9 +532,9 @@ def create_custom_forces(system, topology, resnames):
     # Get the parameters corresponding to each molecule type
     param_dict = {}
     for resname in resnames:
+        # Create an entry for this residue
+        param_dict[resname] = []
         for residue in topology.residues():
-            # Create an entry for this residue
-            param_dict[resname] = []
             if residue.name == resname:
                 for atom in residue.atoms():
                     # Read the parameters of this atom and add to the list of this residue
