@@ -333,7 +333,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         Get all atom IDs for each molecule, noting heavy atoms in a second list
         """
         # Get the elements for all atoms in the system
-        elements = [atom.element for atom in self.topology.atoms()]
+        elements = [atom.element.name for atom in self.topology.atoms()]
 
         # For each residue, get the IDs of all atoms, and also separately those of heavy atoms
         for resid, residue in enumerate(self.topology.residues()):
@@ -348,7 +348,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
                 # Add to the atom list
                 all_atoms.append(atom.index)
                 # Add to the heavy list, if appropriate
-                if elements[atom.index] != 'H':
+                if elements[atom.index].lower() != 'hydrogen':
                     heavy_atoms.append(atom.index)
 
             # Update the dictionaries for this residue
