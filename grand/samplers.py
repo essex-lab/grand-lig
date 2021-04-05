@@ -604,7 +604,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             if vec_length != 0.0 * unit.angstroms:
                 atom_position = atom_position / vec_length
                 # Rotate coordinates & restore length
-                atom_position = vec_length * np.dot(R, atom_position) * unit.nanometer
+                atom_position = vec_length * np.dot(R, atom_position)
 
             # Translate to new position
             new_positions[index] = atom_position + new_centre
