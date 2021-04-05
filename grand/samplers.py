@@ -599,7 +599,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             atom_position = self.positions[index] - heavy_cog
 
             # Rotate about the COG
-            vec_length = np.linalg.norm(atom_position)
+            vec_length = np.linalg.norm(atom_position.in_units_of(unit.angstroms)) * unit.angstroms
             # If the length of the vector is zero, then we don't need to rotate, as it is sat on the COG
             if vec_length != 0.0 * unit.angstroms:
                 atom_position = atom_position / vec_length
@@ -929,7 +929,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
                 elif vector[i] <= -0.5 * self.simulation_box[i]:
                     vector[i] += self.simulation_box[i]
             # Update lists if this molecule is in the sphere
-            if np.linalg.norm(vector) * unit.angstrom <= self.sphere_radius:
+            if np.linalg.norm(vector.in_units_of(unit.angstroms)) * unit.angstrom <= self.sphere_radius:
                 gcmc_resids.append(resid)  #  Add to list of GCMC waters
                 gcmc_status.append(self.mol_status[mol_id])
 
