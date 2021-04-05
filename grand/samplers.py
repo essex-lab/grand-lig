@@ -1279,10 +1279,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         self.delete_works = []
         self.n_explosions = 0
         self.n_left_sphere = 0  # Number of moves rejected because the water left the sphere
-        self.movesDCD = mdtraj.reporters.DCDReporter('MovesDCD.dcd', 0) ########################################################
-        self.resid_file = "resid_being_moved.txt"
-        with open(self.resid_file, 'w') as f:
-            pass  # Open file to create it
+
         # Define a compound integrator
         #self.compound_integrator = openmm.CompoundIntegrator()
         # Add the MD integrator
@@ -1298,7 +1295,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
         self.logger.info("NonequilibriumGCMCSphereSampler object initialised")
 
-    def move(self, context, simulation, n=1):
+    def move(self, context, n=1):
         """
         Carry out a nonequilibrium GCMC move
 
@@ -1326,10 +1323,10 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             # Insert or delete a water, based on random choice
             if np.random.randint(2) == 1:
                 # Attempt to insert a water
-                self.insertionMove(simulation)
+                self.insertionMove()
             else:
                 # Attempt to delete a water
-                self.deletionMove(simulation)
+                self.deletionMove()
             self.n_moves += 1
             self.Ns.append(self.N)
 
@@ -1338,7 +1335,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
         return None
 
-    def insertionMove(self, simulation):
+    def insertionMove(self):
         """
         Carry out a nonequilibrium insertion move for a random water molecule
         """
@@ -1388,9 +1385,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         # Check which waters are still in the GCMC sphere
         gcmc_mols_new = [mol for i, mol in enumerate(self.gcmc_resids) if self.gcmc_status[i] == 1]
 
-        state = simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
-        self.movesDCD.report(simulation, state)
-
         # Calculate acceptance probability
         if insert_mol not in gcmc_mols_new:
             # If the inserted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
@@ -1406,12 +1400,8 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
         self.acceptance_probabilities.append(acc_prob)
 
-
-
         # Update or reset the system, depending on whether the move is accepted or rejected
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
-            with open(self.resid_file, 'a') as f:
-                f.write(f'Insertion {insert_mol} {protocol_work} {acc_prob} Rejected\n')
             # Need to revert the changes made if the move is to be rejected
             self.adjustSpecificMolecule(insert_mol, 0.0)
             self.context.setPositions(old_positions)
@@ -1422,8 +1412,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             self.mol_status[mol_id] = 0
             self.updateGCMCSphere(state)
         else:
-            with open(self.resid_file, 'a') as f:
-                f.write(f'Insertion {insert_mol} {protocol_work} {acc_prob} Accepted\n')
             # Update some variables if move is accepted
             self.N = len(gcmc_mols_new)
             self.n_accepted += 1
@@ -1434,7 +1422,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
         return None
 
-    def deletionMove(self, simulation):
+    def deletionMove(self):
         """
         Carry out a nonequilibrium deletion move for a random water molecule
         """
@@ -1486,9 +1474,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         # Check which waters are still in the GCMC sphere
         gcmc_mols_new = [mol for i, mol in enumerate(self.gcmc_resids) if self.gcmc_status[i] == 1]
 
-        state = simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
-        self.movesDCD.report(simulation, state)
-
         # Calculate acceptance probability
         if delete_mol not in gcmc_mols_new:
             # If the deleted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
@@ -1507,8 +1492,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
         # Update or reset the system, depending on whether the move is accepted or rejected
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
-            with open(self.resid_file, 'a') as f:
-                f.write(f'Deletion {delete_mol} {protocol_work} {acc_prob} Rejected\n')
             # Need to revert the changes made if the move is to be rejected
             self.adjustSpecificMolecule(delete_mol, 1.0)
             self.context.setPositions(old_positions)
@@ -1517,8 +1500,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
             self.updateGCMCSphere(state)
         else:
-            with open(self.resid_file, 'a') as f:
-                f.write(f'Deletion {delete_mol} {protocol_work} {acc_prob} Accepted\n')
             # Update some variables if move is accepted
             #self.gcmc_status[gcmc_id] = 0
             self.mol_status[mol_id] = 0
