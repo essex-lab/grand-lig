@@ -130,7 +130,6 @@ class BaseGrandCanonicalMonteCarloSampler(object):
                                                                                                                topology,
                                                                                                                [resname])
             # Also need to assign exception IDs to each molecule ID
-            print('3')
             self.getMoleculeExceptions()
         else:
             self.logger.info("Custom Force objects not created in Sampler __init__() function. These must be set "
