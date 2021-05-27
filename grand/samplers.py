@@ -79,6 +79,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.system = system
         self.topology = topology
         self.positions = None  # Store no positions upon initialisation
+        self.velocities = None
         self.context = None
         self.kT = unit.BOLTZMANN_CONSTANT_kB * unit.AVOGADRO_CONSTANT_NA * temperature
         self.simulation_box = np.zeros(3) * unit.nanometer  # Set to zero for now
@@ -610,6 +611,31 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         return new_positions
 
+    def randomiseAtomVelocities(self, atom_ids):
+        """
+        Assign random velocities (from the Maxwell-Boltzmann) to a subset of atoms
+
+        Parameters
+        ----------
+        atom_ids : list
+            List of atom indices to assign random velocities to. All other velocities will be unchanged
+        """
+        # Get temperature from kT
+        temperature = self.kT / (unit.BOLTZMANN_CONSTANT_kB * unit.AVOGADRO_CONSTANT_NA)
+
+        # Randomise velocities (using the OpenMM functionality)
+        self.context.setVelocitiesToTemperature(temperature)
+        random_velocities = self.context.getState(getVelocities=True).getVelocities(asNumpy=True)
+
+        # For each atom of interest, replace the original velocity with the random one
+        for idx in atom_ids:
+            self.velocities[idx] = random_velocities[idx]
+
+        # Put the correct velocities back into the Context
+        self.context.setVelocities(self.velocities)
+
+        return None
+
 
 ########################################################################################################################
 ########################################################################################################################
@@ -830,8 +856,9 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         self.context = context
 
         # Load in positions and box vectors from context
-        state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
+        state = self.context.getState(getPositions=True, getVelocities=True, enforcePeriodicBox=True)
         self.positions = deepcopy(state.getPositions(asNumpy=True))
+        self.velocities = deepcopy(state.getVelocities(asNumpy=True))
         box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
 
         # Check the symmetry of the box - currently only tolerate cuboidal boxes
@@ -1084,8 +1111,9 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
         """
         # Read in positions
         self.context = context
-        state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getEnergy=True)
+        state = self.context.getState(getPositions=True, getVelocities=True, enforcePeriodicBox=True, getEnergy=True)
         self.positions = deepcopy(state.getPositions(asNumpy=True))
+        self.velocities = deepcopy(state.getVelocities(asNumpy=True))
         self.energy = state.getPotentialEnergy()
 
         # Update GCMC region based on current state
@@ -1141,6 +1169,8 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
             self.n_accepted += 1
             # Update energy
             self.energy = final_energy
+            # Assign random velocities to the inserted atoms (not dependent on acceptance, just more efficient this way)
+            self.randomiseAtomVelocities(self.mol_atom_ids[insert_mol])
 
         return None
 
@@ -1255,8 +1285,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                                    sphereRadius=sphereRadius, sphereCentre=sphereCentre, log=log,
                                    createCustomForces=createCustomForces, dcd=dcd, rst=rst, overwrite=overwrite)
 
-        self.velocities = None  # Need to store velocities for this type of sampling
-
         # Load in extra NCMC variables
         if lambdas is not None:
             # Read in set of lambda values, if specified
@@ -1346,6 +1374,8 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
         # Need to update the context positions
         self.context.setPositions(new_positions)
+        # Assign random velocities to the inserted atoms
+        self.randomiseAtomVelocities(self.mol_atom_ids[insert_mol])
 
         # Start running perturbation and propagation kernels
         protocol_work = 0.0 * unit.kilocalories_per_mole
@@ -1406,6 +1436,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             self.context.setPositions(old_positions)
             self.context.setVelocities(-self.velocities)  # Reverse velocities on rejection
             self.positions = deepcopy(old_positions)
+            self.velocities = -self.velocities
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
             #self.gcmc_status[gcmc_id] = 0
             self.mol_status[mol_id] = 0
@@ -1496,6 +1527,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             self.context.setPositions(old_positions)
             self.context.setVelocities(-self.velocities)  # Reverse velocities on rejection
             self.positions = deepcopy(old_positions)
+            self.velocities = -self.velocities
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
             self.updateGCMCSphere(state)
         else:
@@ -1629,8 +1661,9 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
         self.context = context
 
         # Load in positions and box vectors from context
-        state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
+        state = self.context.getState(getPositions=True, getVelocities=True, enforcePeriodicBox=True)
         self.positions = deepcopy(state.getPositions(asNumpy=True))
+        self.velocities = deepcopy(state.getVelocities(asNumpy=True))
         box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
 
         # Check the symmetry of the box - currently only tolerate cuboidal boxes
@@ -1795,6 +1828,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         self.context = context
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getEnergy=True)
         self.positions = deepcopy(state.getPositions(asNumpy=True))
+        self.velocities = deepcopy(state.getVelocities(asNumpy=True))
         self.energy = state.getPotentialEnergy()
 
         # Execute moves
@@ -1841,6 +1875,8 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
             self.n_accepted += 1
             # Update energy
             self.energy = final_energy
+            # Assign random velocities to the inserted atoms (not dependent on acceptance, just more efficient this way)
+            self.randomiseAtomVelocities(self.mol_atom_ids[insert_mol])
 
         return None
 
@@ -1964,8 +2000,6 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         self.protocol_time = (self.n_pert_steps + 1) * self.n_prop_steps_per_pert * self.time_step
         self.logger.info("Each NCMC move will be executed over a total of {}".format(self.protocol_time))
 
-        self.velocities = None  # Need to store velocities for this type of sampling
-
         self.insert_works = []  # Store work values of moves
         self.delete_works = []
         self.n_explosions = 0
@@ -2031,6 +2065,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
 
         # Need to update the context positions
         self.context.setPositions(new_positions)
+        # Assign random velocities to the inserted atoms
+        self.randomiseAtomVelocities(self.mol_atom_ids[insert_mol])
 
         # Start running perturbation and propagation kernels
         protocol_work = 0.0 * unit.kilocalories_per_mole
@@ -2075,6 +2111,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             self.context.setPositions(self.positions)
             self.context.setVelocities(-self.velocities)  # Reverse velocities on rejection
             self.positions = deepcopy(self.positions)
+            self.velocities = -self.velocities
         else:
             # Update some variables if move is accepted
             self.N += 1
@@ -2140,6 +2177,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             self.context.setPositions(self.positions)
             self.context.setVelocities(-self.velocities)  # Reverse velocities on rejection
             self.positions = deepcopy(self.positions)
+            self.velocities = -self.velocities
         else:
             # Update some variables if move is accepted
             self.gcmc_status[gcmc_id] = 0
