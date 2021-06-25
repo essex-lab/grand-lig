@@ -600,56 +600,33 @@ def create_custom_forces(system, topology, resnames):
         # Disable steric interactions in the original force by setting epsilon=0 (keep the charges for PME purposes)
         nonbonded_force.setParticleParameters(atom_idx, charge, sigma, abs(0))
 
-    '''
-    # Define force for the steric exceptions
-    steric_exceptions = openmm.CustomBondForce(lj_energy)  # Same energy expression as before, but no combining rules needed
-    # Parameters per exception
-    steric_exceptions.addPerBondParameter('sigma')
-    steric_exceptions.addPerBondParameter('epsilon')
-    steric_exceptions.addPerBondParameter('lambda')
-    # Set softcore parameters
-    steric_exceptions.addGlobalParameter('soft_alpha', 0.5)
-    steric_exceptions.addGlobalParameter('soft_a', 1)
-    steric_exceptions.addGlobalParameter('soft_b', 1)
-    steric_exceptions.addGlobalParameter('soft_c', 6)
-
-    # Define force for the electrostatic exceptions
-    # Electrostatic softcore energy expression - use softcores to prevent possible explosions in these forces
-    ele_energy = ("U;"
-                  "U = ((lambda^soft_d) * chargeprod * one_4pi_eps0) / reff;"
-                  # Calculate effective distance
-                  "reff = sigma * ((soft_beta * (1.0 - lambda)^soft_e + (r/sigma)^soft_f))^(1/soft_f);"
-                  # Define 1/(4*pi*eps)
-                  "one_4pi_eps0 = {}".format(ONE_4PI_EPS0))
-    electrostatic_exceptions = openmm.CustomBondForce(ele_energy)
-    # Parameters per exception
-    electrostatic_exceptions.addPerBondParameter('chargeprod')
-    electrostatic_exceptions.addPerBondParameter('sigma')
-    electrostatic_exceptions.addPerBondParameter('lambda')
-    # Set softcore parameters
-    electrostatic_exceptions.addGlobalParameter('soft_beta', 0.0)
-    electrostatic_exceptions.addGlobalParameter('soft_d', 1)
-    electrostatic_exceptions.addGlobalParameter('soft_e', 1)
-    electrostatic_exceptions.addGlobalParameter('soft_f', 2)
-
-    alchemical_except = False  # Indicate any exceptions are found which may be decoupled
-    '''
+    # Get a dictionary of atom pairs subject to exceptions
+    exception_dict = {}
+    num_excepts = nonbonded_force.getNumExceptions()
+    for exception_idx in range(num_excepts):
+        [i, j, chargeprod, sigma, epsilon] = nonbonded_force.getExceptionParameters(exception_idx)
+        exception_dict[exception_idx] = [i, j]
 
     # Make sure all intramolecular interactions for the molecules of interest are set to exceptions, so they aren't switched off
     for residue in topology.residues():
+        print(residue.id)
         if residue.name in resnames:
             # Get a list of atom IDs for this residue
-            atom_ids = []
-            for atom in residue.atoms():
-                atom_ids.append(atom.index)
+            atom_ids = [atom.index for atom in residue.atoms()]
             # Loop over all possible interactions between atoms in this molecule
             for x, atom_x in enumerate(atom_ids):
                 for atom_y in atom_ids[x+1:]:
                     # Check if there is an exception already for this interaction
                     except_id = None
+                    '''
                     for exception_idx in range(nonbonded_force.getNumExceptions()):
                         [i, j, chargeprod, sigma, epsilon] = nonbonded_force.getExceptionParameters(exception_idx)
                         if atom_x in [i, j] and atom_y in [i, j]:
+                            except_id = exception_idx
+                            break
+                    '''
+                    for exception_idx in range(num_excepts):
+                        if atom_x in exception_dict[exception_idx] and atom_y in exception_dict[exception_idx]:
                             except_id = exception_idx
                             break
                     # Add an exception if there is not one already
@@ -674,43 +651,8 @@ def create_custom_forces(system, topology, resnames):
         # Copy this over as an exclusion so it isn't counted by the CustomNonbonded Force
         custom_sterics.addExclusion(i, j)
 
-        '''
-        # If epsilon is greater than zero, this is an exception, not an exclusion
-        if abs(chargeprod._value) > 0.0 or epsilon > 0.0 * unit.kilojoule_per_mole:
-            #
-            # NEED TO ADD SOME CHECKS TO MAKE SURE THAT THERE ARE NO INTER-MOLECULAR EXCEPTIONS
-            #
-
-            # Ignore this exception if it's not for one of the residues of interest
-            if i not in mol_atom_ids and j not in mol_atom_ids:
-                continue
-
-            # Make clear that exceptions are decoupled
-            alchemical_except = True
-
-            # Add this exception to the sterics and electrostatics - set lambda to 1 for now
-            steric_exceptions.addBond(i, j, [sigma, epsilon, 1.0])
-            electrostatic_exceptions.addBond(i, j, [chargeprod, sigma, 1.0])
-
-            # Set this exception to non-interacting in the original NonbondedForce, so that it isn't double counted
-            nonbonded_force.setExceptionParameters(exception_idx, i, j, abs(0.0), sigma, abs(0.0))
-        '''
-
     # Add the custom force to the system
     system.addForce(custom_sterics)
-
-    '''
-    # Add the exception forces to the system, if needed
-    if alchemical_except:
-        # Add the sterics
-        system.addForce(steric_exceptions)
-        # Add the electrostatics
-        system.addForce(electrostatic_exceptions)
-    else:
-        # Set these forces to None, if they are not needed
-        steric_exceptions = None
-        electrostatic_exceptions = None
-    '''
 
     #return param_dict, custom_sterics, electrostatic_exceptions, steric_exceptions
     return param_dict, custom_sterics, None, None
