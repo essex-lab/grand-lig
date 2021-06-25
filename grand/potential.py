@@ -51,7 +51,7 @@ def get_lambda_values(lambda_in):
 
 
 def calc_mu_ex(system, topology, positions, resname, resid, box_vectors, temperature, n_lambdas, n_samples, n_equil,
-               log_file, pressure=None):
+               log_file, pressure=None, turnOff=False):
     """
     Calculate the excess chemical potential of a molecule in a given system,
     as the hydration free energy, using MBAR
@@ -131,6 +131,8 @@ def calc_mu_ex(system, topology, positions, resname, resid, box_vectors, tempera
     gcmc_mover.context = simulation.context
 
     lambdas = np.linspace(0.0, 1.0, n_lambdas)  # Lambda values to use
+    if turnOff: # If turning off (removing) reverse the lambdas
+        lambdas = np.linspace(1.0, 0.0, n_lambdas)
     U = np.zeros((n_lambdas, n_lambdas, n_samples))  # Energy values calculated
 
     # Simulate the system at each lambda window
