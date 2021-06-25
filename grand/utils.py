@@ -609,7 +609,7 @@ def create_custom_forces(system, topology, resnames):
 
     # Make sure all intramolecular interactions for the molecules of interest are set to exceptions, so they aren't switched off
     for residue in topology.residues():
-        print(residue.id)
+        #print(residue.id)
         if residue.name in resnames:
             # Get a list of atom IDs for this residue
             atom_ids = [atom.index for atom in residue.atoms()]
