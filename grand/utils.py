@@ -596,9 +596,7 @@ def create_custom_forces(system, topology, resnames):
 
         # Add particle to the custom force (with lambda=1 for now)
         custom_sterics.addParticle([sigma, epsilon, 1.0])
-
-        # Disable steric interactions in the original force by setting epsilon=0 (keep the charges for PME purposes)
-        nonbonded_force.setParticleParameters(atom_idx, charge, sigma, abs(0))
+        # Dont get rid of the interactions in the original force yet, because we need that information for the exceptions below
 
     # Get a dictionary of atom pairs subject to exceptions
     exception_dict = {}
@@ -651,6 +649,17 @@ def create_custom_forces(system, topology, resnames):
         # Copy this over as an exclusion so it isn't counted by the CustomNonbonded Force
         custom_sterics.addExclusion(i, j)
 
+    # Turn off everything in the nonbonded force to avoid double counting with the custom nonbonded force
+    for atom_idx in range(nonbonded_force.getNumParticles()):
+        # Get atom parameters
+        [charge, sigma, epsilon] = nonbonded_force.getParticleParameters(atom_idx)
+
+        # Make sure that sigma is not equal to zero
+        if np.isclose(sigma._value, 0.0):
+            sigma = 1.0 * unit.angstrom
+
+        # Disable steric interactions in the original force by setting epsilon=0 (keep the charges for PME purposes)
+        nonbonded_force.setParticleParameters(atom_idx, charge, sigma, abs(0))
     # Add the custom force to the system
     system.addForce(custom_sterics)
 
