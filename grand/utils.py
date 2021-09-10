@@ -590,7 +590,7 @@ def create_custom_forces(system, topology, resnames):
         # Get atom parameters
         [charge, sigma, epsilon] = nonbonded_force.getParticleParameters(atom_idx)
 
-        # Make sure that sigma is not equal to zero
+        # Make sure that sigma is not equal to zero (sometimes an issue with the reference force, this fixes it.)
         if np.isclose(sigma._value, 0.0):
             sigma = 1.0 * unit.angstrom
 
