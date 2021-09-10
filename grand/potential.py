@@ -14,9 +14,9 @@ import openmmtools
 from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
-
+from sys import stdout
 import grand
-
+import os
 def get_lambda_values(lambda_in):
     """
     Calculate the lambda_sterics and lambda_electrostatics values for a given lambda.
@@ -124,9 +124,8 @@ def calc_mu_ex(system, topology, positions, resname, resid, box_vectors, tempera
     simulation.context.setPositions(positions)
     simulation.context.setVelocitiesToTemperature(temperature)
     simulation.context.setPeriodicBoxVectors(*box_vectors)
-
     print('Simulation created')
-
+    
     # Make sure the GCMC sampler has access to the Context
     gcmc_mover.context = simulation.context
 
@@ -134,6 +133,8 @@ def calc_mu_ex(system, topology, positions, resname, resid, box_vectors, tempera
     if turnOff: # If turning off (removing) reverse the lambdas
         lambdas = np.linspace(1.0, 0.0, n_lambdas)
     U = np.zeros((n_lambdas, n_lambdas, n_samples))  # Energy values calculated
+    simulation.reporters.append(StateDataReporter(stdout, 500, step=True,
+        time=True, potentialEnergy=True, temperature=True, density=True, volume=True))
 
     # Simulate the system at each lambda window
     for i in range(n_lambdas):
