@@ -596,9 +596,7 @@ def create_custom_forces(system, topology, resnames):
 
         # Add particle to the custom force (with lambda=1 for now)
         custom_sterics.addParticle([sigma, epsilon, 1.0])
-
-        # Disable steric interactions in the original force by setting epsilon=0 (keep the charges for PME purposes)
-        nonbonded_force.setParticleParameters(atom_idx, charge, sigma, abs(0))
+        # Dont get rid of the interactions in the original force yet, because we need that information for the exceptions below
 
     # Get a dictionary of atom pairs subject to exceptions
     exception_dict = {}
@@ -651,6 +649,17 @@ def create_custom_forces(system, topology, resnames):
         # Copy this over as an exclusion so it isn't counted by the CustomNonbonded Force
         custom_sterics.addExclusion(i, j)
 
+    # Turn off everything in the nonbonded force to avoid double counting with the custom nonbonded force
+    for atom_idx in range(nonbonded_force.getNumParticles()):
+        # Get atom parameters
+        [charge, sigma, epsilon] = nonbonded_force.getParticleParameters(atom_idx)
+
+        # Make sure that sigma is not equal to zero
+        if np.isclose(sigma._value, 0.0):
+            sigma = 1.0 * unit.angstrom
+
+        # Disable steric interactions in the original force by setting epsilon=0 (keep the charges for PME purposes)
+        nonbonded_force.setParticleParameters(atom_idx, charge, sigma, abs(0))
     # Add the custom force to the system
     system.addForce(custom_sterics)
 
@@ -1195,6 +1204,153 @@ def cluster_waters(topology, trajectory, sphere_radius, ref_atoms=None, sphere_c
             occ2 = occ1 / float(n_frames)
             f.write("ATOM  {:>5d} {:<4s} {:<4s} {:>4d}    {:>8.3f}{:>8.3f}{:>8.3f}{:>6.2f}{:>6.2f}\n".format(1, 'O',
                                                                                                              'WAT', i+1,
+                                                                                                             coords[0],
+                                                                                                             coords[1],
+                                                                                                             coords[2],
+                                                                                                             occ2, occ2))
+            f.write("TER\n")
+        f.write("END")
+
+    return None
+
+def cluster_molecules(topology, trajectory, resname, sphere_radius, ref_atoms=None, cutoff=2.4,
+                   output='gcmc_clusts.pdb'):
+    """
+    Carry out a clustering analysis on GCMC water molecules with the sphere. Based on the clustering
+    code in the ProtoMS software package.
+
+    This function currently assumes that the system has been aligned and centred on the GCMC sphere (approximately).
+
+    Parameters
+    ----------
+    topology : str
+        Topology of the system, such as a PDB file
+    trajectory : str
+        Trajectory file, such as DCD
+    sphere_radius : float
+        Radius of the GCMC sphere in Angstroms
+    ref_atoms : list
+        List of reference atoms for the GCMC sphere (list of dictionaries)
+    cutoff : float
+        Distance cutoff used in the clustering
+    output : str
+        Name of the output PDB file containing the clusters
+    """
+    # Load trajectory
+    t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
+    n_frames, n_atoms, n_dims = t.xyz.shape
+
+    # Get reference atom IDs
+    if ref_atoms is not None:
+        ref_indices = []
+        for ref_atom in ref_atoms:
+            found = False
+            for residue in t.topology.residues:
+                if residue.name == ref_atom['resname'] and str(residue.resSeq) == ref_atom['resid']:
+                    for atom in residue.atoms:
+                        if atom.name == ref_atom['name']:
+                            ref_indices.append(atom.index)
+                            found = True
+            if not found:
+                raise Exception("Atom {} of residue {}{} not found!".format(ref_atom['name'],
+                                                                            ref_atom['resname'].capitalize(),
+                                                                            ref_atom['resid']))
+
+    # Get the COG's of all the GCMC molcules since were only going to do centroid clustering for now
+    mols = {}
+    for residue in t.topology.residues:
+        if residue.name == 'L02':
+            mols[residue.index] = []
+            for atom in residue.atoms:
+                if atom.element.name != 'hydrogen':
+                    mols[residue.index].append(atom.index)
+                else:
+                    continue
+    n_frags = len(mols.keys())
+
+    frag_coords = np.zeros((n_frames, n_frags, 3))
+    for frame in range(n_frames):
+        for i, resid in enumerate(mols.keys()):
+            coords = np.zeros(3)
+            for atom_id in mols[resid]:
+                coords += (t.xyz[frame, atom_id, :])
+            frag_coords[frame, i, :] = coords/len(mols[resid])
+
+
+    mol_coords = []  # Store a list of water coordinates
+    mol_frames = []  # Store a list of the frame that each water is in
+
+    # Get the coordinates of all GCMC water oxygen atoms
+    for f in range(n_frames):
+        # Calculate sphere centre for this frame
+        if ref_atoms is not None:
+            centre = np.zeros(3)
+            for idx in ref_indices:
+                centre += t.xyz[f, idx, :]
+            centre /= len(ref_indices)
+
+        for i, resid in enumerate(mols.keys()):
+            vector = frag_coords[f, i, :] - centre
+            if 10 * np.linalg.norm(vector) <= sphere_radius:
+                mol_coords.append(10 * frag_coords[f, i, :])
+                mol_frames.append(f)
+
+    # Calculate water-water distances - if the waters are in the same frame are assigned a very large distance
+    dist_list = []
+    for i in range(len(mol_coords)):
+        for j in range(i+1, len(mol_coords)):
+            if mol_frames[i] == mol_frames[j]:
+                dist = 1e8
+            else:
+                dist = np.linalg.norm(mol_coords[i] - mol_coords[j])
+            dist_list.append(dist)
+    print(len(dist_list))
+
+    # Cluster the waters hierarchically
+    tree = hierarchy.linkage(dist_list, method='average')
+    mol_clust_ids = hierarchy.fcluster(tree, t=cutoff, criterion='distance')
+    n_clusts = max(mol_clust_ids)
+
+    # Sort the clusters by occupancy
+    clusts = []
+    for i in range(1, n_clusts+1):
+        occ = len([wat for wat in mol_clust_ids if wat == i])
+        clusts.append([i, occ])
+    clusts = sorted(clusts, key=lambda x: -x[1])
+    clust_ids_sorted = [x[0] for x in clusts]
+    clust_occs_sorted = [x[1] for x in clusts]
+
+    # Calculate the cluster centre and representative position for each cluster
+    rep_coords = []
+    for i in range(n_clusts):
+        clust_id = clust_ids_sorted[i]
+        # Calculate the mean position of the cluster
+        clust_centre = np.zeros(3)
+        for j, wat in enumerate(mol_clust_ids):
+            if wat == clust_id:
+                clust_centre += mol_coords[j]
+        clust_centre /= clust_occs_sorted[i]
+
+        # Find the water observation which is closest to the mean position
+        min_dist = 1e8
+        rep_wat = None
+        for j, wat in enumerate(mol_clust_ids):
+            if wat == clust_id:
+                dist = np.linalg.norm(mol_coords[j] - clust_centre)
+                if dist < min_dist:
+                    min_dist = dist
+                    rep_wat = j
+        rep_coords.append(mol_coords[rep_wat])
+
+    # Write the cluster coordinates to a PDB file
+    with open(output, 'w') as f:
+        f.write("REMARK Clustered GCMC water positions written by grand\n")
+        for i in range(n_clusts):
+            coords = rep_coords[i]
+            occ1 = clust_occs_sorted[i]
+            occ2 = occ1 / float(n_frames)
+            f.write("ATOM  {:>5d} {:<4s} {:<4s} {:>4d}    {:>8.3f}{:>8.3f}{:>8.3f}{:>6.2f}{:>6.2f}\n".format(1, 'C',
+                                                                                                             'CLU', i+1,
                                                                                                              coords[0],
                                                                                                              coords[1],
                                                                                                              coords[2],
