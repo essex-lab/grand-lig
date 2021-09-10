@@ -105,6 +105,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         # Get residue IDs & assign statuses to each
         self.mol_resids = self.getMoleculeResids(resname)  # All molecules
+        print(self.mol_resids)
         self.mol_status = np.ones_like(self.mol_resids)  # 1 indicates on, 0 indicates off
         self.gcmc_resids = []  # GCMC molecules
         self.gcmc_status = []  # 1 indicates on, 0 indicates off
@@ -291,6 +292,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             for atom in residue.atoms():
                 atom_ids.append(atom.index)
 
+            print(atom_ids)
             # Loop over vdW exceptions to find those which correspond to this molecule
             vdw_exceptions = []
             if self.vdw_except_force is not None:
@@ -1419,7 +1421,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             # If the inserted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
             acc_prob = -1
             self.n_left_sphere += 1
-            self.logger.info("Move rejected due to water leaving the GCMC sphere")
+            self.logger.info("Move rejected due to molecule leaving the GCMC sphere")
         elif explosion:
             acc_prob = -1
             self.logger.info("Move rejected due to an instability during integration")
