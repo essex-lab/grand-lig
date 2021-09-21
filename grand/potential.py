@@ -303,6 +303,7 @@ def calc_avg_volume(system, topology, positions, box_vectors, temperature, n_sam
 
     return avg_vol_dict, conc_dict
 
+
 def calc_mu_ex_independant(system, topology, positions, resname, resid, box_vectors, temperature, n_lambdas, n_samples, n_equil,
                log_file, pressure=None, turnOff=False):
     """
@@ -376,7 +377,8 @@ def calc_mu_ex_independant(system, topology, positions, resname, resid, box_vect
     simulation = Simulation(topology, system, integrator, platform)
     simulation.context.setPositions(positions)
     simulation.context.setVelocitiesToTemperature(temperature)
-    simulation.context.setPeriodicBoxVectors(*box_vectors)
+    original_box_vectors = box_vectors
+    simulation.context.setPeriodicBoxVectors(*original_box_vectors)
     print('Simulation created')
     force_labels = {}
     for i, force in enumerate(system.getForces()):
@@ -412,7 +414,7 @@ def calc_mu_ex_independant(system, topology, positions, resname, resid, box_vect
         # Setting the positions, random velocities and box vectors so each lambda starts from the same
         simulation.context.setPositions(positions)
         simulation.context.setVelocitiesToTemperature(temperature)
-        simulation.context.setPeriodicBoxVectors(*box_vectors)
+        simulation.context.setPeriodicBoxVectors(*original_box_vectors)
         # Set lambda values
         print('Simulating at lambda = {:.4f}'.format(np.round(lambdas[i], 4)))
         gcmc_mover.logger.info('Simulating at lambda = {:.4f}'.format(np.round(lambdas[i], 4)))
@@ -423,7 +425,7 @@ def calc_mu_ex_independant(system, topology, positions, resname, resid, box_vect
 
         print('Equilibrating at lambda = {}'.format(np.round(lambdas[i], 4)))
 
-        n_steps = (0.001 * nanosecond) / (0.002 * picosecond)
+        n_steps = (2 * nanosecond) / (0.002 * picosecond)
         simulation.step(int(n_steps))
         print('Equil Done.. Simulation now')
         for k in range(n_samples):
