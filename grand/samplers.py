@@ -1511,7 +1511,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             # If the deleted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
             acc_prob = 0
             self.n_left_sphere += 1
-            self.logger.info("Move rejected due to water leaving the GCMC sphere")
+            self.logger.info("Move rejected due to molecule leaving the GCMC sphere")
         elif explosion:
             acc_prob = 0
             self.logger.info("Move rejected due to an instability during integration")
