@@ -1071,6 +1071,7 @@ def write_sphere_traj(radius, ref_atoms=None, topology=None, trajectory=None, t=
 
     return None
 
+
 def cluster_waters(topology, trajectory, sphere_radius, ref_atoms=None, sphere_centre=None, cutoff=2.4,
                    output='gcmc_clusts.pdb'):
     """
@@ -1212,6 +1213,7 @@ def cluster_waters(topology, trajectory, sphere_radius, ref_atoms=None, sphere_c
         f.write("END")
 
     return None
+
 
 def cluster_molecules(topology, trajectory, resname, sphere_radius, ref_atoms=None, cutoff=2.4,
                    output='gcmc_clusts.pdb'):
