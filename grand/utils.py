@@ -9,7 +9,7 @@ simulations and processing results
 
 Marley Samways
 """
-
+import copy
 import os
 import numpy as np
 import mdtraj
@@ -20,6 +20,11 @@ from simtk.openmm import app
 from copy import deepcopy
 from scipy.cluster import hierarchy
 from openmmtools.constants import ONE_4PI_EPS0
+from openmmtools.integrators import BAOABIntegrator
+import rdkit
+from rdkit import Chem
+from rdkit.Chem import AllChem
+import itertools
 
 
 class PDBRestartReporter(object):
@@ -702,6 +707,156 @@ def random_rotation_matrix():
 
     return rot_matrix
 
+
+def get_dihedral_distribution(ghost_file, ghost_smile, dihedrals):
+    """
+    Uses RDKit to generates a dihedral distribution for a given ghost molecule so that the insertions can
+     mimic the gas phase distribution. Function auto detects the rotatable bonds and gives the atoms that
+     make up the dihedral, the dihedral angle, and the percentage that conformer should be seen.
+
+    Parameters
+    ----------
+    ghost_file : str
+        Name of the PDB file containing the ghost molecule
+    ghost_smile : str
+        Smile sting of the ghost molecule
+    dihedrals : list
+        List of lists of the atom numbers (zero indexed) that make up a dihedral e.g. [[0, 1, 2, 3]]
+
+    Returns
+    -------
+    conformation_dict : dict
+        Dictionary containing the different conformations of the molecule of interest (keys)
+        and their populations (values)
+    """
+    template = Chem.MolFromSmiles(ghost_smile)  # Create template mol from SMILE string
+    mol = Chem.MolFromPDBFile(ghost_file, proximityBonding=True, removeHs=False, sanitize=False)  # RDKit mol from PDB file
+    # Assign bond order from SMILE string since rdkit cant find it from PDB
+    mol = AllChem.AssignBondOrdersFromTemplate(template, mol)
+    Chem.SanitizeMol(mol)
+    molecule = mol  # Save as a new variable for ease later
+    energys = []
+    # Generate 3D coordinates
+    Chem.AllChem.EmbedMolecule(molecule)
+    # Measure initial dihedrals of interest, fix them to a certain value
+    confId = 0
+    conf = molecule.GetConformer(confId)
+    counter = 0
+    n_dihedrals = len(dihedrals)
+    conformers = list(itertools.product(*[np.linspace(0, 360, 10) for i in range(n_dihedrals)]))
+    for j, conformer in enumerate(conformers):
+        for i, dihedral in enumerate(dihedrals):
+            Chem.rdMolTransforms.GetDihedralDeg(conf, *dihedral)
+            Chem.rdMolTransforms.SetDihedralDeg(conf, *dihedral, float(conformer[i]))
+        mp = AllChem.MMFFGetMoleculeProperties(molecule)
+        ff2 = AllChem.MMFFGetMoleculeForceField(molecule, mp)
+        ff2.Minimize(maxIts=1000, forceTol=0.000001, energyTol=1e-08)
+        E = ff2.CalcEnergy()
+
+        energys.append([E])
+        for dihedral in dihedrals:
+            energys[j].append(Chem.rdMolTransforms.GetDihedralDeg(conf, *dihedral))
+        counter += 1
+    # Pull out unique E's to dp
+    conformation_dict = {}
+    for e in energys:
+        xyz = np.asarray(e[1:])  # Actally d1, d2, d3
+        round_to_2 = tuple(np.round(xyz, 2))
+        if round_to_2 not in conformation_dict.keys():
+            conformation_dict[round_to_2] = round(e[0], 4)
+    Es = np.asarray(list(conformation_dict.values())) * 4184 # kcal to J
+    E_rels = Es - min(Es)
+    probs = np.exp((-E_rels) / (8.314 * 298))
+    probs = (probs / sum(probs)) * 100
+    for i, key in enumerate(list(conformation_dict.keys())):
+        conformation_dict[key] = (round(probs[i], 2))  # Change the dictionary to have population instead of energy
+
+    #print(conformation_dict)
+    print(len(probs), probs)
+
+    return conf, conformation_dict
+
+
+def get_dihedral_dist_for_FF(ghost_file, ghost_xml, rd_conf, dihedrals, RD_conformation_dict):
+    pdb = openmm.app.PDBFile(ghost_file)
+    # Create system
+    forcefield = openmm.app.ForceField(ghost_xml)
+    system = forcefield.createSystem(pdb.topology, nonbondedMethod=openmm.app.PME, nonbondedCutoff=12 * unit.angstrom,
+                                     switchDistance=10 * unit.angstrom, constraints=openmm.app.HBonds)
+
+    # Define platform and set precision
+    platform = openmm.Platform.getPlatformByName('CUDA')
+    platform.setPropertyDefaultValue('Precision', 'mixed')
+
+    integrator = openmm.LangevinIntegrator(298*unit.kelvin, 1/unit.picosecond, 0.002*unit.picoseconds)
+    # Create simulation object
+    simulation = openmm.app.Simulation(pdb.topology, system, integrator, platform)
+
+    # Set positions, velocities and box vectors
+    simulation.context.setPositions(pdb.positions)
+    simulation.context.setVelocitiesToTemperature(298 * unit.kelvin)
+    simulation.context.setPeriodicBoxVectors(*pdb.topology.getPeriodicBoxVectors())
+
+    state = simulation.context.getState(getPositions=True)
+    original_positions = state.getPositions(asNumpy=True)
+
+    # Set the positions in RDKit of the original molecule
+    for res in simulation.topology.residues():
+        if res.index == 0:
+            for atom in res.atoms():
+                rd_conf.SetAtomPosition(atom.index, original_positions[atom.index]._value * 10)
+    # Save the rd_conf as the original
+    initial_rd_conf = rd_conf
+    #print(initial_rd_conf)
+
+    OMM_energy = []
+    new_conformations = []
+    for conformation in list(RD_conformation_dict.keys()): # Want to loop over all our new conformers
+        new_positions = copy.deepcopy(original_positions)  # Copy of the OG positions
+        for i, dihedral in enumerate(dihedrals): # Set the dihedrals
+            Chem.rdMolTransforms.SetDihedralDeg(rd_conf, *dihedral, conformation[i])
+
+        for res in simulation.topology.residues():  # Update positions in OMM
+            if res.index == 0:
+                for atom in res.atoms():
+                    new_rd_positions = rd_conf.GetAtomPosition(atom.index)
+                    new_rd_xyz = np.asarray(
+                        [float(new_rd_positions.x), float(new_rd_positions.y), float(new_rd_positions.z)]) * unit.nanometer
+                    new_positions[atom.index] = new_rd_xyz / 10
+
+        simulation.context.setPositions(new_positions)
+        simulation.minimizeEnergy()
+        energy = simulation.context.getState(getEnergy=True).getPotentialEnergy()
+        # Send positions back to RDkit to get the new conformations
+        after_omm_min_positions = simulation.context.getState(getPositions=True).getPositions()
+        for res in simulation.topology.residues():
+            if res.index == 0:
+                for atom in res.atoms():
+                    rd_conf.SetAtomPosition(atom.index, after_omm_min_positions[atom.index]._value * 10)
+        new_dihedrals = []  # Get new dihedrals
+        for i, dihedral in enumerate(dihedrals):
+            new_dihedrals.append(Chem.rdMolTransforms.GetDihedralDeg(rd_conf,*dihedral))
+        new_conformations.append(new_dihedrals)
+        OMM_energy.append(energy._value)  # in kj mol-1
+
+        rd_conf = initial_rd_conf  # Reset the RDconf to the original one
+
+    # Now just tidy it all up and get into the same form as before
+    new_conformation_dict = {}
+    for i, e in enumerate(OMM_energy):
+        xyz = np.asarray(new_conformations[i])  # Actally d1, d2, d3
+        #print(xyz)
+        round_to_2 = tuple(np.round(xyz, 2))
+        if round_to_2 not in new_conformation_dict.keys():
+            new_conformation_dict[round_to_2] = round(e, 4)
+    Es = np.asarray(OMM_energy) * 1000 # kJ to J
+    E_rels = Es - min(Es)
+    probs = np.exp((-E_rels) / (8.314 * 298))
+    probs = (probs / sum(probs)) * 100
+    for i, key in enumerate(list(new_conformation_dict.keys())):
+        new_conformation_dict[key] = (round(probs[i], 2))  # Change the dictionary to have population instead of energy
+    #print(len(OMM_energy), OMM_energy, new_conformations)
+    return new_conformation_dict
 
 def shift_ghost_waters(ghost_file, topology=None, trajectory=None, t=None, output=None):
     """

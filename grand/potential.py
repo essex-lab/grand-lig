@@ -357,6 +357,8 @@ def calc_mu_ex_independant(system, topology, positions, resname, resid, box_vect
                                                                     overwrite=True)
     # Remove unneeded ghost file
     os.remove('calc_mu-ghosts.txt')
+    # for p in range(system.getNumParticles()):
+    #     system.setParticleMass(p, 0.0)
 
     # Add barostat, if needed
     if pressure is not None:
@@ -380,6 +382,7 @@ def calc_mu_ex_independant(system, topology, positions, resname, resid, box_vect
     original_box_vectors = box_vectors
     simulation.context.setPeriodicBoxVectors(*original_box_vectors)
     print('Simulation created')
+    '''
     force_labels = {}
     for i, force in enumerate(system.getForces()):
         force_labels[force] = i
@@ -398,7 +401,7 @@ def calc_mu_ex_independant(system, topology, positions, resname, resid, box_vect
         print(f'{key} - {energy_components[key]}')
 
     print(f'Total energy = {simulation.context.getState(getEnergy=True).getPotentialEnergy()}')
-
+'''
     # Make sure the GCMC sampler has access to the Context
     gcmc_mover.context = simulation.context
 
@@ -406,15 +409,15 @@ def calc_mu_ex_independant(system, topology, positions, resname, resid, box_vect
     if turnOff: # If turning off (removing) reverse the lambdas
         lambdas = np.linspace(1.0, 0.0, n_lambdas)
     U = np.zeros((n_lambdas, n_lambdas, n_samples))  # Energy values calculated
-    simulation.reporters.append(StateDataReporter(stdout, 500, step=True,
+    simulation.reporters.append(StateDataReporter(stdout, 1000, step=True,
         time=True, potentialEnergy=True, temperature=True, density=True, volume=True))
 
+    simulation.saveState('Original_state.xml')
     # Simulate the system at each lambda window
     for i in range(n_lambdas):
         # Setting the positions, random velocities and box vectors so each lambda starts from the same
-        simulation.context.setPositions(positions)
-        simulation.context.setVelocitiesToTemperature(temperature)
-        simulation.context.setPeriodicBoxVectors(*original_box_vectors)
+        simulation.loadState('Original_state.xml')
+        print(simulation.context.getState(getPositions=True, enforcePeriodicBox=True).getPositions()[0])
         # Set lambda values
         print('Simulating at lambda = {:.4f}'.format(np.round(lambdas[i], 4)))
         gcmc_mover.logger.info('Simulating at lambda = {:.4f}'.format(np.round(lambdas[i], 4)))
@@ -422,9 +425,7 @@ def calc_mu_ex_independant(system, topology, positions, resname, resid, box_vect
         # Minimise
         simulation.minimizeEnergy()
         # Equilibrate
-
         print('Equilibrating at lambda = {}'.format(np.round(lambdas[i], 4)))
-
         n_steps = (2 * nanosecond) / (0.002 * picosecond)
         simulation.step(int(n_steps))
         print('Equil Done.. Simulation now')

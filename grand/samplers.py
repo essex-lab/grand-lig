@@ -10,6 +10,7 @@ Marley Samways
 Ollie Melling
 Will Poole
 """
+import copy
 
 import numpy as np
 import mdtraj
@@ -20,7 +21,7 @@ from copy import deepcopy
 from simtk import unit
 from simtk import openmm
 from openmmtools.integrators import NonequilibriumLangevinIntegrator
-
+from rdkit import Chem
 from grand import utils
 from grand import potential
 
@@ -31,7 +32,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
     All other Sampler objects are derived from this
     """
     def __init__(self, system, topology, temperature, resname="HOH", ghostFile="gcmc-ghost-wats.txt", log='gcmc.log',
-                 createCustomForces=True, dcd=None, rst=None, overwrite=False):
+                 createCustomForces=True, dcd=None, rst=None, overwrite=False, dihedrals=[], distribution={}, conf=None):
         """
         Initialise the object to be used for sampling insertion/deletion moves
 
@@ -180,6 +181,14 @@ class BaseGrandCanonicalMonteCarloSampler(object):
                     raise Exception("File extension {} not recognised for restart file".format(rst))
         else:
             self.restart = None
+
+        print(f'Dihedrals in the BaseSampler : {dihedrals}')
+        # Define dihedral sampling stuff - Maybe expand this across all samplers in future but only need it here for now
+        if len(dihedrals) > 0:  # If some dihedrals have actually been defined
+            self.dihedrals = dihedrals
+            print(self.dihedrals)
+            self.dihedral_distribution = distribution
+            self.rdkit_conf = conf
 
         self.logger.info("BaseGrandCanonicalMonteCarloSampler object initialised")
 
@@ -613,6 +622,30 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         return new_positions
 
+    def randomiseMoleculeConformer(self, resid):
+        dihedral_list = list(self.dihedral_distribution.keys())
+        #  Normalise probabilities distribution
+        probs = np.asarray(list(self.dihedral_distribution.values())) / 100
+        probs = probs / sum(probs)
+        rand_conf_id = np.random.choice(np.arange(len(self.dihedral_distribution.keys())),
+                                        p=probs)  # Get the position in the conformation keys list of th
+        rand_conf = dihedral_list[rand_conf_id]  # Got the actual dihedrals to insert
+        print(self.n_moves, rand_conf_id, rand_conf)
+        new_positions = copy.deepcopy(self.positions)
+        # Now need to set the positions of the RDKit molecule to be the same as the inserted molecule
+        for i, index in enumerate(self.mol_atom_ids[resid]):
+            self.rdkit_conf.SetAtomPosition(i, self.positions[index]._value * 10)
+        for i, dihedral in enumerate(self.dihedrals):   # Set the dihedrals
+            Chem.rdMolTransforms.SetDihedralDeg(self.rdkit_conf, *dihedral, float(rand_conf[i]))
+
+        # Get the new positions back out of RDKit
+        for i, index in enumerate(self.mol_atom_ids[resid]):
+            new_rd_positions = self.rdkit_conf.GetAtomPosition(i)
+            new_rd_xyz = np.asarray([float(new_rd_positions.x), float(new_rd_positions.y), float(new_rd_positions.z)]) / 10
+            new_positions[index] = new_rd_xyz * unit.nanometers
+
+        return new_positions
+
     def randomiseAtomVelocities(self, atom_ids):
         """
         Assign random velocities (from the Maxwell-Boltzmann) to a subset of atoms
@@ -651,7 +684,8 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
                  excessChemicalPotential=-6.09*unit.kilocalories_per_mole,
                  standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, resname='HOH',
                  ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None, sphereCentre=None,
-                 log='gcmc.log', createCustomForces=True, dcd=None, rst=None, overwrite=False):
+                 log='gcmc.log', createCustomForces=True, dcd=None, rst=None, overwrite=False,
+                 dihedrals=[], distribution={}, conf=None):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
 
@@ -704,7 +738,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         # Initialise base
         BaseGrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, resname=resname, ghostFile=ghostFile,
                                                      log=log, createCustomForces=createCustomForces, dcd=dcd, rst=rst,
-                                                     overwrite=overwrite)
+                                                     overwrite=overwrite, dihedrals=dihedrals, distribution=distribution, conf=conf)
 
         # Initialise variables specific to the GCMC sphere
         self.sphere_radius = sphereRadius
@@ -1001,6 +1035,10 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
 
         new_positions = self.randomMolecularRotation(insert_mol, insert_point)
 
+        if len(self.dihedrals) > 0:
+            self.positions = new_positions
+            new_positions = self.randomiseMoleculeConformer(insert_mol)
+
         return new_positions, insert_mol, gcmc_id, mol_id
 
     def deleteRandomMolecule(self):
@@ -1219,7 +1257,8 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                  excessChemicalPotential=-6.09*unit.kilocalories_per_mole, standardVolume=30.345*unit.angstroms**3,
                  adamsShift=0.0, nPertSteps=1, nPropStepsPerPert=1, timeStep=2 * unit.femtoseconds, lambdas=None,
                  resname='HOH', ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None, sphereCentre=None,
-                 log='gcmc.log', createCustomForces=True, dcd=None, rst=None, overwrite=False):
+                 log='gcmc.log', createCustomForces=True, dcd=None, rst=None, overwrite=False,
+                 dihedrals=[], distribution={}, conf=None):
         """
         Initialise the object to be used for sampling NCMC-enhanced water insertion/deletion moves
 
@@ -1279,13 +1318,18 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             Name of the restart file to write out (.pdb or .rst7)
         overwrite : bool
             Indicates whether to overwrite already existing data
+        dihedrals : list
+            List of dihedrals in the insertion molecule
+        distribution : dict
+            Dictionary of the conformation distribution in the moelcule and thier populations
         """
         # Initialise base class
         GCMCSphereSampler.__init__(self, system, topology, temperature, adams=adams,
                                    excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
                                    adamsShift=adamsShift, resname=resname, ghostFile=ghostFile, referenceAtoms=referenceAtoms,
                                    sphereRadius=sphereRadius, sphereCentre=sphereCentre, log=log,
-                                   createCustomForces=createCustomForces, dcd=dcd, rst=rst, overwrite=overwrite)
+                                   createCustomForces=createCustomForces, dcd=dcd, rst=rst, overwrite=overwrite,
+                                   dihedrals=dihedrals, distribution=distribution, conf=conf)
 
         # Load in extra NCMC variables
         if lambdas is not None:
@@ -1308,6 +1352,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         self.delete_works = []
         self.n_explosions = 0
         self.n_left_sphere = 0  # Number of moves rejected because the water left the sphere
+
 
         # Define a compound integrator
         #self.compound_integrator = openmm.CompoundIntegrator()
@@ -1373,6 +1418,9 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
         # Choose a random site in the sphere to insert a molecule
         new_positions, insert_mol, gcmc_id, mol_id = self.insertRandomMolecule()
+
+        with open(f'insertion_{self.n_moves}.pdb', 'w') as f:
+            openmm.app.PDBFile.writeFile(self.topology, new_positions, f)
 
         # Need to update the context positions
         self.context.setPositions(new_positions)
@@ -1576,7 +1624,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
                  excessChemicalPotential=-6.09*unit.kilocalories_per_mole,
                  standardVolume=30.345*unit.angstroms**3, adamsShift=0.0, boxVectors=None,
                  ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, createCustomForces=True, rst=None,
-                 overwrite=False):
+                 overwrite=False, dihedrals=[], distribution={}, conf=None):
         """
         Initialise the object to be used for sampling water insertion/deletion moves
 
@@ -1623,7 +1671,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
         BaseGrandCanonicalMonteCarloSampler.__init__(self, system, topology, temperature, resname=resname,
                                                      ghostFile=ghostFile, log=log,
                                                      createCustomForces=createCustomForces, dcd=dcd, rst=rst,
-                                                     overwrite=overwrite)
+                                                     overwrite=overwrite, dihedrals=dihedrals, distribution=distribution, conf=conf)
 
         # Read in simulation box lengths
         self.simulation_box = np.array([boxVectors[0, 0]._value,
@@ -1925,7 +1973,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
                  excessChemicalPotential=-6.09*unit.kilocalories_per_mole, standardVolume=30.345*unit.angstroms**3,
                  adamsShift=0.0, nPertSteps=1, nPropStepsPerPert=1, timeStep=2 * unit.femtoseconds, boxVectors=None,
                  ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', createCustomForces=True, dcd=None, rst=None,
-                 overwrite=False, lambdas=None):
+                 overwrite=False, lambdas=None, dihedrals=[], distribution={}, conf=None):
         """
         Initialise the object to be used for sampling NCMC-enhanced water insertion/deletion moves
 
@@ -1984,7 +2032,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         GCMCSystemSampler.__init__(self, system, topology, temperature, resname=resname, adams=adams,
                                    excessChemicalPotential=excessChemicalPotential, standardVolume=standardVolume,
                                    adamsShift=adamsShift, boxVectors=boxVectors, ghostFile=ghostFile, log=log,
-                                   createCustomForces=createCustomForces, dcd=dcd, rst=rst, overwrite=overwrite)
+                                   createCustomForces=createCustomForces, dcd=dcd, rst=rst, overwrite=overwrite,
+                                   dihedrals=dihedrals, distribution=distribution, conf=conf)
 
         # Load in extra NCMC variables
         if lambdas is not None:
