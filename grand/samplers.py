@@ -183,9 +183,9 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             self.restart = None
 
         print(f'Dihedrals in the BaseSampler : {dihedrals}')
+        self.dihedrals = dihedrals
         # Define dihedral sampling stuff - Maybe expand this across all samplers in future but only need it here for now
         if len(dihedrals) > 0:  # If some dihedrals have actually been defined
-            self.dihedrals = dihedrals
             print(self.dihedrals)
             self.dihedral_distribution = distribution
             self.rdkit_conf = conf
@@ -1258,7 +1258,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                  adamsShift=0.0, nPertSteps=1, nPropStepsPerPert=1, timeStep=2 * unit.femtoseconds, lambdas=None,
                  resname='HOH', ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None, sphereCentre=None,
                  log='gcmc.log', createCustomForces=True, dcd=None, rst=None, overwrite=False,
-                 dihedrals=[], distribution={}, conf=None):
+                 dihedrals=[], distribution={}, conf=None, maxN=999):
         """
         Initialise the object to be used for sampling NCMC-enhanced water insertion/deletion moves
 
@@ -1321,7 +1321,12 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         dihedrals : list
             List of dihedrals in the insertion molecule
         distribution : dict
-            Dictionary of the conformation distribution in the moelcule and thier populations
+            Dictionary of the conformation distribution in the moelcule and their populations
+        conf : rdkit thing
+            RDKit conformer for use when inserting flexible molecules
+        maxN : int
+            User can supply the maximum number of N molecules to have in the sphere - this will massively speed up calculations
+            to prevent un-needed insertions.
         """
         # Initialise base class
         GCMCSphereSampler.__init__(self, system, topology, temperature, adams=adams,
@@ -1342,6 +1347,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             self.n_pert_steps = nPertSteps
             self.lambdas = np.linspace(0.0, 1.0, self.n_pert_steps + 1)
 
+        self.maxN = maxN
         self.n_pert_steps = nPertSteps
         self.n_prop_steps_per_pert = nPropStepsPerPert
         self.time_step = timeStep.in_units_of(unit.picosecond)
@@ -1416,11 +1422,15 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         # Store initial positions
         old_positions = deepcopy(self.positions)
 
+        if self.N >= self.maxN:  # If we know we're at the max for the sphere, dont bother trying to insert!
+            print('Insertion move not attempted because binding site is full.')
+            return None
+
         # Choose a random site in the sphere to insert a molecule
         new_positions, insert_mol, gcmc_id, mol_id = self.insertRandomMolecule()
 
-        with open(f'insertion_{self.n_moves}.pdb', 'w') as f:
-            openmm.app.PDBFile.writeFile(self.topology, new_positions, f)
+        #with open(f'insertion_{self.n_moves}.pdb', 'w') as f:
+         #   openmm.app.PDBFile.writeFile(self.topology, new_positions, f)
 
         # Need to update the context positions
         self.context.setPositions(new_positions)
