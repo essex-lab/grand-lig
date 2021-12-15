@@ -755,7 +755,10 @@ def get_dihedral_distribution(ghost_file, ghost_smile, dihedrals):
 
         energys.append([E])
         for dihedral in dihedrals:
-            energys[j].append(Chem.rdMolTransforms.GetDihedralDeg(conf, *dihedral))
+            if Chem.rdMolTransforms.GetDihedralDeg(conf, *dihedral) <= 0:
+                energys[j].append(Chem.rdMolTransforms.GetDihedralDeg(conf, *dihedral) + 360)
+            else:
+                energys[j].append(Chem.rdMolTransforms.GetDihedralDeg(conf, *dihedral))
         counter += 1
     # Pull out unique E's to dp
     conformation_dict = {}
@@ -769,11 +772,14 @@ def get_dihedral_distribution(ghost_file, ghost_smile, dihedrals):
     probs = np.exp((-E_rels) / (8.314 * 298))
     probs = (probs / sum(probs)) * 100
     for i, key in enumerate(list(conformation_dict.keys())):
-        conformation_dict[key] = (round(probs[i], 2))  # Change the dictionary to have population instead of energy
+        if probs[i] < 1:
+            conformation_dict[key] = 0.0
+            del conformation_dict[key]
+        else:
+            conformation_dict[key] = (round(probs[i], 2))  # Change the dictionary to have population instead of energy
 
     #print(conformation_dict)
-    print(len(probs), probs)
-
+    #print(len(probs), probs)
     return conf, conformation_dict
 
 
@@ -835,7 +841,10 @@ def get_dihedral_dist_for_FF(ghost_file, ghost_xml, rd_conf, dihedrals, RD_confo
                     rd_conf.SetAtomPosition(atom.index, after_omm_min_positions[atom.index]._value * 10)
         new_dihedrals = []  # Get new dihedrals
         for i, dihedral in enumerate(dihedrals):
-            new_dihedrals.append(Chem.rdMolTransforms.GetDihedralDeg(rd_conf,*dihedral))
+            if Chem.rdMolTransforms.GetDihedralDeg(rd_conf, *dihedral) <= 0:
+                new_dihedrals.append(Chem.rdMolTransforms.GetDihedralDeg(rd_conf, *dihedral) + 360)
+            else:
+                new_dihedrals.append(Chem.rdMolTransforms.GetDihedralDeg(rd_conf, *dihedral))
         new_conformations.append(new_dihedrals)
         OMM_energy.append(energy._value)  # in kj mol-1
 
@@ -857,6 +866,7 @@ def get_dihedral_dist_for_FF(ghost_file, ghost_xml, rd_conf, dihedrals, RD_confo
         new_conformation_dict[key] = (round(probs[i], 2))  # Change the dictionary to have population instead of energy
     #print(len(OMM_energy), OMM_energy, new_conformations)
     return new_conformation_dict
+
 
 def shift_ghost_waters(ghost_file, topology=None, trajectory=None, t=None, output=None):
     """
