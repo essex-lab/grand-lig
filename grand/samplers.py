@@ -427,7 +427,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         return None
 
-    def adjustSpecificMolecule(self, resid, new_lambda):
+    def adjustSpecificMolecule(self, resid, new_lambda, ele=None, vdw=None):
         """
         Adjust the coupling of a specific molecule, by adjusting the lambda value
 
@@ -438,8 +438,12 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         new_lambda : float
             Value to set lambda to for this particle
         """
-        # Get lambda values
-        lambda_vdw, lambda_ele = potential.get_lambda_values(new_lambda)
+        if ele == None or vdw == None:
+            # Get lambda values
+            lambda_vdw, lambda_ele = potential.get_lambda_values(new_lambda)
+        else:
+            lambda_vdw = vdw
+            lambda_ele = ele
 
         # Update per-atom nonbonded parameters first
         atoms = self.mol_atom_ids[resid]
@@ -1423,7 +1427,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         old_positions = deepcopy(self.positions)
 
         if self.N >= self.maxN:  # If we know we're at the max for the sphere, dont bother trying to insert!
-            print('Insertion move not attempted because binding site is full.')
+            self.logger.info('Insertion move not attempted because binding site is full.')
             return None
 
         # Choose a random site in the sphere to insert a molecule

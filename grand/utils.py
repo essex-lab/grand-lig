@@ -8,6 +8,7 @@ These functions are not used during the simulation, but will be relevant in sett
 simulations and processing results
 
 Marley Samways
+Will Poole
 """
 import copy
 import os
