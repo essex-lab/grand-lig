@@ -1527,3 +1527,9 @@ def cluster_molecules(topology, trajectory, resname, sphere_radius, ref_atoms=No
         f.write("END")
 
     return None
+
+
+def setupmoveTraj(n_moves):
+    name = f"move-{n_moves+1}.dcd"
+    moveDCD = mdtraj.reporters.DCDReporter(f"move-{n_moves+1}.dcd", 0)
+    return moveDCD, name
