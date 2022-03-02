@@ -17,6 +17,7 @@ import mdtraj
 import os
 import logging
 import parmed
+import math
 from copy import deepcopy
 from simtk import unit
 from simtk import openmm
@@ -69,11 +70,11 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             else:
                 raise Exception("File {} already exists, not overwriting...".format(log))
 
-        self.logger = logging.getLogger(log)
+        self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
         file_handler = logging.FileHandler(log)
         file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s : %(message)s'))
+        file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s: %(message)s'))
         self.logger.addHandler(file_handler)
 
         # Set important variables here
@@ -94,8 +95,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
                 self.nonbonded_force = force
             # Flag an error if not simulating at constant volume
             elif "Barostat" in force.__class__.__name__:
-                self.logger.error("GCMC must be used at constant volume - {} cannot be used!".format(force.__class__.__name__))
-                raise Exception("GCMC must be used at constant volume - {} cannot be used!".format(force.__class__.__name__))
+                self.raiseError("GCMC must be used at constant volume - {} cannot be used!".format(force.__class__.__name__))
 
         # Set GCMC-specific variables
         self.N = 0  # Initialise N as zero
@@ -107,9 +107,11 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         # Get residue IDs & assign statuses to each
         self.mol_resids = self.getMoleculeResids(resname)  # All molecules
         print(self.mol_resids)
-        self.mol_status = np.ones_like(self.mol_resids)  # 1 indicates on, 0 indicates off
+        # Assign each water a status: 0: ghost water, 1: GCMC water, 2: Water not under GCMC tracking (out of sphere)
+        self.mol_status = {x: 1 for x in self.mol_resids}  # Initially assign all to 1
+        print('Testing the new updates babyyyyyyyy!!!!!!!!!!!!!')
+        #self.mol_status = np.ones_like(self.mol_resids)  # 1 indicates on, 0 indicates off
         self.gcmc_resids = []  # GCMC molecules
-        self.gcmc_status = []  # 1 indicates on, 0 indicates off
 
         # Need to customised forces to handle softcore steric interactions and exceptions
         self.mol_params = []  # Stores nonbonded parameters for each atom
@@ -142,8 +144,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.ghost_file = ghostFile
         # Check whether to overwrite if the file already exists
         if os.path.isfile(self.ghost_file) and not overwrite:
-            self.logger.error("File {} already exists, not overwriting...".format(self.ghost_file))
-            raise Exception("File {} already exists, not overwriting...".format(self.ghost_file))
+            self.raiseError("File {} already exists, not overwriting...".format(self.ghost_file))
         else:
             with open(self.ghost_file, 'w') as f:
                 pass
@@ -157,8 +158,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
                     os.remove(dcd)
                     self.dcd = mdtraj.reporters.DCDReporter(dcd, 0)
                 else:
-                    self.logger.error("File {} already exists, not overwriting...".format(dcd))
-                    raise Exception("File {} already exists, not overwriting...".format(dcd))
+                    self.raiseError("File {} already exists, not overwriting...".format(dcd))
             else:
                 self.dcd = mdtraj.reporters.DCDReporter(dcd, 0)
         else:
@@ -167,8 +167,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         if rst is not None:
             # Check whether to overwrite
             if os.path.isfile(rst) and not overwrite:
-                self.logger.error("File {} already exists, not overwriting...".format(rst))
-                raise Exception("File {} already exists, not overwriting...".format(rst))
+                self.raiseError("File {} already exists, not overwriting...".format(rst))
             else:
                 # Check whether to use PDB or RST7 for the restart file
                 rst_ext = os.path.splitext(rst)[1]
@@ -177,8 +176,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
                 elif rst_ext == '.pdb':
                     self.restart = utils.PDBRestartReporter(rst, self.topology)
                 else:
-                    self.logger.error("File extension {} not recognised for restart file".format(rst))
-                    raise Exception("File extension {} not recognised for restart file".format(rst))
+                    self.raiseError("File extension {} not recognised for restart file".format(rst))
         else:
             self.restart = None
 
@@ -247,7 +245,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         Parameters
         ----------
-        wresname : str
+        resname : str
             Name of the molecule residues
     
         Returns
@@ -339,6 +337,54 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         return None
 
+    def setMolStatus(self, resid, new_value):
+        """
+        Set the status of a particular water to a particular value
+
+        Parameters
+        ----------
+        resid : int
+            Residue to update the status for
+        new_value : int
+            New value of the water status. 0: ghost, 1: GCMC water, 2: Non-tracked water
+        """
+        self.mol_status[resid] = new_value
+        return None
+
+    def getMolStatusResids(self, value):
+        """
+        Get a list of resids which have a particular status value
+
+        Parameters
+        ----------
+        value : int
+            Value of the water status. 0: ghost, 1: GCMC water, 2: Non-tracked water
+
+        Returns
+        -------
+        resids : numpy.array
+            List of residues which match that status
+        """
+        resids = [x[0] for x in self.mol_status.items() if x[1] == value]
+        return resids
+
+    def getMolStatusValue(self, resid):
+        """
+        Get the status value of a particular resid
+
+        Parameters
+        ----------
+        resid : int
+            Residue to update the status for
+
+        Returns
+        -------
+        value : int
+            Value of the water status. 0: ghost, 1: GCMC water, 2: Non-tracked water
+        """
+        value = self.mol_status[resid]
+        return value
+
     def getMoleculeAtoms(self):
         """
         Get all atom IDs for each molecule, noting heavy atoms in a second list
@@ -406,24 +452,17 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         # Add ghost residues to list of GCMC residues
         for resid in ghost_resids:
             self.gcmc_resids.append(resid)
-        self.gcmc_status = np.ones_like(self.gcmc_resids, dtype=np.int_)  # Store status of each GCMC molecule
 
         # Switch off the interactions involving ghost molecules
         for resid, residue in enumerate(self.topology.residues()):
             if resid in ghost_resids:
                 #  Switch off nonbonded interactions involving this molecule
-                #atom_ids = []
-                #for i, atom in enumerate(residue.atoms()):
-                #    atom_ids.append(atom.index)
                 self.adjustSpecificMolecule(resid, 0.0)
                 # Mark that this molecule has been switched off
-                gcmc_id = np.where(np.array(self.gcmc_resids) == resid)[0]
-                wat_id = np.where(np.array(self.mol_resids) == resid)[0]
-                self.gcmc_status[gcmc_id] = 0
-                self.mol_status[wat_id] = 0
+                self.setMolStatus(resid, 0)
 
         # Calculate N
-        self.N = np.sum(self.gcmc_status)
+        self.N = len(self.getMolStatusResids(1))  # Gets all the resids that are status 1
 
         return None
 
@@ -523,6 +562,21 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         return None
 
+    def raiseError(self, error_msg):
+        """
+        Make it nice and easy to report an error in a consisent way - also easier to manage error handling in future
+
+        Parameters
+        ----------
+        error_msg : str
+            Message describing the error
+        """
+        # Write to the log file
+        self.logger.error(error_msg)
+        # Raise an Exception
+        raise Exception(error_msg)
+        return None
+
     def writeGhostMoleculeResids(self):
         """
         Write out a comma-separated list of the residue IDs of molecules which are
@@ -532,8 +586,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         """
         # Need to write this function
         with open(self.ghost_file, 'a') as f:
-            gcmc_ids = np.where(self.gcmc_status == 0)[0]
-            ghost_resids = [self.gcmc_resids[id] for id in gcmc_ids]
+            ghost_resids = self.getMolStatusResids(0)
             if len(ghost_resids) > 0:
                 f.write("{}".format(ghost_resids[0]))
                 if len(ghost_resids) > 1:
@@ -760,8 +813,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
             self.ref_atoms = None
             self.logger.info("GCMC sphere is fixed in space and centred on {}".format(self.sphere_centre))
         else:
-            self.logger.error("A set of atoms or coordinates must be used to define the centre of the sphere!")
-            raise Exception("A set of atoms or coordinates must be used to define the centre of the sphere!")
+            self.raiseError("A set of atoms or coordinates must be used to define the centre of the sphere!")
 
         self.logger.info("GCMC sphere radius is {}".format(self.sphere_radius))
 
@@ -770,7 +822,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
             self.B = adams
         else:
             # Calculate Bequil from the chemical potential and volume
-            self.B = excessChemicalPotential / self.kT + np.log(volume / standardVolume)
+            self.B = excessChemicalPotential / self.kT + math.log(volume / standardVolume)
             # Shift B from Bequil if necessary
             self.B += adamsShift
 
@@ -796,7 +848,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         atom_indices = []
         # Convert to list of lists, if not already
         if not all(type(x) == dict for x in ref_atoms):
-            raise Exception("Reference atoms must be a list of dictionaries! {}".format(ref_atoms))
+            self.raiseError("Reference atoms must be a list of dictionaries! {}".format(ref_atoms))
 
         # Find atom index for each of the atoms used
         for atom_dict in ref_atoms:
@@ -834,16 +886,12 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
                             atom_indices.append(atom.index)
                             found = True
             if not found:
-                self.logger.error("Atom {} of residue {}{} not found!".format(atom_dict['name'],
-                                                                              atom_dict['resname'].capitalize(),
-                                                                              atom_dict['resid']))
-                raise Exception("Atom {} of residue {}{} not found!".format(atom_dict['name'],
+                self.raiseError("Atom {} of residue {}{} not found!".format(atom_dict['name'],
                                                                             atom_dict['resname'].capitalize(),
                                                                             atom_dict['resid']))
 
         if len(atom_indices) == 0:
-            self.logger.error("No GCMC reference atoms found")
-            raise Exception("No GCMC reference atoms found")
+            self.raiseError("No GCMC reference atoms found")
 
         return atom_indices
 
@@ -853,8 +901,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         Need to make sure it isn't affected by the reference atoms being split across PBCs
         """
         if self.ref_atoms is None:
-            self.logger.error("No reference atoms defined, cannot get sphere coordinates...")
-            raise Exception("No reference atoms defined, cannot get sphere coordinates...")
+            self.raiseError("No reference atoms defined, cannot get sphere coordinates...")
 
         # Calculate the mean coordinate
         self.sphere_centre = np.zeros(3) * unit.nanometers
@@ -910,7 +957,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
                 if i == j:
                     continue
                 if not np.isclose(box_vectors[i, j]._value, 0.0):
-                    raise Exception("grand only accepts cuboidal simulation cells at this time.")
+                    self.raiseError("grand only accepts cuboidal simulation cells at this time.")
 
         # Get sphere-specific variables
         self.updateGCMCSphere(state)
@@ -944,16 +991,17 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
 
         # Loop over all residues to find those of interest
         for resid, residue in enumerate(self.topology.residues()):
-            if resid not in self.gcmc_resids:
-                continue  # Only concerned with GCMC waters
-            gcmc_id = np.where(np.array(self.gcmc_resids) == resid)[0][0]  # Position in list of GCMC waters
-            wat_id = np.where(np.array(self.mol_resids) == resid)[0][0]  #  Position in list of all waters
-            if self.gcmc_status[gcmc_id] == 1:
-                self.adjustSpecificMolecule(resid, 0.0)
-                # Update relevant parameters
-                self.gcmc_status[gcmc_id] = 0
-                self.mol_status[wat_id] = 0
-                self.N -= 1
+            if resid not in self.mol_resids:  # Make sure its a molecule of interest
+                continue
+
+            # Make sure its a GCMC molecules (ghost/in sphere)
+            if self.getMolStatusValue(resid) != 1:
+                continue
+
+            self.adjustSpecificMolecule(resid, 0.0)
+            # Update relevant parameters
+            self.setMolStatus(resid, 0)
+            self.N -= 1
 
         return None
 
@@ -966,10 +1014,6 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         if self.ref_atoms is not None:
             self.getSphereCentre()
 
-        # Update gcmc_resids and gcmc_status
-        gcmc_resids = []
-        gcmc_status = []
-
         box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
         self.simulation_box = np.array([box_vectors[0, 0]._value,
                                         box_vectors[1, 1]._value,
@@ -977,15 +1021,12 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
 
         # Check which molecules are in the GCMC region
         for resid, residue in enumerate(self.topology.residues()):
+            # Make sure its a molecule of interesrt
             if resid not in self.mol_resids:
                 continue
 
-            mol_id = np.where(np.array(self.mol_resids) == resid)[0][0]
-
             # Ghost molecules automatically count as GCMC waters
-            if self.mol_status[mol_id] == 0:
-                gcmc_resids.append(resid)
-                gcmc_status.append(0)
+            if self.getMolStatusValue(resid) == 0:
                 continue
 
             # Check if the molecule is within the sphere
@@ -996,15 +1037,15 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
                     vector[i] -= self.simulation_box[i]
                 elif vector[i] <= -0.5 * self.simulation_box[i]:
                     vector[i] += self.simulation_box[i]
-            # Update lists if this molecule is in the sphere
+            # Set molecule status as appropriate
             if np.linalg.norm(vector.in_units_of(unit.angstroms)) * unit.angstrom <= self.sphere_radius:
-                gcmc_resids.append(resid)  #  Add to list of GCMC waters
-                gcmc_status.append(self.mol_status[mol_id])
+                self.setMolStatus(resid, 1)  # GCMC to be tracked i.e its on and in sphere
+            else:
+                self.setMolStatus(resid, 2)  # Not being tracked
+
 
         # Update lists
-        self.gcmc_resids = deepcopy(gcmc_resids)
-        self.gcmc_status = np.array(gcmc_status)
-        self.N = np.sum(self.gcmc_status)
+        self.N = len(self.getMolStatusResids(1))
 
         return None
 
@@ -1018,21 +1059,14 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
             Positions following the 'insertion' of the ghost water
         insert_mol : int
             Resid of the molecule to insert
-        gcmc_id : int
-            GCMC ID for this molecule
-        mol_id : int
-            Overall ID for this molecule
         """
         # Select a ghost molecule to insert
-        ghost_wats = np.where(self.gcmc_status == 0)[0]
+        ghost_mols = self.getMolStatusResids(0)  # Find all mols that are turned off (ghosts)
         # Check that there are any ghosts present
-        if len(ghost_wats) == 0:
-            self.logger.error("No ghost molecules left, so insertion moves cannot occur - add more ghost waters")
-            raise Exception("No ghost molecules left, so insertion moves cannot occur - add more ghost waters")
+        if len(ghost_mols) == 0:
+            self.raiseError("No ghost molecules left, so insertion moves cannot occur - add more ghost molecules")
 
-        gcmc_id = np.random.choice(ghost_wats)  # Position in list of GCMC molecules
-        insert_mol = self.gcmc_resids[gcmc_id]
-        mol_id = np.where(np.array(self.mol_resids) == insert_mol)[0][0]  # Position in list of all molecules
+        insert_mol = np.random.choice(ghost_mols)  # Position in list of GCMC molecules
 
         # Select a point to insert the water (based on O position)
         rand_nums = np.random.randn(3)
@@ -1045,7 +1079,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
             self.positions = new_positions
             new_positions = self.randomiseMoleculeConformer(insert_mol)
 
-        return new_positions, insert_mol, gcmc_id, mol_id
+        return new_positions, insert_mol
 
     def deleteRandomMolecule(self):
         """
@@ -1061,20 +1095,20 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
             Overall ID for this molecule
         """
         # Cannot carry out deletion if there are no GCMC waters on
-        if np.sum(self.gcmc_status) == 0:
-            return None, None, None
+        gcmc_mols = self.getMolStatusResids(1)  # Get all the 'on' resids
+        if len(gcmc_mols) == 0:
+            return None
 
         # Select a water residue to delete
-        gcmc_id = np.random.choice(np.where(self.gcmc_status == 1)[0])  # Position in list of GCMC molecules
-        delete_mol = self.gcmc_resids[gcmc_id]
-        mol_id = np.where(np.array(self.mol_resids) == delete_mol)[0][0]  # Position in list of all molecules
-        atom_indices = []
+        delete_mol = np.random.choice(gcmc_mols)  # Position in list of GCMC molecules
+
+        atom_indices = []  # Dont think i Need
         for resid, residue in enumerate(self.topology.residues()):
             if resid == delete_mol:
                 for atom in residue.atoms():
                     atom_indices.append(atom.index)
 
-        return delete_mol, gcmc_id, mol_id
+        return delete_mol
 
 
 ########################################################################################################################
@@ -1190,7 +1224,7 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
         Carry out a random water insertion move on the current system
         """
         # Choose a random site in the sphere to insert a molecule
-        new_positions, insert_mol, gcmc_id, mol_id = self.insertRandomMolecule()
+        new_positions, insert_mol = self.insertRandomMolecule()
 
         # Recouple this water
         self.adjustSpecificMolecule(insert_mol, 1.0)
@@ -1198,7 +1232,7 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
         self.context.setPositions(new_positions)
         # Calculate new system energy and acceptance probability
         final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
-        acc_prob = np.exp(self.B) * np.exp(-(final_energy - self.energy) / self.kT) / (self.N + 1)
+        acc_prob = math.exp(self.B) * math.exp(-(final_energy - self.energy) / self.kT) / (self.N + 1)
         self.acceptance_probabilities.append(acc_prob)
 
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
@@ -1209,8 +1243,7 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
         else:
             # Update some variables if move is accepted
             self.positions = deepcopy(new_positions)
-            self.gcmc_status[gcmc_id] = 1
-            self.mol_status[mol_id] = 1
+            self.setMolStatus(insert_mol, 1)
             self.N += 1
             self.n_accepted += 1
             # Update energy
@@ -1225,16 +1258,16 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
         Carry out a random water deletion move on the current system
         """
         # Choose a random molecule in the sphere to be deleted
-        delete_mol, gcmc_id, mol_id = self.deleteRandomMolecule()
+        delete_mol = self.deleteRandomMolecule()
         # Deletion may not be possible
-        if gcmc_id is None:
+        if delete_mol is None:
             return None
 
         # Switch water off
         self.adjustSpecificMolecule(delete_mol, 0.0)
         # Calculate energy of new state and acceptance probability
         final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
-        acc_prob = self.N * np.exp(-self.B) * np.exp(-(final_energy - self.energy) / self.kT)
+        acc_prob = self.N * math.exp(-self.B) * math.exp(-(final_energy - self.energy) / self.kT)
         self.acceptance_probabilities.append(acc_prob)
 
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
@@ -1242,8 +1275,7 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
             self.adjustSpecificMolecule(delete_mol, 1.0)
         else:
             # Update some variables if move is accepted
-            self.gcmc_status[gcmc_id] = 0
-            self.mol_status[mol_id] = 0
+            self.setMolStatus(delete_mol, 0)
             self.N -= 1
             self.n_accepted += 1
             # Update energy
@@ -1369,17 +1401,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         self.n_left_sphere = 0  # Number of moves rejected because the water left the sphere
         self.record = recordTraj
 
-        # Define a compound integrator
-        #self.compound_integrator = openmm.CompoundIntegrator()
-        # Add the MD integrator
-        #self.compound_integrator.addIntegrator(integrator)
-        # Create and add the nonequilibrium integrator
-        #self.ncmc_integrator = NonequilibriumLangevinIntegrator(temperature=temperature,
-        #                                                        collision_rate=1.0/unit.picosecond,
-        #                                                        timestep=self.time_step, splitting="V R O R V")
-        #self.compound_integrator.addIntegrator(self.ncmc_integrator)
-        # Set the compound integrator to the MD integrator
-        #self.compound_integrator.setCurrentIntegrator(0)
         self.integrator = integrator
 
         self.logger.info("NonequilibriumGCMCSphereSampler object initialised")
@@ -1406,8 +1427,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         # Update GCMC region based on current state
         self.updateGCMCSphere(state)
 
-        # Set to NCMC integrator
-        #self.compound_integrator.setCurrentIntegrator(1)
 
         #  Execute moves
         for i in range(n):
@@ -1423,13 +1442,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             self.n_moves += 1
             self.Ns.append(self.N)
 
-            #if self.record:  # Fix the file name and remove the reporter attached to the simulation
-             #   self.simulation.reporters.pop(-1)
-
-
-        # Set to MD integrator
-        #self.compound_integrator.setCurrentIntegrator(0)
-
         return None
 
     def insertionMove(self):
@@ -1444,8 +1456,8 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             return None
 
         # Choose a random site in the sphere to insert a molecule
-        new_positions, insert_mol, gcmc_id, mol_id = self.insertRandomMolecule()
-        #print(insert_mol, gcmc_id, mol_id)
+        new_positions, insert_mol = self.insertRandomMolecule()
+        #print(insert_mol)
 
         #with open(f'insertion_{self.n_moves}.pdb', 'w') as f:
          #   openmm.app.PDBFile.writeFile(self.topology, new_positions, f)
@@ -1490,14 +1502,13 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         self.insert_works.append(protocol_work)
 
         # Update variables and GCMC sphere
-        #self.gcmc_status[gcmc_id] = 1
-        self.mol_status[mol_id] = 1
+        self.setMolStatus(insert_mol, 1)
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
         self.positions = state.getPositions(asNumpy=True)
         self.updateGCMCSphere(state)
 
         # Check which waters are still in the GCMC sphere
-        gcmc_mols_new = [mol for i, mol in enumerate(self.gcmc_resids) if self.gcmc_status[i] == 1]
+        gcmc_mols_new = self.getMolStatusResids(1)
 
         # Calculate acceptance probability
         if insert_mol not in gcmc_mols_new:
@@ -1510,7 +1521,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             self.logger.info("Move rejected due to an instability during integration")
         else:
             # Calculate acceptance probability based on protocol work
-            acc_prob = np.exp(self.B) * np.exp(-protocol_work/self.kT) / self.N  # Here N is the new value
+            acc_prob = math.exp(self.B) * math.exp(-protocol_work/self.kT) / self.N  # Here N is the new value
 
         self.acceptance_probabilities.append(acc_prob)
 
@@ -1525,8 +1536,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             self.positions = deepcopy(old_positions)
             self.velocities = -self.velocities
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
-            #self.gcmc_status[gcmc_id] = 0
-            self.mol_status[mol_id] = 0
+            self.setMolStatus(insert_mol, 0)  # rejected so its off
             self.updateGCMCSphere(state)
         else:
             # Update some variables if move is accepted
@@ -1549,10 +1559,10 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         old_positions = deepcopy(self.positions)
 
         # Choose a random water in the sphere to be deleted
-        delete_mol, gcmc_id, mol_id = self.deleteRandomMolecule()
+        delete_mol = self.deleteRandomMolecule()
 
         # Deletion may not be possible
-        if gcmc_id is None:
+        if delete_mol is None:
             return None
 
         # Start running perturbation and propagation kernels
@@ -1591,15 +1601,14 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         self.delete_works.append(protocol_work)
 
         # Update variables and GCMC sphere
-        #self.gcmc_status[gcmc_id] = 1  # Leaving the water as 'on' here to check
-        self.mol_status[mol_id] = 1  # that the deleted water doesn't leave
+        # Leaving the molecule as 'on' here to check that the deleted water doesn't leave
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
         self.positions = state.getPositions(asNumpy=True)
         old_N = self.N
         self.updateGCMCSphere(state)
 
         # Check which waters are still in the GCMC sphere
-        gcmc_mols_new = [mol for i, mol in enumerate(self.gcmc_resids) if self.gcmc_status[i] == 1]
+        gcmc_mols_new = self.getMolStatusResids(1)
 
         # Calculate acceptance probability
         if delete_mol not in gcmc_mols_new:
@@ -1607,16 +1616,14 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             acc_prob = 0
             self.n_left_sphere += 1
             self.logger.info("Move rejected due to molecule leaving the GCMC sphere")
-
         elif explosion:
             acc_prob = 0
             self.logger.info("Move rejected due to an instability during integration")
         else:
             # Calculate acceptance probability based on protocol work
-            acc_prob = old_N * np.exp(-self.B) * np.exp(-protocol_work/self.kT)  # N is the old value
+            acc_prob = old_N * math.exp(-self.B) * math.exp(-protocol_work/self.kT)  # N is the old value
 
         self.acceptance_probabilities.append(acc_prob)
-
 
         # Update or reset the system, depending on whether the move is accepted or rejected
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
@@ -1634,8 +1641,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             # Update some variables if move is accepted
             if self.record:
                 os.rename(self.dcd_name, '{}_accepted_deletion.dcd'.format(self.dcd_name))
-            #self.gcmc_status[gcmc_id] = 0
-            self.mol_status[mol_id] = 0
+            self.setMolStatus(delete_mol, 0)
             self.N = len(gcmc_mols_new) - 1  # Accounting for the deleted water
             self.n_accepted += 1
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
@@ -1736,7 +1742,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
             self.B = adams
         else:
             # Calculate Bequil from the chemical potential and volume
-            self.B = excessChemicalPotential / self.kT + np.log(volume / standardVolume)
+            self.B = excessChemicalPotential / self.kT + math.log(volume / standardVolume)
             # Shift B from Bequil if necessary
             self.B += adamsShift
 
@@ -1758,8 +1764,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
         """
         print('Checking that developer mode is on....')
         if len(ghostResids) == 0 or ghostResids is None:
-            self.logger.error("No ghost molecules given! Cannot insert molecules without any ghosts!")
-            raise Exception("No ghost molecules given! Cannot insert molecules without any ghosts!")
+            self.raiseError("No ghost molecules given! Cannot insert molecules without any ghosts!")
         # Load context into sampler
         self.context = context
 
@@ -1776,7 +1781,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
                 if i == j:
                     continue
                 if not np.isclose(box_vectors[i, j]._value, 0.0):
-                    raise Exception("grand only accepts cuboidal simulation cells at this time.")
+                    self.raiseError("grand only accepts cuboidal simulation cells at this time.")
 
         self.simulation_box = np.array([box_vectors[0, 0]._value,
                                         box_vectors[1, 1]._value,
@@ -1786,10 +1791,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
         self.deleteGhostMolecules(ghostResids)
 
         # Count N
-        self.N = np.sum(self.mol_status)
-
-        self.gcmc_resids = deepcopy(self.mol_resids)
-        self.gcmc_status = deepcopy(self.mol_status)
+        self.N = len(self.getMolStatusResids(1))
 
         return None
 
@@ -1803,21 +1805,14 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
             Positions following the 'insertion' of the ghost water
         insert_mol : int
             Resid of the molecule to insert
-        gcmc_id : int
-            GCMC ID for this molecule
-        mol_id : int
-            Overall ID for this molecule
         """
         # Select a ghost water to insert
-        ghost_mols = np.where(self.gcmc_status == 0)[0]
+        ghost_mols = self.getMolStatusResids(0)
         # Check that there are any ghosts present
         if len(ghost_mols) == 0:
-            self.logger.error("No ghost molecules left, so insertion moves cannot occur - add more ghosts")
-            raise Exception("No ghost molecules left, so insertion moves cannot occur - add more ghosts")
+            self.raiseError("No ghost molecules left, so insertion moves cannot occur - add more ghosts")
 
-        gcmc_id = np.random.choice(ghost_mols)  # Position in list of GCMC waters
-        insert_mol = self.gcmc_resids[gcmc_id]
-        mol_id = np.where(np.array(self.mol_resids) == insert_mol)[0][0]  # Position in list of all molecules
+        insert_mol = np.random.choice(ghost_mols)  # Position in list of GCMC waters
 
         # Select a point to insert the molecule (based on centre of heavy atoms)
         insert_point = np.random.rand(3) * self.simulation_box
@@ -1825,7 +1820,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
         # Randomly rotate the molecule, and shift to the insertion point
         new_positions = self.randomMolecularRotation(insert_mol, insert_point)
 
-        return new_positions, insert_mol, gcmc_id, mol_id
+        return new_positions, insert_mol
 
     def deleteRandomMolecule(self):
         """
@@ -1835,21 +1830,15 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
         -------
         delete_mol : int
             Resid of the molecule to delete
-        gcmc_id : int
-            GCMC ID for this molecule
-        mol_id : int
-            Overall ID for this molecule
         """
         # Cannot carry out deletion if there are no GCMC molecules on
-        if np.sum(self.gcmc_status) == 0:
-            return None, None, None
+        gcmc_mols = self.getMolStatusResids(1)  # Get on mols
+        if len(gcmc_mols) == 0:
+            return None
 
         # Select a water residue to delete
-        gcmc_id = np.random.choice(np.where(self.gcmc_status == 1)[0])  # Position in list of GCMC molecules
-        delete_mol = self.gcmc_resids[gcmc_id]
-        mol_id = np.where(np.array(self.mol_resids) == delete_mol)[0][0]  # Position in list of all molecules
-
-        return delete_mol, gcmc_id, mol_id
+        delete_mol = np.random.choice(gcmc_mols)  # Position in list of GCMC molecules
+        return delete_mol
 
 
 ########################################################################################################################
@@ -1953,7 +1942,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         Carry out a random water insertion move on the current system
         """
         # Insert a ghost water to a random site
-        new_positions, insert_mol, gcmc_id, mol_id = self.insertRandomMolecule()
+        new_positions, insert_mol = self.insertRandomMolecule()
 
         # Recouple this water
         self.adjustSpecificMolecule(insert_mol, 1.0)
@@ -1961,7 +1950,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         self.context.setPositions(new_positions)
         # Calculate new system energy and acceptance probability
         final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
-        acc_prob = np.exp(self.B) * np.exp(-(final_energy - self.energy) / self.kT) / (self.N + 1)
+        acc_prob = math.exp(self.B) * math.exp(-(final_energy - self.energy) / self.kT) / (self.N + 1)
         self.acceptance_probabilities.append(acc_prob)
 
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
@@ -1972,8 +1961,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         else:
             # Update some variables if move is accepted
             self.positions = deepcopy(new_positions)
-            self.gcmc_status[gcmc_id] = 1
-            self.mol_status[mol_id] = 1
+            self.setMolStatus(insert_mol, 1)  # Set the mol status to on
             self.N += 1
             self.n_accepted += 1
             # Update energy
@@ -1988,16 +1976,16 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         Carry out a random water deletion move on the current system
         """
         # Choose a random water to be deleted
-        delete_mol, gcmc_id, mol_id = self.deleteRandomMolecule()
+        delete_mol = self.deleteRandomMolecule()
         # Deletion may not be possible
-        if gcmc_id is None:
+        if delete_mol is None:
             return None
 
         # Switch water off
         self.adjustSpecificMolecule(delete_mol, 0.0)
         # Calculate energy of new state and acceptance probability
         final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
-        acc_prob = self.N * np.exp(-self.B) * np.exp(-(final_energy - self.energy) / self.kT)
+        acc_prob = self.N * math.exp(-self.B) * math.exp(-(final_energy - self.energy) / self.kT)
         self.acceptance_probabilities.append(acc_prob)
 
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
@@ -2005,8 +1993,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
             self.adjustSpecificMolecule(delete_mol, 1.0)
         else:
             # Update some variables if move is accepted
-            self.gcmc_status[gcmc_id] = 0
-            self.mol_status[mol_id] = 0
+            self.setMolStatus(delete_mol, 0)  # Set it to off cause its been deleted
             self.N -= 1
             self.n_accepted += 1
             # Update energy
@@ -2108,17 +2095,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         self.delete_works = []
         self.n_explosions = 0
 
-        # Define a compound integrator
-        #self.compound_integrator = openmm.CompoundIntegrator()
-        # Add the MD integrator
-        #self.compound_integrator.addIntegrator(integrator)
-        # Create and add the nonequilibrium integrator
-        #self.ncmc_integrator = NonequilibriumLangevinIntegrator(temperature=temperature,
-        #                                                        collision_rate=1.0/unit.picosecond,
-        #                                                        timestep=self.time_step, splitting="V R O R V")
-        #self.compound_integrator.addIntegrator(self.ncmc_integrator)
-        # Set the compound integrator to the MD integrator
-        #self.compound_integrator.setCurrentIntegrator(0)
+
         self.integrator = integrator
 
         self.logger.info("NonequilibriumGCMCSystemSampler object initialised")
@@ -2140,8 +2117,6 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         self.positions = deepcopy(state.getPositions(asNumpy=True))
         self.velocities = deepcopy(state.getVelocities(asNumpy=True))
 
-        # Set to NCMC integrator
-        #self.compound_integrator.setCurrentIntegrator(1)
 
         #  Execute moves
         for i in range(n):
@@ -2155,9 +2130,6 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             self.n_moves += 1
             self.Ns.append(self.N)
 
-        # Set to MD integrator
-        #self.compound_integrator.setCurrentIntegrator(0)
-
         return None
 
     def insertionMove(self):
@@ -2165,7 +2137,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         Carry out a nonequilibrium insertion move for a random water molecule
         """
         # Insert a ghost water to a random site
-        new_positions, insert_mol, gcmc_id, mol_id = self.insertRandomMolecule()
+        new_positions, insert_mol = self.insertRandomMolecule()
 
         # Need to update the context positions
         self.context.setPositions(new_positions)
@@ -2175,7 +2147,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         # Start running perturbation and propagation kernels
         protocol_work = 0.0 * unit.kilocalories_per_mole
         explosion = False
-        #self.ncmc_integrator.step(self.n_prop_steps_per_pert)
+
         self.integrator.step(self.n_prop_steps_per_pert)
         for i in range(self.n_pert_steps):
             state = self.context.getState(getEnergy=True)
@@ -2187,7 +2159,6 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             protocol_work += energy_final - energy_initial
             # Propagate the system
             try:
-                #self.ncmc_integrator.step(self.n_prop_steps_per_pert)
                 self.integrator.step(self.n_prop_steps_per_pert)
             except:
                 print("Caught explosion!")
@@ -2204,7 +2175,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             self.logger.info("Move rejected due to an instability during integration")
         else:
             # Calculate acceptance probability based on protocol work
-            acc_prob = np.exp(self.B) * np.exp(-protocol_work/self.kT) / (self.N + 1)  # Here N is the old value
+            acc_prob = math.exp(self.B) * math.exp(-protocol_work/self.kT) / (self.N + 1)  # Here N is the old value
 
         self.acceptance_probabilities.append(acc_prob)
 
@@ -2223,8 +2194,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
             self.positions = deepcopy(state.getPositions(asNumpy=True))
             self.velocities = deepcopy(state.getVelocities(asNumpy=True))
-            self.gcmc_status[gcmc_id] = 1
-            self.mol_status[mol_id] = 1
+            self.setMolStatus(insert_mol, 1)  # Set status to on
 
         return None
 
@@ -2233,15 +2203,14 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         Carry out a nonequilibrium deletion move for a random water molecule
         """
         # Choose a random water to be deleted
-        delete_mol, gcmc_id, mol_id = self.deleteRandomMolecule()
+        delete_mol = self.deleteRandomMolecule()
         # Deletion may not be possible
-        if gcmc_id is None:
+        if delete_mol is None:
             return None
 
         # Start running perturbation and propagation kernels
         protocol_work = 0.0 * unit.kilocalories_per_mole
         explosion = False
-        #self.ncmc_integrator.step(self.n_prop_steps_per_pert)
         self.integrator.step(self.n_prop_steps_per_pert)
         for i in range(self.n_pert_steps):
             state = self.context.getState(getEnergy=True)
@@ -2253,7 +2222,6 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             protocol_work += energy_final - energy_initial
             # Propagate the system
             try:
-                #self.ncmc_integrator.step(self.n_prop_steps_per_pert)
                 self.integrator.step(self.n_prop_steps_per_pert)
             except:
                 print("Caught explosion!")
@@ -2270,7 +2238,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             self.logger.info("Move rejected due to an instability during integration")
         else:
             # Calculate acceptance probability based on protocol work
-            acc_prob = self.N * np.exp(-self.B) * np.exp(-protocol_work/self.kT)  # N is the old value
+            acc_prob = self.N * math.exp(-self.B) * math.exp(-protocol_work/self.kT)  # N is the old value
 
         self.acceptance_probabilities.append(acc_prob)
 
@@ -2284,8 +2252,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             self.velocities = -self.velocities
         else:
             # Update some variables if move is accepted
-            self.gcmc_status[gcmc_id] = 0
-            self.mol_status[mol_id] = 0
+            self.setMolStatus(delete_mol, 0)
             self.N -= 1
             self.n_accepted += 1
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
@@ -2310,3 +2277,4 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         self.n_explosions = 0
 
         return None
+
