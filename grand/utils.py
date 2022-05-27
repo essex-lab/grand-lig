@@ -126,6 +126,13 @@ def add_ghosts(topology, positions, molfile='tip3p.pdb', n=10, pdb='gcmc-extra-w
     """
     # Create a Modeller instance of the system
     modeller = app.Modeller(topology=topology, positions=positions)
+
+    # Read chain IDs
+    chain_ids = []
+    for chain in modeller.topology.chains():
+        chain_ids.append(chain.id)
+    print(chain_ids)
+
     # Read in simulation box size
     box_vectors = topology.getPeriodicBoxVectors()
     box_size = np.array([box_vectors[0][0]._value,
@@ -134,7 +141,7 @@ def add_ghosts(topology, positions, molfile='tip3p.pdb', n=10, pdb='gcmc-extra-w
 
     # Make sure that this molecule file exists
     if not os.path.isfile(molfile):
-        # If not, check if it exists in the data directory
+        # If not, check if it exists in the data directory  (This is where a water and some std ligands will be)
         if os.path.isfile(get_data_file(molfile)):
             molfile = get_data_file(molfile)
         else:
@@ -144,7 +151,7 @@ def add_ghosts(topology, positions, molfile='tip3p.pdb', n=10, pdb='gcmc-extra-w
     # Load the PDB for the molecule
     molecule = app.PDBFile(molfile)
 
-    # Calculate the centre of geometry
+    # Calculate the centre of geometry of the molecule
     cog = np.zeros(3) * unit.nanometers
     for i in range(len(molecule.positions)):
         cog += molecule.positions[i]
@@ -163,43 +170,45 @@ def add_ghosts(topology, positions, molfile='tip3p.pdb', n=10, pdb='gcmc-extra-w
         for i in range(len(positions)):
             new_positions[i] = positions[i] + new_centre - cog
 
-        # Add the water to the model and include the resid in a list
+        # Add the molecule to the model and include the resid in a list
         modeller.add(addTopology=molecule.topology, addPositions=new_positions)
         ghosts.append(modeller.topology._numResidues - 1)
 
-    # Get chain IDs of new waters
-    new_chains = []
-    for res_id, residue in enumerate(modeller.topology.residues()):
-        if res_id in ghosts:
-            new_chains.append(chr(ord('a') + residue.chain.index).upper())
+    # Take the ghost chain as the one after the last chain (alphabetically)
+    new_chain = chr(((ord(chain_ids[-1]) - 64) % 26) + 65)
+    # Renumber all ghost molecules and assign them to the new chain
+    for resid, residue in enumerate(modeller.topology.residues()):
+        if resid in ghosts:
+            residue.id = str(((resid - 1) % 9999) + 1)
+            residue.chain.id = new_chain
 
     # Write the new topology and positions to a PDB file
     if pdb is not None:
         with open(pdb, 'w') as f:
-            app.PDBFile.writeFile(topology=modeller.topology, positions=modeller.positions, file=f)
+            app.PDBFile.writeFile(topology=modeller.topology, positions=modeller.positions, file=f, keepIds=True)
 
-        # Want to correct the residue IDs of the added molecules as this can sometimes cause issues
-        with open(pdb, 'r') as f:
-            lines = f.readlines()
-
-        max_resid = ghosts[0] + 1  # Start the new resids at the first ghost resid (+1)
-        with open(pdb, 'w') as f:
-            for line in lines:
-                # Automatically write out non-atom lines
-                if not any([line.startswith(x) for x in ['ATOM', 'HETATM', 'TER']]):
-                    f.write(line)
-                else:
-                    # Correct the residue ID if this corresponds to an added water
-                    if line[21] in new_chains:
-                        f.write("{}{:4d}{}".format(line[:22],
-                                                   (max_resid % 9999) + 1,
-                                                   line[26:]))
-                    else:
-                        f.write(line)
-
-                    # Need to change the resid if there is a TER line
-                    if line.startswith('TER'):
-                        max_resid += 1
+        # # Want to correct the residue IDs of the added molecules as this can sometimes cause issues
+        # with open(pdb, 'r') as f:
+        #     lines = f.readlines()
+        #
+        # max_resid = ghosts[0] + 1  # Start the new resids at the first ghost resid (+1)
+        # with open(pdb, 'w') as f:
+        #     for line in lines:
+        #         # Automatically write out non-atom lines
+        #         if not any([line.startswith(x) for x in ['ATOM', 'HETATM', 'TER']]):
+        #             f.write(line)
+        #         else:
+        #             # Correct the residue ID if this corresponds to an added water
+        #             if line[21] in new_chains:
+        #                 f.write("{}{:4d}{}".format(line[:22],
+        #                                            (max_resid % 9999) + 1,
+        #                                            line[26:]))
+        #             else:
+        #                 f.write(line)
+        #
+        #             # Need to change the resid if there is a TER line
+        #             if line.startswith('TER'):
+        #                 max_resid += 1
 
     return modeller.topology, modeller.positions, ghosts
 
