@@ -681,6 +681,37 @@ def create_custom_forces(system, topology, resnames):
     #return param_dict, custom_sterics, electrostatic_exceptions, steric_exceptions
     return param_dict, custom_sterics, None, None
 
+def get_lambda_values(lambda_in):
+    """
+    Calculate the lambda_sterics and lambda_electrostatics values for a given lambda.
+    Electrostatics are decoupled from lambda=1 to 0.5, and sterics are decoupled from
+    lambda=0.5 to 0.
+
+    Parameters
+    ----------
+    lambda_in : float
+        Input lambda value
+
+    Returns
+    -------
+    lambda_vdw : float
+        Lambda value for steric interactions
+    lambda_ele : float
+        Lambda value for electrostatic interactions
+    """
+    if lambda_in > 1.0:
+        # Set both values to 1.0 if lambda > 1
+        lambda_vdw = 1.0
+        lambda_ele = 1.0
+    elif lambda_in < 0.0:
+        # Set both values to 0.0 if lambda < 0
+        lambda_vdw = 0.0
+        lambda_ele = 0.0
+    else:
+        # Scale values between 0 and 1
+        lambda_vdw = min([1.0, 2.0*lambda_in])
+        lambda_ele = max([0.0, 2.0*(lambda_in-0.5)])
+    return lambda_vdw, lambda_ele
 
 def random_rotation_matrix():
     """

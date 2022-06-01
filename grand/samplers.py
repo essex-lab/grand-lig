@@ -479,7 +479,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         """
         if ele == None or vdw == None:
             # Get lambda values
-            lambda_vdw, lambda_ele = potential.get_lambda_values(new_lambda)
+            lambda_vdw, lambda_ele = utils.get_lambda_values(new_lambda)
         else:
             lambda_vdw = vdw
             lambda_ele = ele
