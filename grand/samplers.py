@@ -1750,7 +1750,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
 
         self.logger.info("GCMCSystemSampler object initialised")
 
-    def initialise(self, context, ghostResids):
+    def initialise(self, context, simulation, ghostResids):
         """
         Prepare the GCMC SYSTEM for simulation by loading the coordinates from a
         Context object.
@@ -1767,6 +1767,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
             self.raiseError("No ghost molecules given! Cannot insert molecules without any ghosts!")
         # Load context into sampler
         self.context = context
+        self.simulation = simulation
 
         # Load in positions and box vectors from context
         state = self.context.getState(getPositions=True, getVelocities=True, enforcePeriodicBox=True)
