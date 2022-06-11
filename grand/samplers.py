@@ -484,22 +484,28 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             lambda_vdw = vdw
             lambda_ele = ele
 
+        #print(lambda_ele)
         # Update per-atom nonbonded parameters first
         atoms = self.mol_atom_ids[resid]
+        #print(atoms)
         for i, atom_idx in enumerate(atoms):
             # Obtain original parameters
             atom_params = self.mol_params[i]
+            #print(atom_params)
             # Update charge in NonbondedForce
-            self.nonbonded_force.setParticleParameters(atom_idx,
-                                                       charge=(lambda_ele * atom_params["charge"]),
-                                                       sigma=atom_params["sigma"],
-                                                       epsilon=abs(0.0))
+            self.nonbonded_force.setParticleParameterOffset(atom_idx, 'lambda_ele', atom_idx, atom_params["charge"] * (lambda_ele -1), 0.0, 0.0)
+            #print(i, lambda_ele, atom_idx, self.nonbonded_force.getParticleParameterOffset(atom_idx))
+            #print(self.nonbonded_force.getParticleParameters(atom_idx))
+            #self.nonbonded_force.setParticleParameters(atom_idx,
+             #                                          charge=(lambda_ele * atom_params["charge"]),
+              #                                         sigma=atom_params["sigma"],
+               #                                        epsilon=abs(0.0))
             # Update lambda in CustomNonbondedForce
             self.custom_nb_force.setParticleParameters(atom_idx,
                                                        [atom_params["sigma"], atom_params["epsilon"], lambda_vdw])
 
         # Update context with new parameters
-        self.nonbonded_force.updateParametersInContext(self.context)
+        #self.nonbonded_force.updateParametersInContext(self.context)
         self.custom_nb_force.updateParametersInContext(self.context)
 
         # Update the exceptions, where relevant
