@@ -592,7 +592,8 @@ def create_custom_forces(system, topology, resnames):
     custom_sterics.addGlobalParameter('soft_a', 1)
     custom_sterics.addGlobalParameter('soft_b', 1)
     custom_sterics.addGlobalParameter('soft_c', 6)
-    nonbonded_force.addGlobalParameter('lambda_ele', 1.0)
+    #print('Offset on')
+    #nonbonded_force.addGlobalParameter('lambda_ele', 1.0)
     custom_sterics.addGlobalParameter('lambda', 1.0)
 
     # Get a list of all molecule atom IDs
@@ -677,7 +678,7 @@ def create_custom_forces(system, topology, resnames):
 
         # Disable steric interactions in the original force by setting epsilon=0 (keep the charges for PME purposes)
         nonbonded_force.setParticleParameters(atom_idx, charge, sigma, abs(0))
-        nonbonded_force.addParticleParameterOffset('lambda_ele', atom_idx, 0.0, 0.0, 0.0)
+        #nonbonded_force.addParticleParameterOffset('lambda_ele', atom_idx, 0.0, 0.0, 0.0)
         #print(offy)
     # Add the custom force to the system
     system.addForce(custom_sterics)
