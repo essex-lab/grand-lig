@@ -2578,8 +2578,8 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
 
             #print(z_vector)
             # Set molecule status as appropriate
-            if (np.linalg.norm(xy_vector.in_units_of(unit.angstroms)) * unit.angstrom <= self.cylinder_radius)\
-                    and (np.linalg.norm(z_vector) <= self.cylinder_height/2):  # If in the cirlce
+            print(xy_vector, self.cylinder_radius, np.linalg.norm(xy_vector), self.cylinder_height/2)
+            if (np.linalg.norm(xy_vector) * unit.angstroms <= self.cylinder_radius) and (np.linalg.norm(z_vector) * unit.angstroms <= self.cylinder_height/2):  # If in the cirlce
                 #print(f'Setting {resid} as on and in cylinder')
                 self.setMolStatus(resid, 1)  # GCMC to be tracked i.e its on and in cylinder
             else:
