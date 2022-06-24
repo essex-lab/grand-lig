@@ -2447,12 +2447,12 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
 
     def getCylinderCentre(self):
         """
-        Update the coordinates of the sphere centre
+        Update the coordinates of the cylinder centre
         Need to make sure it isn't affected by the reference atoms being split across PBCs
         """
 
         # Calculate the coordinate
-        cylinder_centre = np.asarray([self.face_center[0], self.face_center[1], ((self.maxZ - self.minZ)/2)._value]) * unit.angstroms
+        cylinder_centre = np.asarray([self.face_center[0], self.face_center[1], (self.maxZ - (self.cylinder_height/2))._value]) * unit.angstroms
         print(f'Cylinder Center = {cylinder_centre}')
         return cylinder_centre
 
@@ -2539,7 +2539,7 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
 
     def updateGCMCCylinder(self, state):
         """
-        Update the relevant GCMC-sphere related parameters. This also involves monitoring
+        Update the relevant GCMC-cylinder related parameters. This also involves monitoring
         which molecules are in/out of the region
         """
         box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
@@ -2560,7 +2560,7 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
 
             # Check if the molecule is within the sphere
             COG = self.calculateCOG(resid)
-            #print(COG, self.cylinder_center)
+            print(COG, self.cylinder_center)
             xy_vector = COG[:2] - self.cylinder_center[:2] # x, y vector
             z_vector = COG[2] - self.cylinder_center[2]
             #  Correct PBCs of this vector - need to make this part cleaner
@@ -2578,12 +2578,12 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
 
             #print(z_vector)
             # Set molecule status as appropriate
-            if np.linalg.norm(xy_vector.in_units_of(unit.angstroms)) * unit.angstrom <= self.cylinder_radius:  # If in the cirlce
-                if z_vector <= self.cylinder_height/2:  # If within height
-                    print(f'Setting {resid} as on and in cylinder')
-                    self.setMolStatus(resid, 1)  # GCMC to be tracked i.e its on and in cylinder
+            if (np.linalg.norm(xy_vector.in_units_of(unit.angstroms)) * unit.angstrom <= self.cylinder_radius)\
+                    and (np.linalg.norm(z_vector) <= self.cylinder_height/2):  # If in the cirlce
+                #print(f'Setting {resid} as on and in cylinder')
+                self.setMolStatus(resid, 1)  # GCMC to be tracked i.e its on and in cylinder
             else:
-                self.setMolStatus(resid, 2)  # Not being tracked
+                self.setMolStatus(resid, 2)  # Not being tracked becasue its not in the cylinder but is switched on.
 
         # Update lists
         self.N = len(self.getMolStatusResids(1))
@@ -2614,11 +2614,11 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
         xy_insert_point = self.cylinder_center[:2] + (
                 self.cylinder_radius * np.power(np.random.rand(), 1.0 / 2) * xy_rand_nums) / np.linalg.norm(xy_rand_nums)
 
-        print(self.maxZ)
+        #print(self.maxZ)
         z_insert_point = np.random.uniform(self.maxZ._value, self.minZ._value)
         #print(f'z_insert_point : {z_insert_point}')
         insert_point = np.asarray([xy_insert_point[0]._value, xy_insert_point[1]._value, z_insert_point]) * unit.angstroms
-        print(insert_point)
+        #print(insert_point)
         new_positions = self.randomMolecularRotation(insert_mol, insert_point)
 
         if len(self.dihedrals) > 0:
@@ -3034,7 +3034,7 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
                 for j in range(self.n_prop_steps_per_pert):
                     self.integrator.step(1)
                     if self.record:
-                        if j % 10 == 0:
+                        if j % 100 == 0:
                             current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
                             self.moveDCD.report(self.simulation, current_state)
             except:
@@ -3133,7 +3133,7 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
                 for j in range(self.n_prop_steps_per_pert):
                     self.integrator.step(1)
                     if self.record:
-                        if j % 10 == 0:
+                        if j % 100 == 0:
                             current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
                             self.moveDCD.report(self.simulation, current_state)
             except:
