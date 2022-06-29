@@ -185,7 +185,10 @@ def add_ghosts(topology, positions, molfile='tip3p.pdb', n=10, pdb='gcmc-extra-w
     # Write the new topology and positions to a PDB file
     if pdb is not None:
         with open(pdb, 'w') as f:
-            app.PDBFile.writeFile(topology=modeller.topology, positions=modeller.positions, file=f, keepIds=True)
+            app.PDBFile.writeFile(topology=modeller.topology, positions=modeller.positions, file=f, keepIds=False)
+
+        with open(pdb.split('.pdb')[0]+'.cif', 'w') as f:
+            app.PDBxFile.writeFile(topology=modeller.topology, positions=modeller.positions, file=f, keepIds=False)
 
         # # Want to correct the residue IDs of the added molecules as this can sometimes cause issues
         # with open(pdb, 'r') as f:

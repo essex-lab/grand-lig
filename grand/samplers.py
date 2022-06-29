@@ -1494,7 +1494,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                 for j in range(self.n_prop_steps_per_pert):
                     self.integrator.step(1)
                     if self.record:
-                        if j % 10 == 0:
+                        if j % 50 == 0:
                             current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
                             self.moveDCD.report(self.simulation, current_state)
             except:
@@ -1593,7 +1593,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                 for j in range(self.n_prop_steps_per_pert):
                     self.integrator.step(1)
                     if self.record:
-                        if j % 10 == 0:
+                        if j % 50 == 0:
                             current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
                             self.moveDCD.report(self.simulation, current_state)
             except:
@@ -3034,7 +3034,7 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
                 for j in range(self.n_prop_steps_per_pert):
                     self.integrator.step(1)
                     if self.record:
-                        if j % 100 == 0:
+                        if j % 50 == 0:
                             current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
                             self.moveDCD.report(self.simulation, current_state)
             except:
@@ -3073,8 +3073,8 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
 
         # Update or reset the system, depending on whether the move is accepted or rejected
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
-            if self.record:
-                os.remove(self.dcd_name)
+            #if self.record:
+                #os.remove(self.dcd_name)
             # Need to revert the changes made if the move is to be rejected
             self.adjustSpecificMolecule(insert_mol, 0.0)
             self.context.setPositions(old_positions)
@@ -3087,7 +3087,7 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
         else:
             # Update some variables if move is accepted
             if self.record:
-                os.rename(self.dcd_name, '{}_accepted_insertion.dcd'.format(self.dcd_name))
+                os.rename(self.dcd_name, '{}_{}_accepted_insertion.dcd'.format(insert_mol, self.dcd_name))
             self.N = len(gcmc_mols_new)
             self.n_accepted += 1
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
@@ -3133,7 +3133,7 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
                 for j in range(self.n_prop_steps_per_pert):
                     self.integrator.step(1)
                     if self.record:
-                        if j % 100 == 0:
+                        if j % 50 == 0:
                             current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
                             self.moveDCD.report(self.simulation, current_state)
             except:
@@ -3161,7 +3161,7 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
             # If the deleted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
             acc_prob = 0
             self.n_left_sphere += 1
-            self.logger.info("Move rejected due to molecule leaving the GCMC sphere")
+            self.logger.info("Move rejected due to molecule leaving the GCMC Cylinder")
         elif explosion:
             acc_prob = 0
             self.logger.info("Move rejected due to an instability during integration")
@@ -3173,8 +3173,8 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
 
         # Update or reset the system, depending on whether the move is accepted or rejected
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
-            if self.record:
-                os.remove(self.dcd_name)
+            #if self.record:
+             #   os.remove(self.dcd_name)
             # Need to revert the changes made if the move is to be rejected
             self.adjustSpecificMolecule(delete_mol, 1.0)
             self.context.setPositions(old_positions)
@@ -3186,7 +3186,7 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
         else:
             # Update some variables if move is accepted
             if self.record:
-                os.rename(self.dcd_name, '{}_accepted_deletion.dcd'.format(self.dcd_name))
+                os.rename(self.dcd_name, '{}_{}_accepted_deletion.dcd'.format(delete_mol, self.dcd_name))
             self.setMolStatus(delete_mol, 0)
             self.N = len(gcmc_mols_new) - 1  # Accounting for the deleted water
             self.n_accepted += 1
