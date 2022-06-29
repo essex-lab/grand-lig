@@ -1494,9 +1494,10 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                 for j in range(self.n_prop_steps_per_pert):
                     self.integrator.step(1)
                     if self.record:
-                        if j % 50 == 0:
-                            current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
-                            self.moveDCD.report(self.simulation, current_state)
+                        if i % 4 == 0:
+                            if j % 50 == 0:
+                                current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
+                                self.moveDCD.report(self.simulation, current_state)
             except:
                 print("Caught explosion!")
                 explosion = True
@@ -1593,9 +1594,10 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                 for j in range(self.n_prop_steps_per_pert):
                     self.integrator.step(1)
                     if self.record:
-                        if j % 50 == 0:
-                            current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
-                            self.moveDCD.report(self.simulation, current_state)
+                        if i % 4 == 0:
+                            if j % 50 == 0:
+                                current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
+                                self.moveDCD.report(self.simulation, current_state)
             except:
                 print("Caught explosion!")
                 explosion = True
@@ -3034,9 +3036,10 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
                 for j in range(self.n_prop_steps_per_pert):
                     self.integrator.step(1)
                     if self.record:
-                        if j % 50 == 0:
-                            current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
-                            self.moveDCD.report(self.simulation, current_state)
+                        if i % 4 == 0:
+                            if j % 50 == 0:
+                                current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
+                                self.moveDCD.report(self.simulation, current_state)
             except:
                 print("Caught explosion!")
                 explosion = True
@@ -3073,8 +3076,8 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
 
         # Update or reset the system, depending on whether the move is accepted or rejected
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
-            #if self.record:
-                #os.remove(self.dcd_name)
+            if self.record:
+                os.remove(self.dcd_name)
             # Need to revert the changes made if the move is to be rejected
             self.adjustSpecificMolecule(insert_mol, 0.0)
             self.context.setPositions(old_positions)
@@ -3133,9 +3136,10 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
                 for j in range(self.n_prop_steps_per_pert):
                     self.integrator.step(1)
                     if self.record:
-                        if j % 50 == 0:
-                            current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
-                            self.moveDCD.report(self.simulation, current_state)
+                        if i % 4 == 0:
+                            if j % 50 == 0:
+                                current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
+                                self.moveDCD.report(self.simulation, current_state)
             except:
                 print("Caught explosion!")
                 explosion = True
@@ -3173,8 +3177,8 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
 
         # Update or reset the system, depending on whether the move is accepted or rejected
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
-            #if self.record:
-             #   os.remove(self.dcd_name)
+            if self.record:
+                os.remove(self.dcd_name)
             # Need to revert the changes made if the move is to be rejected
             self.adjustSpecificMolecule(delete_mol, 1.0)
             self.context.setPositions(old_positions)
