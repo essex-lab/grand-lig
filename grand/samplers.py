@@ -3114,6 +3114,9 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
         if delete_mol is None:
             return None
 
+        if self.record:
+            current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
+            self.moveDCD.report(self.simulation, current_state)
         # Start running perturbation and propagation kernels
         protocol_work = 0.0 * unit.kilocalories_per_mole
         explosion = False
@@ -3127,9 +3130,6 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
             state = self.context.getState(getEnergy=True)
             energy_final = state.getPotentialEnergy()
             protocol_work += energy_final - energy_initial
-            if self.record:
-                current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
-                self.moveDCD.report(self.simulation, current_state)
             # Propagate the system
             try:
                 #self.ncmc_integrator.step(self.n_prop_steps_per_pert)
