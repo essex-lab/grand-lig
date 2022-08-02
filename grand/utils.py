@@ -597,7 +597,6 @@ def create_custom_forces(system, topology, resnames):
     custom_sterics.addGlobalParameter('soft_c', 6)
     #print('Offset on')
     #nonbonded_force.addGlobalParameter('lambda_ele', 1.0)
-    custom_sterics.addGlobalParameter('lambda', 1.0)
 
     # Get a list of all molecule atom IDs
     mol_atom_ids = []
