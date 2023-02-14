@@ -91,13 +91,7 @@ def add_ghosts(topology, positions, molfile='tip3p.pdb', n=10, pdb='gcmc-extra-w
     """
     Function to add molecules to a topology, as extras for GCMC
     This is to avoid changing the number of particles throughout a simulation
-    Instead, we can just switch between 'ghost' and 'real' waters...
-
-    Notes
-    -----
-    Could do with a more elegant way to add many molecules. Adding them one by one
-    results in them all being added to different chains. This won't affect
-    correctness, but doesn't look nice.
+    Instead, we can just switch between 'ghost' and 'real' molecules...
 
     Parameters
     ----------
@@ -131,7 +125,7 @@ def add_ghosts(topology, positions, molfile='tip3p.pdb', n=10, pdb='gcmc-extra-w
     chain_ids = []
     for chain in modeller.topology.chains():
         chain_ids.append(chain.id)
-    print(chain_ids)
+    #print(chain_ids)
 
     # Read in simulation box size
     box_vectors = topology.getPeriodicBoxVectors()
@@ -185,10 +179,10 @@ def add_ghosts(topology, positions, molfile='tip3p.pdb', n=10, pdb='gcmc-extra-w
     # Write the new topology and positions to a PDB file
     if pdb is not None:
         with open(pdb, 'w') as f:
-            app.PDBFile.writeFile(topology=modeller.topology, positions=modeller.positions, file=f, keepIds=False)
+            app.PDBFile.writeFile(topology=modeller.topology, positions=modeller.positions, file=f, keepIds=True)
 
         with open(pdb.split('.pdb')[0]+'.cif', 'w') as f:
-            app.PDBxFile.writeFile(topology=modeller.topology, positions=modeller.positions, file=f, keepIds=False)
+            app.PDBxFile.writeFile(topology=modeller.topology, positions=modeller.positions, file=f, keepIds=True)
 
         # # Want to correct the residue IDs of the added molecules as this can sometimes cause issues
         # with open(pdb, 'r') as f:
@@ -265,7 +259,7 @@ def remove_ghosts(topology, positions, ghosts=None, pdb='gcmc-removed-ghosts.pdb
 
 def read_ghosts_from_file(ghost_file):
     """
-    Read in the ghost water residue IDs from each from in the ghost file
+    Read in the ghost molecules residue IDs from each from in the ghost file
 
     Parameters
     ----------
@@ -277,7 +271,7 @@ def read_ghosts_from_file(ghost_file):
     ghost_resids : list
         List of lists, containing residue IDs for each frame
     """
-    # Read in residue IDs for the ghost waters in each frame
+    # Read in residue IDs for the ghost molecules in each frame
     ghost_resids = []
     with open(ghost_file, 'r') as f:
         for line in f.readlines():
@@ -595,8 +589,6 @@ def create_custom_forces(system, topology, resnames):
     custom_sterics.addGlobalParameter('soft_a', 1)
     custom_sterics.addGlobalParameter('soft_b', 1)
     custom_sterics.addGlobalParameter('soft_c', 6)
-    #print('Offset on')
-    #nonbonded_force.addGlobalParameter('lambda_ele', 1.0)
 
     # Get a list of all molecule atom IDs
     mol_atom_ids = []
@@ -627,7 +619,6 @@ def create_custom_forces(system, topology, resnames):
 
     # Make sure all intramolecular interactions for the molecules of interest are set to exceptions, so they aren't switched off
     for residue in topology.residues():
-        #print(residue.id)
         if residue.name in resnames:
             # Get a list of atom IDs for this residue
             atom_ids = [atom.index for atom in residue.atoms()]
@@ -680,8 +671,7 @@ def create_custom_forces(system, topology, resnames):
 
         # Disable steric interactions in the original force by setting epsilon=0 (keep the charges for PME purposes)
         nonbonded_force.setParticleParameters(atom_idx, charge, sigma, abs(0))
-        #nonbonded_force.addParticleParameterOffset('lambda_ele', atom_idx, 0.0, 0.0, 0.0)
-        #print(offy)
+
     # Add the custom force to the system
     system.addForce(custom_sterics)
 
@@ -722,7 +712,7 @@ def get_lambda_values(lambda_in):
 
 def random_rotation_matrix():
     """
-    Generate a random axis and angle for rotation of the water coordinates (using the
+    Generate a random axis and angle for rotation of the molecules coordinates (using the
     method used for this in the ProtoMS source code (www.protoms.org), and then return
     a rotation matrix produced from these
 
@@ -826,8 +816,6 @@ def get_dihedral_distribution(ghost_file, ghost_smile, dihedrals):
         else:
             conformation_dict[key] = (round(probs[i], 2))  # Change the dictionary to have population instead of energy
 
-    #print(conformation_dict)
-    #print(len(probs), probs)
     return conf, conformation_dict
 
 
@@ -861,7 +849,6 @@ def get_dihedral_dist_for_FF(ghost_file, ghost_xml, rd_conf, dihedrals, RD_confo
                 rd_conf.SetAtomPosition(atom.index, original_positions[atom.index]._value * 10)
     # Save the rd_conf as the original
     initial_rd_conf = rd_conf
-    #print(initial_rd_conf)
 
     OMM_energy = []
     new_conformations = []
@@ -902,7 +889,6 @@ def get_dihedral_dist_for_FF(ghost_file, ghost_xml, rd_conf, dihedrals, RD_confo
     new_conformation_dict = {}
     for i, e in enumerate(OMM_energy):
         xyz = np.asarray(new_conformations[i])  # Actally d1, d2, d3
-        #print(xyz)
         round_to_2 = tuple(np.round(xyz, 2))
         if round_to_2 not in new_conformation_dict.keys():
             new_conformation_dict[round_to_2] = round(e, 4)
@@ -912,7 +898,6 @@ def get_dihedral_dist_for_FF(ghost_file, ghost_xml, rd_conf, dihedrals, RD_confo
     probs = (probs / sum(probs)) * 100
     for i, key in enumerate(list(new_conformation_dict.keys())):
         new_conformation_dict[key] = (round(probs[i], 2))  # Change the dictionary to have population instead of energy
-    #print(len(OMM_energy), OMM_energy, new_conformations)
     return new_conformation_dict
 
 
@@ -1428,11 +1413,13 @@ def cluster_waters(topology, trajectory, sphere_radius, ref_atoms=None, sphere_c
     return None
 
 
-def cluster_molecules(topology, trajectory, resname, sphere_radius, ref_atoms=None, cutoff=2.4,
+def cluster_molecules(topology, trajectory, sphere_radius, resname='L02', ref_atoms=None, cutoff=2.4,
                    output='gcmc_clusts.pdb'):
     """
-    Carry out a clustering analysis on GCMC water molecules with the sphere. Based on the clustering
+    Carry out a clustering analysis on GCMC molecules with the sphere. Based on the clustering
     code in the ProtoMS software package.
+
+    This function only does COM clusterin at the moment and cant distinguish binding modes.
 
     This function currently assumes that the system has been aligned and centred on the GCMC sphere (approximately).
 
@@ -1444,6 +1431,8 @@ def cluster_molecules(topology, trajectory, resname, sphere_radius, ref_atoms=No
         Trajectory file, such as DCD
     sphere_radius : float
         Radius of the GCMC sphere in Angstroms
+    resname : str
+        Resname of the molecule you want to cluster
     ref_atoms : list
         List of reference atoms for the GCMC sphere (list of dictionaries)
     cutoff : float
@@ -1474,7 +1463,7 @@ def cluster_molecules(topology, trajectory, resname, sphere_radius, ref_atoms=No
     # Get the COG's of all the GCMC molcules since were only going to do centroid clustering for now
     mols = {}
     for residue in t.topology.residues:
-        if residue.name == 'L02':
+        if residue.name == resname:
             mols[residue.index] = []
             for atom in residue.atoms:
                 if atom.element.name != 'hydrogen':
@@ -1519,7 +1508,6 @@ def cluster_molecules(topology, trajectory, resname, sphere_radius, ref_atoms=No
             else:
                 dist = np.linalg.norm(mol_coords[i] - mol_coords[j])
             dist_list.append(dist)
-    print(len(dist_list))
 
     # Cluster the waters hierarchically
     tree = hierarchy.linkage(dist_list, method='average')

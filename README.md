@@ -11,7 +11,7 @@
 ### Background
 
 This Python module is designed to be run with OpenMM in order to simulate grand
-canonical Monte Carlo (GCMC) insertion and deletion moves of water molecules.
+canonical Monte Carlo (GCMC) insertion and deletion moves of ligand and water molecules.
 This allows the particle number to vary according to a fixed chemical
 potential, and offers enhanced sampling of water molecules in occluded
 binding sites.
@@ -53,8 +53,11 @@ Additional [examples](https://github.com/essex-lab/grand-paper) and
 [documentation](https://grand.readthedocs.io/en/latest/) are also available.
 
 The _grand_ module is released under the MIT licence. If results from this
-module contribute to a publication, we only ask that you cite the
-following publication.
+module contribute to a publication, we ask that you cite Refs. 1 and 2, below.
+Ref. 1 discusses the initial implemention while ref. 2 discusses the implementation
+and testing of the non-equilibrium moves.
+Additional references describing the theory upon which the GCMC implemention
+in _grand_ is based are also provided below (Refs. 3-4).
 
 - M. L. Samways, H. E. Bruce Macdonald, J. W. Essex, _J. Chem. Inf. Model._,
 2020, 60, 4436-4441, DOI: https://doi.org/10.1021/acs.jcim.0c00648
@@ -63,19 +66,24 @@ Additional references describing the theory of GCMC are provided below.
 
 ### Contributors
 
+- Will Poole `<wp1g16@soton.ac.uk>` 
 - Marley Samways `<mls2g13@soton.ac.uk>`
-- Hannah Bruce Macdonald `<hannah.brucemacdonald@choderalab.org>`
 - Ollie Melling `<ojm2g16@soton.ac.uk>`
+- Hannah Bruce Macdonald
 
 ### Contact
 
 If you have any problems or questions regarding this module, please contact
-one of the contributors, or send an email to `<jessexgroup@gmail.com>`.
+one of the contributors, or send an email to `<j.w.essex@soton.ac.uk>`.
 
 ### References
 
-1. G. A. Ross, M. S. Bodnarchuk, J. W. Essex, _J. Am. Chem. Soc._, 2015, 
+1. M. L. Samways, H. E. Bruce Macdonald, J. W. Essex, _J. Chem. Inf. Model._,
+2020, 60, 4436-4441, DOI: https://doi.org/10.1021/acs.jcim.0c00648
+2. O. J. Melling, M. L. Samways, Y. Ge, D. L. Mobley, J. W. Essex, _J. Chem. Theory Comput._, 2023,
+DOI: https://doi.org/10.1021/acs.jctc.2c00823
+3. G. A. Ross, M. S. Bodnarchuk, J. W. Essex, _J. Am. Chem. Soc._, 2015,
 137, 47, 14930-14943, DOI: https://doi.org/10.1021/jacs.5b07940
-2. G. A. Ross, H. E. Bruce Macdonald, C. Cave-Ayland, A. I. Cabedo
+4. G. A. Ross, H. E. Bruce Macdonald, C. Cave-Ayland, A. I. Cabedo
 Martinez, J. W. Essex, _J. Chem. Theory Comput._, 2017, 13, 12, 6373-6381, DOI:
 https://doi.org/10.1021/acs.jctc.7b00738

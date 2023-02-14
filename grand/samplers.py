@@ -106,11 +106,8 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         # Get residue IDs & assign statuses to each
         self.mol_resids = self.getMoleculeResids(resname)  # All molecules
-        print(self.mol_resids)
         # Assign each water a status: 0: ghost water, 1: GCMC water, 2: Water not under GCMC tracking (out of sphere)
         self.mol_status = {x: 1 for x in self.mol_resids}  # Initially assign all to 1
-        print('Testing the new updates babyyyyyyyy!!!!!!!!!!!!!')
-        #self.mol_status = np.ones_like(self.mol_resids)  # 1 indicates on, 0 indicates off
         self.gcmc_resids = []  # GCMC molecules
 
         # Need to customised forces to handle softcore steric interactions and exceptions
@@ -180,11 +177,11 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         else:
             self.restart = None
 
-        print(f'Dihedrals in the BaseSampler : {dihedrals}')
+        #print(f'Dihedrals in the BaseSampler : {dihedrals}')
         self.dihedrals = dihedrals
         # Define dihedral sampling stuff - Maybe expand this across all samplers in future but only need it here for now
         if len(dihedrals) > 0:  # If some dihedrals have actually been defined
-            print(self.dihedrals)
+           # print(self.dihedrals)
             self.dihedral_distribution = distribution
             self.rdkit_conf = conf
 
@@ -299,7 +296,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             for atom in residue.atoms():
                 atom_ids.append(atom.index)
 
-            print(atom_ids)
+            #print(atom_ids)
             # Loop over vdW exceptions to find those which correspond to this molecule
             vdw_exceptions = []
             if self.vdw_except_force is not None:
@@ -484,18 +481,12 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             lambda_vdw = vdw
             lambda_ele = ele
 
-        #print(lambda_ele)
         # Update per-atom nonbonded parameters first
         atoms = self.mol_atom_ids[resid]
-        #print(atoms)
         for i, atom_idx in enumerate(atoms):
             # Obtain original parameters
             atom_params = self.mol_params[i]
-            #print(atom_params)
             # Update charge in NonbondedForce
-            #self.nonbonded_force.setParticleParameterOffset(atom_idx, 'lambda_ele', atom_idx, atom_params["charge"] * (lambda_ele -1), 0.0, 0.0)
-            #print(i, lambda_ele, atom_idx, self.nonbonded_force.getParticleParameterOffset(atom_idx))
-            #print(self.nonbonded_force.getParticleParameters(atom_idx))
             self.nonbonded_force.setParticleParameters(atom_idx,
                                                        charge=(lambda_ele * atom_params["charge"]),
                                                        sigma=atom_params["sigma"],
@@ -693,7 +684,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         rand_conf_id = np.random.choice(np.arange(len(self.dihedral_distribution.keys())),
                                         p=probs)  # Get the position in the conformation keys list of th
         rand_conf = dihedral_list[rand_conf_id]  # Got the actual dihedrals to insert
-        print(self.n_moves, rand_conf_id, rand_conf)
+        #print(self.n_moves, rand_conf_id, rand_conf)
         new_positions = copy.deepcopy(self.positions)
         # Now need to set the positions of the RDKit molecule to be the same as the inserted molecule
         for i, index in enumerate(self.mol_atom_ids[resid]):
@@ -1410,7 +1401,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         self.integrator = integrator
 
         self.logger.info("NonequilibriumGCMCSphereSampler object initialised")
-        print('Developer MODE!')
 
 
     def move(self, context, n=1):
@@ -1463,7 +1453,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
         # Choose a random site in the sphere to insert a molecule
         new_positions, insert_mol = self.insertRandomMolecule()
-        #print(insert_mol)
 
         #with open(f'insertion_{self.n_moves}.pdb', 'w') as f:
          #   openmm.app.PDBFile.writeFile(self.topology, new_positions, f)
@@ -1770,7 +1759,6 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
         ghostResids : list
             List of residue IDs corresponding to the ghost waters added
         """
-        print('Checking that developer mode is on....')
         if len(ghostResids) == 0 or ghostResids is None:
             self.raiseError("No ghost molecules given! Cannot insert molecules without any ghosts!")
         # Load context into sampler
@@ -2557,12 +2545,11 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
 
             # Ghost molecules automatically count as GCMC waters
             if self.getMolStatusValue(resid) == 0:
-                #print(f'Found a Ghost: {resid}')
                 continue
 
             # Check if the molecule is within the sphere
             COG = self.calculateCOG(resid)
-            print(COG, self.cylinder_center)
+            #print(COG, self.cylinder_center)
             xy_vector = COG[:2] - self.cylinder_center[:2] # x, y vector
             z_vector = COG[2] - self.cylinder_center[2]
             #  Correct PBCs of this vector - need to make this part cleaner
@@ -2580,7 +2567,7 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
 
             #print(z_vector)
             # Set molecule status as appropriate
-            print(xy_vector, self.cylinder_radius, np.linalg.norm(xy_vector), self.cylinder_height/2)
+            #print(xy_vector, self.cylinder_radius, np.linalg.norm(xy_vector), self.cylinder_height/2)
             if (np.linalg.norm(xy_vector) * unit.angstroms <= self.cylinder_radius) and (np.linalg.norm(z_vector) * unit.angstroms <= self.cylinder_height/2):  # If in the cirlce
                 #print(f'Setting {resid} as on and in cylinder')
                 self.setMolStatus(resid, 1)  # GCMC to be tracked i.e its on and in cylinder
@@ -2952,7 +2939,6 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
         self.integrator = integrator
 
         self.logger.info("NonequilibriumGCMCCylinderSampler object initialised")
-        print('Developer MODE!')
 
 
     def move(self, context, n=1):
@@ -3005,7 +2991,6 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
 
         # Choose a random site in the sphere to insert a molecule
         new_positions, insert_mol = self.insertRandomMolecule()
-        #print(insert_mol)
 
         #with open(f'insertion_{self.n_moves}.pdb', 'w') as f:
          #   openmm.app.PDBFile.writeFile(self.topology, new_positions, f)
