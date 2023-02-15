@@ -551,7 +551,8 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.writeGhostMoleculeResids()
 
         # Append to the DCD and update the restart file
-        state = simulation.context.getState(getPositions=True, getVelocities=True)
+        print("HELLLLLLO")
+        state = simulation.context.getState(getPositions=True, getVelocities=True, enforcePeriodicBox=True)
         if self.dcd is not None:
             self.dcd.report(simulation, state)
         if self.restart is not None:
