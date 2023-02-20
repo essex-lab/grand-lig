@@ -103,6 +103,10 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.n_moves = 0
         self.n_accepted = 0
         self.acceptance_probabilities = []  # Store acceptance probabilities
+        self.n_inserts = 0
+        self.n_deletes = 0
+        self.n_accepted_inserts = 0
+        self.n_accepted_deletes = 0
 
         # Get residue IDs & assign statuses to each
         self.mol_resids = self.getMoleculeResids(resname)  # All molecules
@@ -233,6 +237,10 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.n_moves = 0
         self.Ns = []
         self.acceptance_probabilities = []
+        self.n_inserts = 0
+        self.n_deletes = 0
+        self.n_accepted_inserts = 0
+        self.n_accepted_deletes = 0
         
         return None
 
@@ -539,11 +547,11 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             acc_rate = np.nan
         mean_N = np.round(np.mean(self.Ns), 4)
         # Print out a line describing the acceptance rate and sampling of N
-        msg = "{} move(s) completed ({} accepted ({:.4f} %)). Current N = {}. Average N = {:.3f}".format(self.n_moves,
-                                                                                                         self.n_accepted,
-                                                                                                         acc_rate,
-                                                                                                         self.N,
-                                                                                                         mean_N)
+        msg = "{} move(s) completed ({} accepted ({:.4f} %)). Current N = {}. Average N = {:.3f}. Inserts = {} ({})." \
+              " Deletes = {} ()".format(self.n_moves, self.n_accepted, acc_rate,
+                                        self.N, mean_N,
+                                        self.n_inserts, self.n_accepted_inserts,
+                                        self.n_deletes, self.n_accepted_deletes)
         print(msg)
         self.logger.info(msg)
 
@@ -551,7 +559,6 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.writeGhostMoleculeResids()
 
         # Append to the DCD and update the restart file
-        print("HELLLLLLO")
         state = simulation.context.getState(getPositions=True, getVelocities=True, enforcePeriodicBox=True)
         if self.dcd is not None:
             self.dcd.report(simulation, state)
@@ -1209,9 +1216,11 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
             if np.random.randint(2) == 1:
                 # Attempt to insert a water
                 self.insertionMove()
+                self.n_inserts += 1
             else:
                 # Attempt to delete a water
                 self.deletionMove()
+                self.n_deletes += 1
             self.n_moves += 1
             self.Ns.append(self.N)
 
@@ -1244,6 +1253,7 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
             self.setMolStatus(insert_mol, 1)
             self.N += 1
             self.n_accepted += 1
+            self.n_accepted_inserts += 1
             # Update energy
             self.energy = final_energy
             # Assign random velocities to the inserted atoms (not dependent on acceptance, just more efficient this way)
@@ -1276,6 +1286,7 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
             self.setMolStatus(delete_mol, 0)
             self.N -= 1
             self.n_accepted += 1
+            self.n_accepted_deletes += 1
             # Update energy
             self.energy = final_energy
 
@@ -1433,9 +1444,11 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             if np.random.randint(2) == 1:
                 # Attempt to insert a water
                 self.insertionMove()
+                self.n_inserts += 1
             else:
                 # Attempt to delete a water
                 self.deletionMove()
+                self.n_deletes += 1
             self.n_moves += 1
             self.Ns.append(self.N)
 
@@ -1541,6 +1554,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                 os.rename(self.dcd_name, '{}_accepted_insertion.dcd'.format(self.dcd_name))
             self.N = len(gcmc_mols_new)
             self.n_accepted += 1
+            self.n_accepted_inserts += 1
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
             self.positions = deepcopy(state.getPositions(asNumpy=True))
             self.velocities = deepcopy(state.getVelocities(asNumpy=True))
@@ -1642,6 +1656,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             self.setMolStatus(delete_mol, 0)
             self.N = len(gcmc_mols_new) - 1  # Accounting for the deleted water
             self.n_accepted += 1
+            self.n_accepted_deletes += 1
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
             self.positions = deepcopy(state.getPositions(asNumpy=True))
             self.velocities = deepcopy(state.getVelocities(asNumpy=True))
@@ -1658,6 +1673,10 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         self.n_moves = 0
         self.Ns = []
         self.acceptance_probabilities = []
+        self.n_inserts = 0
+        self.n_deletes = 0
+        self.n_accepted_inserts = 0
+        self.n_accepted_deletes = 0
 
         # NCMC-specific variables
         self.insert_works = []
@@ -1927,9 +1946,11 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
             if np.random.randint(2) == 1:
                 # Attempt to insert a water
                 self.insertionMove()
+                self.n_inserts += 1
             else:
                 # Attempt to delete a water
                 self.deletionMove()
+                self.n_deletes += 1
             self.n_moves += 1
             self.Ns.append(self.N)
 
@@ -1962,6 +1983,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
             self.setMolStatus(insert_mol, 1)  # Set the mol status to on
             self.N += 1
             self.n_accepted += 1
+            self.n_accepted_inserts += 1
             # Update energy
             self.energy = final_energy
             # Assign random velocities to the inserted atoms (not dependent on acceptance, just more efficient this way)
@@ -1994,6 +2016,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
             self.setMolStatus(delete_mol, 0)  # Set it to off cause its been deleted
             self.N -= 1
             self.n_accepted += 1
+            self.n_accepted_deletes += 1
             # Update energy
             self.energy = final_energy
 
@@ -2122,9 +2145,11 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             if np.random.randint(2) == 1:
                 # Attempt to insert a water
                 self.insertionMove()
+                self.n_inserts += 1
             else:
                 # Attempt to delete a water
                 self.deletionMove()
+                self.n_deletes += 1
             self.n_moves += 1
             self.Ns.append(self.N)
 
@@ -2189,6 +2214,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             # Update some variables if move is accepted
             self.N += 1
             self.n_accepted += 1
+            self.n_accepted_inserts += 1
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
             self.positions = deepcopy(state.getPositions(asNumpy=True))
             self.velocities = deepcopy(state.getVelocities(asNumpy=True))
@@ -2253,6 +2279,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             self.setMolStatus(delete_mol, 0)
             self.N -= 1
             self.n_accepted += 1
+            self.n_accepted_deletes += 1
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
             self.positions = deepcopy(state.getPositions(asNumpy=True))
             self.velocities = deepcopy(state.getVelocities(asNumpy=True))
@@ -2268,6 +2295,10 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         self.n_moves = 0
         self.Ns = []
         self.acceptance_probabilities = []
+        self.n_inserts = 0
+        self.n_deletes = 0
+        self.n_accepted_inserts = 0
+        self.n_accepted_deletes = 0
 
         # NCMC-specific variables
         self.insert_works = []
@@ -2747,9 +2778,11 @@ class StandardGCMCCylinderSampler(GCMCCylinderSampler):
             if np.random.randint(2) == 1:
                 # Attempt to insert a water
                 self.insertionMove()
+                self.n_inserts += 1
             else:
                 # Attempt to delete a water
                 self.deletionMove()
+                self.n_deletes += 1
             self.n_moves += 1
             self.Ns.append(self.N)
 
@@ -2782,6 +2815,7 @@ class StandardGCMCCylinderSampler(GCMCCylinderSampler):
             self.setMolStatus(insert_mol, 1)
             self.N += 1
             self.n_accepted += 1
+            self.n_accepted_inserts += 1
             # Update energy
             self.energy = final_energy
             # Assign random velocities to the inserted atoms (not dependent on acceptance, just more efficient this way)
@@ -2814,6 +2848,7 @@ class StandardGCMCCylinderSampler(GCMCCylinderSampler):
             self.setMolStatus(delete_mol, 0)
             self.N -= 1
             self.n_accepted += 1
+            self.n_accepted_deletes += 1
             # Update energy
             self.energy = final_energy
 
@@ -2971,9 +3006,11 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
             if np.random.randint(2) == 1:
                 # Attempt to insert a water
                 self.insertionMove()
+                self.n_inserts += 1
             else:
                 # Attempt to delete a water
                 self.deletionMove()
+                self.n_deletes += 1
             self.n_moves += 1
             self.Ns.append(self.N)
 
@@ -3079,6 +3116,7 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
                 os.rename(self.dcd_name, '{}_{}_accepted_insertion.dcd'.format(insert_mol, self.dcd_name))
             self.N = len(gcmc_mols_new)
             self.n_accepted += 1
+            self.n_accepted_inserts += 1
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
             self.positions = deepcopy(state.getPositions(asNumpy=True))
             self.velocities = deepcopy(state.getVelocities(asNumpy=True))
@@ -3180,6 +3218,7 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
             self.setMolStatus(delete_mol, 0)
             self.N = len(gcmc_mols_new) - 1  # Accounting for the deleted water
             self.n_accepted += 1
+            self.n_accepted_deletes += 1
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
             self.positions = deepcopy(state.getPositions(asNumpy=True))
             self.velocities = deepcopy(state.getVelocities(asNumpy=True))
@@ -3196,6 +3235,10 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
         self.n_moves = 0
         self.Ns = []
         self.acceptance_probabilities = []
+        self.n_inserts = 0
+        self.n_deletes = 0
+        self.n_accepted_inserts = 0
+        self.n_accepted_deletes = 0
 
         # NCMC-specific variables
         self.insert_works = []
