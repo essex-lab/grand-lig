@@ -7,17 +7,18 @@ Functions to provide support for grand canonical sampling in OpenMM.
 These functions are not used during the simulation, but will be relevant in setting up
 simulations and processing results
 
-Marley Samways
 Will Poole
+Marley Samways
+Ollie Melling
 """
 import copy
 import os
 import numpy as np
 import mdtraj
 import parmed
-from simtk import unit
-from simtk import openmm
-from simtk.openmm import app
+from openmm import unit
+import openmm
+from openmm import app
 from copy import deepcopy
 from scipy.cluster import hierarchy
 from openmmtools.constants import ONE_4PI_EPS0
@@ -40,7 +41,7 @@ class PDBRestartReporter(object):
         ----------
         filename : str
             Name of the PDB file to write out
-        topology : simtk.openmm.app.Topology
+        topology : openmm.app.Topology
             Topology object for the system of interest
         """
         self.filename = filename
@@ -52,9 +53,9 @@ class PDBRestartReporter(object):
 
         Parameters
         ----------
-        simulation : simtk.openmm.app.Simulation
+        simulation : openmm.app.Simulation
             Simulation object being used
-        state : simtk.openmm.State
+        state : openmm.State
             Current State of the simulation
         """
         # Read the positions from the state
@@ -95,9 +96,9 @@ def add_ghosts(topology, positions, molfile='tip3p.pdb', n=10, pdb='gcmc-extra-w
 
     Parameters
     ----------
-    topology : simtk.openmm.app.Topology
+    topology : openmm.app.Topology
         Topology of the initial system
-    positions : simtk.unit.Quantity
+    positions : openmm.unit.Quantity
         Atomic coordinates of the initial system
     molfile : str
         Name of the file defining the molecule to insert. Must be a
@@ -110,9 +111,9 @@ def add_ghosts(topology, positions, molfile='tip3p.pdb', n=10, pdb='gcmc-extra-w
 
     Returns
     -------
-    modeller.topology : simtk.openmm.app.Topology
+    modeller.topology : openmm.app.Topology
         Topology of the system after modification
-    modeller.positions : simtk.unit.Quantity
+    modeller.positions : openmm.unit.Quantity
         Atomic positions of the system after modification
     ghosts : list
         List of the residue numbers (counting from 0) of the ghost
@@ -218,9 +219,9 @@ def remove_ghosts(topology, positions, ghosts=None, pdb='gcmc-removed-ghosts.pdb
 
     Parameters
     ----------
-    topology : simtk.openmm.app.Topology
+    topology : openmm.app.Topology
         Topology of the initial system
-    positions : simtk.unit.Quantity
+    positions : openmm.unit.Quantity
         Atomic coordinates of the initial system
     ghosts : list
         List of residue IDs for the ghost molecules to be deleted
@@ -230,9 +231,9 @@ def remove_ghosts(topology, positions, ghosts=None, pdb='gcmc-removed-ghosts.pdb
 
     Returns
     -------
-    modeller.topology : simtk.openmm.app.Topology
+    modeller.topology : openmm.app.Topology
         Topology of the system after modification
-    modeller.positions : simtk.unit.Quantity
+    modeller.positions : openmm.unit.Quantity
         Atomic positions of the system after modification
     """
     # Do nothing if no ghost molecules are specified
@@ -287,12 +288,12 @@ def convert_conc_to_volume(conc):
 
     Parameters
     ----------
-    conc : simtk.unit.Quantity
+    conc : openmm.unit.Quantity
         Concentration of interest
 
     Returns
     -------
-    v_per_mol : simtk.unit.Quantity
+    v_per_mol : openmm.unit.Quantity
         Volume per molecule
     """
     # Make sure that the concentration has units of M - this should raise an error otherwise
@@ -515,9 +516,9 @@ def create_custom_forces(system, topology, resnames):
 
     Parameters
     ----------
-    system : simtk.openmm.System
+    system : openmm.System
         System of interest
-    topology : simtk.openmm.app.Topology
+    topology : openmm.app.Topology
         Topology for the system of interest
     resnames : list
         List of residue names that will be switched
@@ -528,11 +529,11 @@ def create_custom_forces(system, topology, resnames):
         Dictionary containing parameters for each atom of each molecule. The keys are the residue names and the items
         are lists. Each list contains (in order) dictionaries storing the charge, sigma and epsilon parameters for each
         atom of that residue
-    custom_sterics : simtk.openmm.CustomNonbondedForce
+    custom_sterics : openmm.CustomNonbondedForce
         Handles the softcore LJ interactions
-    electrostatc_exceptions : simtk.openmm.CustomBondForce
+    electrostatc_exceptions : openmm.CustomBondForce
         Handles the electrostatic exceptions (if relevant, None otherwise)
-    steric_exceptions : simtk.openmm.CustomBondForce
+    steric_exceptions : openmm.CustomBondForce
         Handles the steric exceptions (if relevant, None otherwise)
     """
     # Find NonbondedForce - needs to be updated to switch molecules on/off
@@ -562,11 +563,18 @@ def create_custom_forces(system, topology, resnames):
         raise Exception("Currently only supporting PME for long range electrostatics")
 
     # Define the energy expression for the softcore sterics
+    # lj_energy = ("U;"
+    #              "U = (lambda^soft_a) * 4 * epsilon * x * (x-1.0);"  # Softcore energy
+    #              "x = (sigma/reff)^6;"  # Define x as sigma/r(effective)
+    #              # Calculate effective distance
+    #              "reff = sigma*((soft_alpha*(1.0-lambda)^soft_b + (r/sigma)^soft_c))^(1/soft_c)")
+
+
     lj_energy = ("U;"
-                 "U = (lambda^soft_a) * 4 * epsilon * x * (x-1.0);"  # Softcore energy
+                 "U = (lambda) * 4 * epsilon * x * (x-1.0);"  # Softcore energy
                  "x = (sigma/reff)^6;"  # Define x as sigma/r(effective)
                  # Calculate effective distance
-                 "reff = sigma*((soft_alpha*(1.0-lambda)^soft_b + (r/sigma)^soft_c))^(1/soft_c)")
+                 "reff = sigma*((0.5*(1.0-lambda) + (r/sigma)^6))^(1/6)")
     # Define combining rules
     lj_combining = "; sigma = 0.5*(sigma1+sigma2); epsilon = sqrt(epsilon1*epsilon2); lambda = lambda1*lambda2"
 
@@ -584,11 +592,11 @@ def create_custom_forces(system, topology, resnames):
     custom_sterics.setSwitchingDistance(nonbonded_force.getSwitchingDistance())
     nonbonded_force.setUseDispersionCorrection(False)
     custom_sterics.setUseLongRangeCorrection(nonbonded_force.getUseDispersionCorrection())
-    # Set softcore parameters
-    custom_sterics.addGlobalParameter('soft_alpha', 0.5)
-    custom_sterics.addGlobalParameter('soft_a', 1)
-    custom_sterics.addGlobalParameter('soft_b', 1)
-    custom_sterics.addGlobalParameter('soft_c', 6)
+    # Set softcore parameters  Dont need them if hard coded into energy function. Speeds things up a it.
+    # custom_sterics.addGlobalParameter('soft_alpha', 0.5)
+    # custom_sterics.addGlobalParameter('soft_a', 1)
+    # custom_sterics.addGlobalParameter('soft_b', 1)
+    # custom_sterics.addGlobalParameter('soft_c', 6)
 
     # Get a list of all molecule atom IDs
     mol_atom_ids = []
@@ -986,7 +994,7 @@ def wrap_waters(topology=None, trajectory=None, t=None, output=None):
     for f in range(n_frames):
         for residue in t.topology.residues:
             # Skip if this is a protein residue
-            if residue.name not in ['WAT', 'HOH']:
+            if residue.name not in ['WAT', 'HOH', 'L02']:
                 continue
 
             # Find the maximum and minimum distances between this residue and the reference atom
@@ -1198,7 +1206,7 @@ def write_sphere_traj(radius, ref_atoms=None, topology=None, trajectory=None, t=
         Trajectory file, such as DCD
     t : mdtraj.Trajectory
         Trajectory object, if already loaded
-    sphere_centre : simtk.unit.Quantity
+    sphere_centre : openmm.unit.Quantity
         Coordinates around which the GCMC sphere is based
     output : str
         Name of the output PDB file
@@ -1288,7 +1296,7 @@ def cluster_waters(topology, trajectory, sphere_radius, ref_atoms=None, sphere_c
         Radius of the GCMC sphere in Angstroms
     ref_atoms : list
         List of reference atoms for the GCMC sphere (list of dictionaries)
-    sphere_centre : simtk.unit.Quantity
+    sphere_centre : openmm.unit.Quantity
         Coordinates around which the GCMC sphere is based
     cutoff : float
         Distance cutoff used in the clustering
@@ -1568,3 +1576,35 @@ def setupmoveTraj(n_moves):
     name = f"move-{n_moves+1}.dcd"
     moveDCD = mdtraj.reporters.DCDReporter(f"move-{n_moves+1}.dcd", 0)
     return moveDCD, name
+
+def calculateBFromConc(mu, r, V_L, T):
+    """
+
+    Parameters
+    ----------
+    mu
+    r
+    V_L
+    T
+
+    Returns
+    -------
+
+    """
+    beta = 1 / (unit.BOLTZMANN_CONSTANT_kB * T * unit.AVOGADRO_CONSTANT_NA)
+    B = (beta * mu) + np.log(calcSphereVol(r) / V_L)
+    return B
+
+def calcSphereVol(radius):
+    """
+
+    Parameters
+    ----------
+    radius
+
+    Returns
+    -------
+
+    """
+    V = 4/3 * np.pi * radius**3
+    return V

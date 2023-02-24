@@ -5,15 +5,16 @@ Description
 -----------
 Set of functions to calibrate the excess chemical potential and standard state volume of water
 
+Will Poole
 Marley Samways
 """
 
 import numpy as np
 import pymbar
 import openmmtools
-from simtk.openmm.app import *
-from simtk.openmm import *
-from simtk.unit import *
+from openmm.app import *
+from openmm import *
+from openmm.unit import *
 from sys import stdout
 import grand
 import os
@@ -61,19 +62,19 @@ def calc_mu_ex(system, topology, positions, resname, resid, box_vectors, tempera
 
     Parameters
     ----------
-    system : simtk.openmm.System
+    system : openmm.System
         System of interest
-    topology : simtk.openmm.app.Topology
+    topology : openmm.app.Topology
         Topology of the system
-    positions : simtk.unit.Quantity
+    positions : openmm.unit.Quantity
         Initial positions for the simulation
     resname : str
         Resname of the molecule to couple
     resid : int
         Resid of the residue to couple
-    box_vectors : simtk.unit.Quantity
+    box_vectors : openmm.unit.Quantity
         Periodic box vectors for the system
-    temperature : simtk.unit.Quantity
+    temperature : openmm.unit.Quantity
         Temperature of the simulation
     n_lambdas : int
         Number of lambda values
@@ -83,12 +84,12 @@ def calc_mu_ex(system, topology, positions, resname, resid, box_vectors, tempera
         Number of MD steps to run between each sample
     log_file : str
         Name of the log file to write out
-    pressure : simtk.unit.Quantity
+    pressure : openmm.unit.Quantity
         Pressure of the simulation, will default to NVT
 
     Returns
     -------
-    dG : simtk.unit.Quantity
+    dG : openmm.unit.Quantity
         Calculated free energy value
     """
     # Use the BAOAB integrator to sample the equilibrium distribution
@@ -220,15 +221,15 @@ def calc_avg_volume(system, topology, positions, box_vectors, temperature, n_sam
 
     Parameters
     ----------
-    system : simtk.openmm.System
+    system : openmm.System
         System of interest
-    topology : simtk.openmm.app.Topology
+    topology : openmm.app.Topology
         Topology of the system
-    positions : simtk.unit.Quantity
+    positions : openmm.unit.Quantity
         Initial positions for the simulation
-    box_vectors : simtk.unit.Quantity
+    box_vectors : openmm.unit.Quantity
         Periodic box vectors for the system
-    temperature : simtk.unit.Quantity
+    temperature : openmm.unit.Quantity
         Temperature of the simulation
     n_samples : int
         Number of volume samples to collect
@@ -312,19 +313,19 @@ def calc_mu_ex_independant(system, topology, positions, resname, resid, box_vect
 
     Parameters
     ----------
-    system : simtk.openmm.System
+    system : openmm.System
         System of interest
-    topology : simtk.openmm.app.Topology
+    topology : openmm.app.Topology
         Topology of the system
-    positions : simtk.unit.Quantity
+    positions : openmm.unit.Quantity
         Initial positions for the simulation
     resname : str
         Resname of the molecule to couple
     resid : int
         Resid of the residue to couple
-    box_vectors : simtk.unit.Quantity
+    box_vectors : openmm.unit.Quantity
         Periodic box vectors for the system
-    temperature : simtk.unit.Quantity
+    temperature : openmm.unit.Quantity
         Temperature of the simulation
     n_lambdas : int
         Number of lambda values
@@ -334,12 +335,12 @@ def calc_mu_ex_independant(system, topology, positions, resname, resid, box_vect
         Number of MD steps to run between each sample
     log_file : str
         Name of the log file to write out
-    pressure : simtk.unit.Quantity
+    pressure : openmm.unit.Quantity
         Pressure of the simulation, will default to NVT
 
     Returns
     -------
-    dG : simtk.unit.Quantity
+    dG : openmm.unit.Quantity
         Calculated free energy value
     """
     # Use the BAOAB integrator to sample the equilibrium distribution

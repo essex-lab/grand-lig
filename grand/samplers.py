@@ -6,9 +6,9 @@ Description
 This module is written to execute GCMC moves with molecules in OpenMM, via a series of
 Sampler objects.
 
+Will Poole
 Marley Samways
 Ollie Melling
-Will Poole
 """
 import copy
 
@@ -19,12 +19,10 @@ import logging
 import parmed
 import math
 from copy import deepcopy
-from simtk import unit
-from simtk import openmm
-from openmmtools.integrators import NonequilibriumLangevinIntegrator
+from openmm import unit
+import openmm
 from rdkit import Chem
 from grand import utils
-from grand import potential
 
 
 class BaseGrandCanonicalMonteCarloSampler(object):
@@ -39,11 +37,11 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         Parameters
         ----------
-        system : simtk.openmm.System
+        system : openmm.System
             System object to be used for the simulation
-        topology : simtk.openmm.app.Topology
+        topology : openmm.app.Topology
             Topology object for the system to be simulated
-        temperature : simtk.unit.Quantity
+        temperature : openmm.unit.Quantity
             Temperature of the simulation, must be in appropriate units
         resname : str
             Resname of the molecule of interest. Default = "HOH"
@@ -77,6 +75,9 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s: %(message)s'))
         self.logger.addHandler(file_handler)
 
+        # Set random number generator
+        self.rng = np.random.default_rng()
+
         # Set important variables here
         self.system = system
         self.topology = topology
@@ -84,7 +85,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.velocities = None
         self.context = None
         self.kT = unit.BOLTZMANN_CONSTANT_kB * unit.AVOGADRO_CONSTANT_NA * temperature
-        self.simulation_box = np.zeros(3) * unit.nanometer  # Set to zero for now
+        self.simulation_box = np.zeros(3) * unit.nanometers  # Set to zero for now
 
         self.logger.info("kT = {}".format(self.kT.in_units_of(unit.kilocalorie_per_mole)))
 
@@ -121,7 +122,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.ele_except_force = None
         self.mol_vdw_excepts = {}  # Store the vdW exception IDs for each molecule
         self.mol_ele_excepts = {}  # Store the electrostatic exception IDs for each molecule
-
+        self.move_lambdas = ()  # Empty list to track the move lambdas
         # Check get atom IDs for each molecule
         self.mol_atom_ids = {}  # Store atom IDs for each molecule
         self.mol_heavy_ids = {}  # Store heavy atom IDs for each molecule
@@ -201,11 +202,11 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         param_list : list
             List of parameters for each atom (in correct order) - each entry must be a dictionary containing 'charge',
             'sigma', and 'epsilon'
-        custom_sterics : simtk.openmm.CustomNonbondedForce
+        custom_nb_force : openmm.CustomNonbondedForce
             Handles the softcore LJ interactions
-        electrostatc_exceptions : simtk.openmm.CustomBondForce
+        elec_bond_force : openmm.CustomBondForce
             Handles the electrostatic exceptions (if relevant, None otherwise)
-        steric_exceptions : simtk.openmm.CustomBondForce
+        steric_bond_force : openmm.CustomBondForce
             Handles the steric exceptions (if relevant, None otherwise)
         """
         # Set the molecule parameters
@@ -427,8 +428,6 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         Parameters
         ----------
-        context : simtk.openmm.Context
-            Current context of the simulation
         ghostResids : list
             List of residue IDs corresponding to the ghost molecules added
         ghostFile : str
@@ -437,7 +436,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         Returns
         -------
-        context : simtk.openmm.Context
+        context : openmm.Context
             Updated context, with ghost molecules switched off
         """
         # Get a list of all ghost residue IDs supplied from list and file
@@ -462,6 +461,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         for resid, residue in enumerate(self.topology.residues()):
             if resid in ghost_resids:
                 #  Switch off nonbonded interactions involving this molecule
+                self.move_lambdas = (1.0, 1.0)
                 self.adjustSpecificMolecule(resid, 0.0)
                 # Mark that this molecule has been switched off
                 self.setMolStatus(resid, 0)
@@ -488,25 +488,35 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         else:
             lambda_vdw = vdw
             lambda_ele = ele
-
-        # Update per-atom nonbonded parameters first
+        # print(self.move_lambdas)
+        # print(lambda_vdw, lambda_ele)
+        # # Update per-atom nonbonded parameters first  ELE
         atoms = self.mol_atom_ids[resid]
-        for i, atom_idx in enumerate(atoms):
-            # Obtain original parameters
-            atom_params = self.mol_params[i]
-            # Update charge in NonbondedForce
-            self.nonbonded_force.setParticleParameters(atom_idx,
-                                                       charge=(lambda_ele * atom_params["charge"]),
-                                                       sigma=atom_params["sigma"],
-                                                       epsilon=abs(0.0))
-            # Update lambda in CustomNonbondedForce
-            self.custom_nb_force.setParticleParameters(atom_idx,
-                                                       [atom_params["sigma"], atom_params["epsilon"], lambda_vdw])
+        if lambda_ele != self.move_lambdas[1]:
+            for i, atom_idx in enumerate(atoms):
+                # Obtain original parameters
+                atom_params = self.mol_params[i]
+                # Update charge in NonbondedForce
+                self.nonbonded_force.setParticleParameters(atom_idx,
+                                                           charge=(lambda_ele * atom_params["charge"]),
+                                                           sigma=atom_params["sigma"],
+                                                           epsilon=abs(0.0))
+            self.nonbonded_force.updateParametersInContext(self.context)
 
-        # Update context with new parameters
-        self.nonbonded_force.updateParametersInContext(self.context)
-        self.custom_nb_force.updateParametersInContext(self.context)
+        #  Now the VDW
+        if lambda_vdw != self.move_lambdas[0]:
+            #print('Changing VDW')
+            for i, atom_idx in enumerate(atoms):
+                # Obtain original parameters
+                atom_params = self.mol_params[i]
+                # Update lambda in CustomNonbondedForce
+                self.custom_nb_force.setParticleParameters(atom_idx,
+                                                           [atom_params["sigma"], atom_params["epsilon"], lambda_vdw])
 
+            # Update context with new parameters
+            self.custom_nb_force.updateParametersInContext(self.context)
+
+        self.move_lambdas = (lambda_vdw, lambda_ele)
         # Update the exceptions, where relevant
         if self.vdw_except_force is not None:
             # Update vdW exceptions
@@ -537,7 +547,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         Parameters
         ----------
-        simulation : simtk.openmm.app.Simulation
+        simulation : openmm.app.Simulation
             Simulation object being used
         """
         # Calculate rounded acceptance rate and mean N
@@ -548,7 +558,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         mean_N = np.round(np.mean(self.Ns), 4)
         # Print out a line describing the acceptance rate and sampling of N
         msg = "{} move(s) completed ({} accepted ({:.4f} %)). Current N = {}. Average N = {:.3f}. Inserts = {} ({})." \
-              " Deletes = {} ()".format(self.n_moves, self.n_accepted, acc_rate,
+              " Deletes = {} ({})".format(self.n_moves, self.n_accepted, acc_rate,
                                         self.N, mean_N,
                                         self.n_inserts, self.n_accepted_inserts,
                                         self.n_deletes, self.n_accepted_deletes)
@@ -608,7 +618,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         Parameters
         ----------
-        context : simtk.openmm.Context
+        context : openmm.Context
             Current context of the simulation
         n : int
             Number of moves to execute
@@ -628,7 +638,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         Returns
         -------
-        heavy_cog : simtk.unit.Quantity
+        heavy_cog : openmm.unit.Quantity
             Centre of geometry, based on heavy atoms
         """
         # Calculate centre of geometry (COG), based on heavy atoms
@@ -647,12 +657,12 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         ----------
         resid : int
             Residue of interest
-        new_centre : simtk.unit.Quantity
+        new_centre : openmm.unit.Quantity
             Translate the molecule to this position after the rotation, if given
 
         Returns
         -------
-        new_positions : simtk.unit.Quantity
+        new_positions : openmm.unit.Quantity
             New positions for the whole context, including this rotation
         """
         # Calculate centre of geometry (COG), based on heavy atoms
@@ -689,7 +699,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         #  Normalise probabilities distribution
         probs = np.asarray(list(self.dihedral_distribution.values())) / 100
         probs = probs / sum(probs)
-        rand_conf_id = np.random.choice(np.arange(len(self.dihedral_distribution.keys())),
+        rand_conf_id = self.rng.choice(np.arange(len(self.dihedral_distribution.keys())),
                                         p=probs)  # Get the position in the conformation keys list of th
         rand_conf = dihedral_list[rand_conf_id]  # Got the actual dihedrals to insert
         #print(self.n_moves, rand_conf_id, rand_conf)
@@ -753,21 +763,21 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
 
         Parameters
         ----------
-        system : simtk.openmm.System
+        system : openmm.System
             System object to be used for the simulation
-        topology : simtk.openmm.app.Topology
+        topology : openmm.app.Topology
             Topology object for the system to be simulated
-        temperature : simtk.unit.Quantity
+        temperature : openmm.unit.Quantity
             Temperature of the simulation, must be in appropriate units
         adams : float
             Adams B value for the simulation (dimensionless). Default is None,
             if None, the B value is calculated from the box volume and chemical
             potential
-        excessChemicalPotential : simtk.unit.Quantity
+        excessChemicalPotential : openmm.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
             -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
             simulation parameters.
-        standardVolume : simtk.unit.Quantity
+        standardVolume : openmm.unit.Quantity
             Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
@@ -781,9 +791,9 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
             List containing dictionaries describing the atoms to use as the centre of the GCMC region
             Must contain 'name' and 'resname' as keys, and optionally 'resid' (recommended) and 'chain'
             e.g. [{'name': 'C1', 'resname': 'LIG', 'resid': '123'}]
-        sphereRadius : simtk.unit.Quantity
+        sphereRadius : openmm.unit.Quantity
             Radius of the spherical GCMC region
-        sphereCentre : simtk.unit.Quantity
+        sphereCentre : openmm.unit.Quantity
             Coordinates around which the GCMC sphere is based
         log : str
             Log file to write out
@@ -938,7 +948,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
 
         Parameters
         ----------
-        context : simtk.openmm.Context
+        context : openmm.Context
             Current context of the simulation
         ghostResids : list
             List of residue IDs corresponding to the ghost waters added
@@ -981,13 +991,13 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
 
         Parameters
         ----------
-        context : simtk.openmm.Context
+        context : openmm.Context
             Current context of the system. Only needs to be supplied if the context
             has changed since the last update
 
         Returns
         -------
-        context : simtk.openmm.Context
+        context : openmm.Context
             Updated context after deleting the relevant waters
         """
         #  Read in positions of the context and update GCMC box
@@ -1002,7 +1012,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
             # Make sure its a GCMC molecules (ghost/in sphere)
             if self.getMolStatusValue(resid) != 1:
                 continue
-
+            self.move_lambdas = (1.0, 1.0)
             self.adjustSpecificMolecule(resid, 0.0)
             # Update relevant parameters
             self.setMolStatus(resid, 0)
@@ -1025,10 +1035,14 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
                                         box_vectors[2, 2]._value]) * unit.nanometer
 
         # Check which molecules are in the GCMC region
-        for resid, residue in enumerate(self.topology.residues()):
-            # Make sure its a molecule of interesrt
-            if resid not in self.mol_resids:
-                continue
+        # for resid, residue in enumerate(self.topology.residues()):
+        #     # Make sure its a molecule of interest
+        #     if resid not in self.mol_resids:
+        #         continue
+        #
+        # all_res = list(self.topology.residues())
+        for resid in self.mol_resids:
+            #residue = all_res[resid]
 
             # Ghost molecules automatically count as GCMC waters
             if self.getMolStatusValue(resid) == 0:
@@ -1048,7 +1062,6 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
             else:
                 self.setMolStatus(resid, 2)  # Not being tracked
 
-
         # Update lists
         self.N = len(self.getMolStatusResids(1))
 
@@ -1060,7 +1073,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
 
         Returns
         -------
-        new_positions : simtk.unit.Quantity
+        new_positions : openmm.unit.Quantity
             Positions following the 'insertion' of the ghost water
         insert_mol : int
             Resid of the molecule to insert
@@ -1108,10 +1121,16 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         delete_mol = np.random.choice(gcmc_mols)  # Position in list of GCMC molecules
 
         atom_indices = []  # Dont think i Need
-        for resid, residue in enumerate(self.topology.residues()):
-            if resid == delete_mol:
-                for atom in residue.atoms():
-                    atom_indices.append(atom.index)
+        all_res = list(self.topology.residues())
+
+        for atom in all_res[delete_mol].atoms():
+            atom_indices.append(atom)
+
+            ## Removed below to save looping over all the residues and doing the if statement
+        # for resid, residue in enumerate(self.topology.residues()):
+        #     if resid == delete_mol:
+        #         for atom in residue.atoms():
+        #             atom_indices.append(atom.index)
 
         return delete_mol
 
@@ -1131,21 +1150,21 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
 
         Parameters
         ----------
-        system : simtk.openmm.System
+        system : openmm.System
             System object to be used for the simulation
-        topology : simtk.openmm.app.Topology
+        topology : openmm.app.Topology
             Topology object for the system to be simulated
-        temperature : simtk.unit.Quantity
+        temperature : openmm.unit.Quantity
             Temperature of the simulation, must be in appropriate units
         adams : float
             Adams B value for the simulation (dimensionless). Default is None,
             if None, the B value is calculated from the box volume and chemical
             potential
-        excessChemicalPotential : simtk.unit.Quantity
+        excessChemicalPotential : openmm.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
             -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
             simulation parameters.
-        standardVolume : simtk.unit.Quantity
+        standardVolume : openmm.unit.Quantity
             Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
@@ -1157,9 +1176,9 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
             List containing dictionaries describing the atoms to use as the centre of the GCMC region
             Must contain 'name' and 'resname' as keys, and optionally 'resid' (recommended) and 'chain'
             e.g. [{'name': 'C1', 'resname': 'LIG', 'resid': '123'}]
-        sphereRadius : simtk.unit.Quantity
+        sphereRadius : openmm.unit.Quantity
             Radius of the spherical GCMC region
-        sphereCentre : simtk.unit.Quantity
+        sphereCentre : openmm.unit.Quantity
             Coordinates around which the GCMC sphere is based
         log : str
             Name of the log file to write out
@@ -1189,7 +1208,7 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
 
         Parameters
         ----------
-        context : simtk.openmm.Context
+        context : openmm.Context
             Current context of the simulation
         n : int
             Number of moves to execute
@@ -1200,6 +1219,7 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
         self.positions = deepcopy(state.getPositions(asNumpy=True))
         self.velocities = deepcopy(state.getVelocities(asNumpy=True))
         self.energy = state.getPotentialEnergy()
+        self.move_lambdas = ()
 
         # Update GCMC region based on current state
         self.updateGCMCSphere(state)
@@ -1213,12 +1233,14 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
         # Execute moves
         for i in range(n):
             # Insert or delete a water, based on random choice
-            if np.random.randint(2) == 1:
+            if self.rng.integers(2) == 1:
                 # Attempt to insert a water
+                self.move_lambdas = (0.0, 0.0)
                 self.insertionMove()
                 self.n_inserts += 1
             else:
                 # Attempt to delete a water
+                self.move_lambdas = (1.0, 1.0)
                 self.deletionMove()
                 self.n_deletes += 1
             self.n_moves += 1
@@ -1311,24 +1333,24 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
         Parameters
         ----------
-        system : simtk.openmm.System
+        system : openmm.System
             System object to be used for the simulation
-        topology : simtk.openmm.app.Topology
+        topology : openmm.app.Topology
             Topology object for the system to be simulated
-        temperature : simtk.unit.Quantity
+        temperature : openmm.unit.Quantity
             Temperature of the simulation, must be in appropriate units
-        integrator : simtk.openmm.CustomIntegrator
+        integrator : openmm.CustomIntegrator
             Integrator to use to propagate the dynamics of the system. Currently want to make sure that this
             is the customised Langevin integrator found in openmmtools which uses BAOAB (VRORV) splitting.
         adams : float
             Adams B value for the simulation (dimensionless). Default is None,
             if None, the B value is calculated from the box volume and chemical
             potential
-        excessChemicalPotential : simtk.unit.Quantity
+        excessChemicalPotential : openmm.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
             -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
             simulation parameters.
-        standardVolume : simtk.unit.Quantity
+        standardVolume : openmm.unit.Quantity
             Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
@@ -1336,7 +1358,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             Number of pertubation steps over which to shift lambda between 0 and 1 (or vice versa).
         nPropStepsPerPert : int
             Number of propagation steps to carry out for
-        timeStep : simtk.unit.Quantity
+        timeStep : openmm.unit.Quantity
             Time step to use for non-equilibrium integration during the propagation steps
         lambdas : list
             Series of lambda values corresponding to the pathway over which the molecules are perturbed
@@ -1350,9 +1372,9 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             List containing dictionaries describing the atoms to use as the centre of the GCMC region
             Must contain 'name' and 'resname' as keys, and optionally 'resid' (recommended) and 'chain'
             e.g. [{'name': 'C1', 'resname': 'LIG', 'resid': '123'}]
-        sphereRadius : simtk.unit.Quantity
+        sphereRadius : openmm.unit.Quantity
             Radius of the spherical GCMC region
-        sphereCentre : simtk.unit.Quantity
+        sphereCentre : openmm.unit.Quantity
             Coordinates around which the GCMC sphere is based
         log : str
             Name of the log file to write out
@@ -1421,7 +1443,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
         Parameters
         ----------
-        context : simtk.openmm.Context
+        context : openmm.Context
             Current context of the simulation
         n : int
             Number of moves to execute
@@ -1431,6 +1453,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
         self.positions = deepcopy(state.getPositions(asNumpy=True))
         self.velocities = deepcopy(state.getVelocities(asNumpy=True))
+        self.move_lambdas = ()
 
         # Update GCMC region based on current state
         self.updateGCMCSphere(state)
@@ -1441,12 +1464,14 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             if self.record:  # If we want to record traj
                 self.moveDCD, self.dcd_name = utils.setupmoveTraj(self.n_moves) # Run the function to setup a move trajectory which is hidden in utils
             # Insert or delete a water, based on random choice
-            if np.random.randint(2) == 1:
+            if self.rng.integers(2) == 1:
                 # Attempt to insert a water
+                self.move_lambdas = (0.0, 0.0)
                 self.insertionMove()
                 self.n_inserts += 1
             else:
                 # Attempt to delete a water
+                self.move_lambdas = (1.0, 1.0)
                 self.deletionMove()
                 self.n_deletes += 1
             self.n_moves += 1
@@ -1705,11 +1730,11 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
 
         Parameters
         ----------
-        system : simtk.openmm.System
+        system : openmm.System
             System object to be used for the simulation
-        topology : simtk.openmm.app.Topology
+        topology : openmm.app.Topology
             Topology object for the system to be simulated
-        temperature : simtk.unit.Quantity
+        temperature : openmm.unit.Quantity
             Temperature of the simulation, must be in appropriate units
         resname : str
             Resname of the molecule of interest. Default = "HOH"
@@ -1717,15 +1742,15 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
             Adams B value for the simulation (dimensionless). Default is None,
             if None, the B value is calculated from the box volume and chemical
             potential
-        excessChemicalPotential : simtk.unit.Quantity
+        excessChemicalPotential : openmm.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
             -6.09 kcal/mol (water). This should be the hydration free energy of the molecule, and may need to be changed
-        standardVolume : simtk.unit.Quantity
+        standardVolume : openmm.unit.Quantity
             Standard volume of the molecule - corresponds to the volume per molecule in bulk solution. The default value is
             30.345 A^3 (water)
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
-        boxVectors : simtk.unit.Quantity
+        boxVectors : openmm.unit.Quantity
             Box vectors for the simulation cell
         ghostFile : str
             Name of a file to write out the residue IDs of ghost water molecules. This is
@@ -1774,7 +1799,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
 
         Parameters
         ----------
-        context : simtk.openmm.Context
+        context : openmm.Context
             Current context of the simulation
         ghostResids : list
             List of residue IDs corresponding to the ghost waters added
@@ -1818,7 +1843,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
 
         Returns
         -------
-        new_positions : simtk.unit.Quantity
+        new_positions : openmm.unit.Quantity
             Positions following the 'insertion' of the ghost water
         insert_mol : int
             Resid of the molecule to insert
@@ -1874,11 +1899,11 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
 
         Parameters
         ----------
-        system : simtk.openmm.System
+        system : openmm.System
             System object to be used for the simulation
-        topology : simtk.openmm.app.Topology
+        topology : openmm.app.Topology
             Topology object for the system to be simulated
-        temperature : simtk.unit.Quantity
+        temperature : openmm.unit.Quantity
             Temperature of the simulation, must be in appropriate units
         resname : str
             Resname of the molecule of interest. Default = "HOH"
@@ -1886,16 +1911,16 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
             Adams B value for the simulation (dimensionless). Default is None,
             if None, the B value is calculated from the box volume and chemical
             potential
-        excessChemicalPotential : simtk.unit.Quantity
+        excessChemicalPotential : openmm.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
             -6.09 kcal/mol (water). This should be the hydration free energy of the molecule, and may need to be
             changed
-        standardVolume : simtk.unit.Quantity
+        standardVolume : openmm.unit.Quantity
             Standard volume of the molecule - corresponds to the volume per molecule in bulk solution. The default value is
             30.345 A^3 (water)
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
-        boxVectors : simtk.unit.Quantity
+        boxVectors : openmm.unit.Quantity
             Box vectors for the simulation cell
         ghostFile : str
             Name of a file to write out the residue IDs of ghost water molecules. This is
@@ -1928,7 +1953,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
 
         Parameters
         ----------
-        context : simtk.openmm.Context
+        context : openmm.Context
             Current context of the simulation
         n : int
             Number of moves to execute
@@ -1939,16 +1964,19 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         self.positions = deepcopy(state.getPositions(asNumpy=True))
         self.velocities = deepcopy(state.getVelocities(asNumpy=True))
         self.energy = state.getPotentialEnergy()
+        self.move_lambdas = ()
 
         # Execute moves
         for i in range(n):
             # Insert or delete a water, based on random choice
-            if np.random.randint(2) == 1:
+            if self.rng.integers(2) == 1:
                 # Attempt to insert a water
+                self.move_lambdas = (0.0, 0.0)
                 self.insertionMove()
                 self.n_inserts += 1
             else:
                 # Attempt to delete a water
+                self.move_lambdas = (1.0, 1.0)
                 self.deletionMove()
                 self.n_deletes += 1
             self.n_moves += 1
@@ -2025,6 +2053,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
 
 ########################################################################################################################
 
+# noinspection PyUnresolvedReferences
 class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
     """
     Class to carry out GCMC moves in OpenMM, using nonequilibrium candidate Monte Carlo (NCMC)
@@ -2040,13 +2069,13 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
 
         Parameters
         ----------
-        system : simtk.openmm.System
+        system : openmm.System
             System object to be used for the simulation
-        topology : simtk.openmm.app.Topology
+        topology : openmm.app.Topology
             Topology object for the system to be simulated
-        temperature : simtk.unit.Quantity
+        temperature : openmm.unit.Quantity
             Temperature of the simulation, must be in appropriate units
-        integrator : simtk.openmm.CustomIntegrator
+        integrator : openmm.CustomIntegrator
             Integrator to use to propagate the dynamics of the system. Currently want to make sure that this
             is the customised Langevin integrator found in openmmtools which uses BAOAB (VRORV) splitting.
         resname : str
@@ -2055,11 +2084,11 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             Adams B value for the simulation (dimensionless). Default is None,
             if None, the B value is calculated from the box volume and chemical
             potential
-        excessChemicalPotential : simtk.unit.Quantity
+        excessChemicalPotential : openmm.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
             -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
             simulation parameters.
-        standardVolume : simtk.unit.Quantity
+        standardVolume : openmm.unit.Quantity
             Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
@@ -2067,11 +2096,11 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             Number of pertubation steps over which to shift lambda between 0 and 1 (or vice versa).
         nPropStepsPerPert : int
             Number of propagation steps to carry out for
-        timeStep : simtk.unit.Quantity
+        timeStep : openmm.unit.Quantity
             Time step to use for non-equilibrium integration during the propagation steps
         lambdas : list
             Series of lambda values corresponding to the pathway over which the molecules are perturbed
-        boxVectors : simtk.unit.Quantity
+        boxVectors : openmm.unit.Quantity
             Box vectors for the simulation cell
         ghostFile : str
             Name of a file to write out the residue IDs of ghost water molecules. This is
@@ -2127,7 +2156,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
 
         Parameters
         ----------
-        context : simtk.openmm.Context
+        context : openmm.Context
             Current context of the simulation
         n : int
             Number of moves to execute
@@ -2137,17 +2166,19 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
         self.positions = deepcopy(state.getPositions(asNumpy=True))
         self.velocities = deepcopy(state.getVelocities(asNumpy=True))
-
+        self.move_lambdas = ()
 
         #  Execute moves
         for i in range(n):
             # Insert or delete a water, based on random choice
-            if np.random.randint(2) == 1:
+            if self.rng.integers(2) == 1:
                 # Attempt to insert a water
+                self.move_lambdas = (0.0, 0.0)
                 self.insertionMove()
                 self.n_inserts += 1
             else:
                 # Attempt to delete a water
+                self.move_lambdas = (1.0, 1.0)
                 self.deletionMove()
                 self.n_deletes += 1
             self.n_moves += 1
@@ -2327,21 +2358,21 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
 
         Parameters
         ----------
-        system : simtk.openmm.System
+        system : openmm.System
             System object to be used for the simulation
-        topology : simtk.openmm.app.Topology
+        topology : openmm.app.Topology
             Topology object for the system to be simulated
-        temperature : simtk.unit.Quantity
+        temperature : openmm.unit.Quantity
             Temperature of the simulation, must be in appropriate units
         adams : float
             Adams B value for the simulation (dimensionless). Default is None,
             if None, the B value is calculated from the box volume and chemical
             potential
-        excessChemicalPotential : simtk.unit.Quantity
+        excessChemicalPotential : openmm.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
             -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
             simulation parameters.
-        standardVolume : simtk.unit.Quantity
+        standardVolume : openmm.unit.Quantity
             Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
@@ -2351,14 +2382,6 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
             Name of a file to write out the residue IDs of ghost water molecules. This is
             useful if you want to visualise the sampling, as you can then remove these waters
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
-        referenceAtoms : list
-            List containing dictionaries describing the atoms to use as the centre of the GCMC region
-            Must contain 'name' and 'resname' as keys, and optionally 'resid' (recommended) and 'chain'
-            e.g. [{'name': 'C1', 'resname': 'LIG', 'resid': '123'}]
-        sphereRadius : simtk.unit.Quantity
-            Radius of the spherical GCMC region
-        sphereCentre : simtk.unit.Quantity
-            Coordinates around which the GCMC sphere is based
         log : str
             Log file to write out
         createCustomForces : bool
@@ -2485,7 +2508,7 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
 
         Parameters
         ----------
-        context : simtk.openmm.Context
+        context : openmm.Context
             Current context of the simulation
         ghostResids : list
             List of residue IDs corresponding to the ghost waters added
@@ -2530,13 +2553,13 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
 
         Parameters
         ----------
-        context : simtk.openmm.Context
+        context : openmm.Context
             Current context of the system. Only needs to be supplied if the context
             has changed since the last update
 
         Returns
         -------
-        context : simtk.openmm.Context
+        context : openmm.Context
             Updated context after deleting the relevant waters
         """
         #  Read in positions of the context and update GCMC box
@@ -2617,7 +2640,7 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
 
         Returns
         -------
-        new_positions : simtk.unit.Quantity
+        new_positions : openmm.unit.Quantity
             Positions following the 'insertion' of the ghost water
         insert_mol : int
             Resid of the molecule to insert
@@ -2693,21 +2716,21 @@ class StandardGCMCCylinderSampler(GCMCCylinderSampler):
 
         Parameters
         ----------
-        system : simtk.openmm.System
+        system : openmm.System
             System object to be used for the simulation
-        topology : simtk.openmm.app.Topology
+        topology : openmm.app.Topology
             Topology object for the system to be simulated
-        temperature : simtk.unit.Quantity
+        temperature : openmm.unit.Quantity
             Temperature of the simulation, must be in appropriate units
         adams : float
             Adams B value for the simulation (dimensionless). Default is None,
             if None, the B value is calculated from the box volume and chemical
             potential
-        excessChemicalPotential : simtk.unit.Quantity
+        excessChemicalPotential : openmm.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
             -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
             simulation parameters.
-        standardVolume : simtk.unit.Quantity
+        standardVolume : openmm.unit.Quantity
             Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
@@ -2715,14 +2738,6 @@ class StandardGCMCCylinderSampler(GCMCCylinderSampler):
             Name of a file to write out the residue IDs of ghost water molecules. This is
             useful if you want to visualise the sampling, as you can then remove these waters
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
-        referenceAtoms : list
-            List containing dictionaries describing the atoms to use as the centre of the GCMC region
-            Must contain 'name' and 'resname' as keys, and optionally 'resid' (recommended) and 'chain'
-            e.g. [{'name': 'C1', 'resname': 'LIG', 'resid': '123'}]
-        sphereRadius : simtk.unit.Quantity
-            Radius of the spherical GCMC region
-        sphereCentre : simtk.unit.Quantity
-            Coordinates around which the GCMC sphere is based
         log : str
             Name of the log file to write out
         createCustomForces : bool
@@ -2751,7 +2766,7 @@ class StandardGCMCCylinderSampler(GCMCCylinderSampler):
 
         Parameters
         ----------
-        context : simtk.openmm.Context
+        context : openmm.Context
             Current context of the simulation
         n : int
             Number of moves to execute
@@ -2762,6 +2777,7 @@ class StandardGCMCCylinderSampler(GCMCCylinderSampler):
         self.positions = deepcopy(state.getPositions(asNumpy=True))
         self.velocities = deepcopy(state.getVelocities(asNumpy=True))
         self.energy = state.getPotentialEnergy()
+        self.move_lambdas = ()
 
         # Update GCMC region based on current state
         self.updateGCMCCylinder(state)
@@ -2775,12 +2791,14 @@ class StandardGCMCCylinderSampler(GCMCCylinderSampler):
         # Execute moves
         for i in range(n):
             # Insert or delete a water, based on random choice
-            if np.random.randint(2) == 1:
+            if self.rng.integers(2) == 1:
                 # Attempt to insert a water
+                self.move_lambdas = (0.0, 0.0)
                 self.insertionMove()
                 self.n_inserts += 1
             else:
                 # Attempt to delete a water
+                self.move_lambdas = (1.0, 1.0)
                 self.deletionMove()
                 self.n_deletes += 1
             self.n_moves += 1
@@ -2873,24 +2891,24 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
 
         Parameters
         ----------
-        system : simtk.openmm.System
+        system : openmm.System
             System object to be used for the simulation
-        topology : simtk.openmm.app.Topology
+        topology : openmm.app.Topology
             Topology object for the system to be simulated
-        temperature : simtk.unit.Quantity
+        temperature : openmm.unit.Quantity
             Temperature of the simulation, must be in appropriate units
-        integrator : simtk.openmm.CustomIntegrator
+        integrator : openmm.CustomIntegrator
             Integrator to use to propagate the dynamics of the system. Currently want to make sure that this
             is the customised Langevin integrator found in openmmtools which uses BAOAB (VRORV) splitting.
         adams : float
             Adams B value for the simulation (dimensionless). Default is None,
             if None, the B value is calculated from the box volume and chemical
             potential
-        excessChemicalPotential : simtk.unit.Quantity
+        excessChemicalPotential : openmm.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
             -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
             simulation parameters.
-        standardVolume : simtk.unit.Quantity
+        standardVolume : openmm.unit.Quantity
             Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
@@ -2898,7 +2916,7 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
             Number of pertubation steps over which to shift lambda between 0 and 1 (or vice versa).
         nPropStepsPerPert : int
             Number of propagation steps to carry out for
-        timeStep : simtk.unit.Quantity
+        timeStep : openmm.unit.Quantity
             Time step to use for non-equilibrium integration during the propagation steps
         lambdas : list
             Series of lambda values corresponding to the pathway over which the molecules are perturbed
@@ -2912,9 +2930,9 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
             List containing dictionaries describing the atoms to use as the centre of the GCMC region
             Must contain 'name' and 'resname' as keys, and optionally 'resid' (recommended) and 'chain'
             e.g. [{'name': 'C1', 'resname': 'LIG', 'resid': '123'}]
-        sphereRadius : simtk.unit.Quantity
+        sphereRadius : openmm.unit.Quantity
             Radius of the spherical GCMC region
-        sphereCentre : simtk.unit.Quantity
+        sphereCentre : openmm.unit.Quantity
             Coordinates around which the GCMC sphere is based
         log : str
             Name of the log file to write out
@@ -2983,7 +3001,7 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
 
         Parameters
         ----------
-        context : simtk.openmm.Context
+        context : openmm.Context
             Current context of the simulation
         n : int
             Number of moves to execute
@@ -2993,7 +3011,7 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
         self.positions = deepcopy(state.getPositions(asNumpy=True))
         self.velocities = deepcopy(state.getVelocities(asNumpy=True))
-
+        self.move_lambdas = ()
         # Update GCMC region based on current state
         self.updateGCMCCylinder(state)
 
@@ -3003,12 +3021,14 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
             if self.record:  # If we want to record traj
                 self.moveDCD, self.dcd_name = utils.setupmoveTraj(self.n_moves) # Run the function to setup a move trajectory which is hidden in utils
             # Insert or delete a water, based on random choice
-            if np.random.randint(2) == 1:
+            if self.rng.integers(2) == 1:
                 # Attempt to insert a water
+                self.move_lambdas = (0.0, 0.0)
                 self.insertionMove()
                 self.n_inserts += 1
             else:
                 # Attempt to delete a water
+                self.move_lambdas = (1.0, 1.0)
                 self.deletionMove()
                 self.n_deletes += 1
             self.n_moves += 1
