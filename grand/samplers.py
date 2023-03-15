@@ -122,7 +122,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.ele_except_force = None
         self.mol_vdw_excepts = {}  # Store the vdW exception IDs for each molecule
         self.mol_ele_excepts = {}  # Store the electrostatic exception IDs for each molecule
-        self.move_lambdas = ()  # Empty list to track the move lambdas
+        self.move_lambdas = (None, None)  # Empty list to track the move lambdas
         # Check get atom IDs for each molecule
         self.mol_atom_ids = {}  # Store atom IDs for each molecule
         self.mol_heavy_ids = {}  # Store heavy atom IDs for each molecule
