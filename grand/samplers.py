@@ -111,7 +111,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         # Get residue IDs & assign statuses to each
         self.mol_resids = self.getMoleculeResids(resname)  # All molecules
-        # Assign each water a status: 0: ghost water, 1: GCMC water, 2: Water not under GCMC tracking (out of sphere)
+        # Assign each molecule a status: 0: ghost molecule, 1: GCMC molecule, 2: molecule not under GCMC tracking (out of sphere)
         self.mol_status = {x: 1 for x in self.mol_resids}  # Initially assign all to 1
         self.gcmc_resids = []  # GCMC molecules
 
@@ -247,7 +247,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
     def getMoleculeParameters(self, resname):
         """
-        Get the non-bonded parameters for each of the atoms in the water model used
+        Get the non-bonded parameters for each of the atoms in the molecule model used
 
         Parameters
         ----------
@@ -257,7 +257,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         Returns
         -------
         wat_params : list
-            List of dictionaries containing the charge, sigma and epsilon for each water atom
+            List of dictionaries containing the charge, sigma and epsilon for each molecule atom
         """
         mol_params = []  # Store parameters in a list
         for residue in self.topology.residues():
@@ -273,7 +273,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
     def getMoleculeResids(self, resname):
         """
-        Get the residue IDs of all molecule molecules in the system
+        Get the residue IDs of all molecules in the system
 
         Parameters
         ----------
@@ -345,14 +345,14 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
     def setMolStatus(self, resid, new_value):
         """
-        Set the status of a particular water to a particular value
+        Set the status of a particular molecule to a particular value
 
         Parameters
         ----------
         resid : int
             Residue to update the status for
         new_value : int
-            New value of the water status. 0: ghost, 1: GCMC water, 2: Non-tracked water
+            New value of the molecule status. 0: ghost, 1: GCMC molecule, 2: Non-tracked molecule
         """
         self.mol_status[resid] = new_value
         return None
@@ -364,7 +364,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         Parameters
         ----------
         value : int
-            Value of the water status. 0: ghost, 1: GCMC water, 2: Non-tracked water
+            Value of the molecule status. 0: ghost, 1: GCMC molecule, 2: Non-tracked molecule
 
         Returns
         -------
@@ -386,7 +386,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         Returns
         -------
         value : int
-            Value of the water status. 0: ghost, 1: GCMC water, 2: Non-tracked water
+            Value of the molecule status. 0: ghost, 1: GCMC molecule, 2: Non-tracked molecule
         """
         value = self.mol_status[resid]
         return value
@@ -759,7 +759,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
                  log='gcmc.log', createCustomForces=True, dcd=None, rst=None, overwrite=False,
                  dihedrals=[], distribution={}, conf=None):
         """
-        Initialise the object to be used for sampling water insertion/deletion moves
+        Initialise the object to be used for sampling molecule insertion/deletion moves
 
         Parameters
         ----------
@@ -775,17 +775,17 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
             potential
         excessChemicalPotential : openmm.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
-            -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
+            -6.09 kcal/mol. This should be the hydration free energy of molecule, and may need to be changed for specific
             simulation parameters.
         standardVolume : openmm.unit.Quantity
-            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
+            Standard volume of molecule - corresponds to the volume per molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         resname : str
             Resname of the molecule of interest. Default = "HOH"
         ghostFile : str
-            Name of a file to write out the residue IDs of ghost water molecules. This is
-            useful if you want to visualise the sampling, as you can then remove these waters
+            Name of a file to write out the residue IDs of ghost molecles. This is
+            useful if you want to visualise the sampling, as you can then remove these molecules
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
         referenceAtoms : list
             List containing dictionaries describing the atoms to use as the centre of the GCMC region
@@ -951,7 +951,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         context : openmm.Context
             Current context of the simulation
         ghostResids : list
-            List of residue IDs corresponding to the ghost waters added
+            List of residue IDs corresponding to the ghost molecules added
         """
 
         # Load context into sampler
@@ -976,7 +976,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
 
         # Get sphere-specific variables
         self.updateGCMCSphere(state)
-        # Delete ghost waters
+        # Delete ghost molecules
         if len(ghostResids) > 0:
             self.deleteGhostMolecules(ghostResids)
 
@@ -998,7 +998,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         Returns
         -------
         context : openmm.Context
-            Updated context after deleting the relevant waters
+            Updated context after deleting the relevant molecules
         """
         #  Read in positions of the context and update GCMC box
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
@@ -1044,7 +1044,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         for resid in self.mol_resids:
             #residue = all_res[resid]
 
-            # Ghost molecules automatically count as GCMC waters
+            # Ghost molecules automatically count as GCMC molecules
             if self.getMolStatusValue(resid) == 0:
                 continue
 
@@ -1074,7 +1074,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         Returns
         -------
         new_positions : openmm.unit.Quantity
-            Positions following the 'insertion' of the ghost water
+            Positions following the 'insertion' of the ghost molecule
         insert_mol : int
             Resid of the molecule to insert
         """
@@ -1086,7 +1086,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
 
         insert_mol = np.random.choice(ghost_mols)  # Position in list of GCMC molecules
 
-        # Select a point to insert the water (based on O position)
+        # Select a point to insert the molecule (based on O position)
         rand_nums = np.random.randn(3)
         insert_point = self.sphere_centre + (
                 self.sphere_radius * np.power(np.random.rand(), 1.0 / 3) * rand_nums) / np.linalg.norm(rand_nums)
@@ -1101,7 +1101,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
 
     def deleteRandomMolecule(self):
         """
-        Choose a random water to be deleted
+        Choose a random molecule to be deleted
 
         Returns
         -------
@@ -1112,12 +1112,12 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         mol_id : int
             Overall ID for this molecule
         """
-        # Cannot carry out deletion if there are no GCMC waters on
+        # Cannot carry out deletion if there are no GCMC molecules on
         gcmc_mols = self.getMolStatusResids(1)  # Get all the 'on' resids
         if len(gcmc_mols) == 0:
             return None
 
-        # Select a water residue to delete
+        # Select a molecule residue to delete
         delete_mol = np.random.choice(gcmc_mols)  # Position in list of GCMC molecules
 
         atom_indices = []  # Dont think i Need
@@ -1146,7 +1146,7 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
                  referenceAtoms=None, sphereRadius=None, sphereCentre=None, log='gcmc.log', createCustomForces=True,
                  dcd=None, rst=None, overwrite=False):
         """
-        Initialise the object to be used for sampling instantaneous water insertion/deletion moves
+        Initialise the object to be used for sampling instantaneous molecule insertion/deletion moves
 
         Parameters
         ----------
@@ -1162,15 +1162,15 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
             potential
         excessChemicalPotential : openmm.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
-            -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
+            -6.09 kcal/mol. This should be the hydration free energy of molecule, and may need to be changed for specific
             simulation parameters.
         standardVolume : openmm.unit.Quantity
-            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
+            Standard volume of molecule - corresponds to the volume per molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         ghostFile : str
-            Name of a file to write out the residue IDs of ghost water molecules. This is
-            useful if you want to visualise the sampling, as you can then remove these waters
+            Name of a file to write out the residue IDs of ghost molecles. This is
+            useful if you want to visualise the sampling, as you can then remove these molecules
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
         referenceAtoms : list
             List containing dictionaries describing the atoms to use as the centre of the GCMC region
@@ -1232,14 +1232,14 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
 
         # Execute moves
         for i in range(n):
-            # Insert or delete a water, based on random choice
+            # Insert or delete a molecule, based on random choice
             if self.rng.integers(2) == 1:
-                # Attempt to insert a water
+                # Attempt to insert a molecule
                 self.move_lambdas = (0.0, 0.0)
                 self.insertionMove()
                 self.n_inserts += 1
             else:
-                # Attempt to delete a water
+                # Attempt to delete a molecule
                 self.move_lambdas = (1.0, 1.0)
                 self.deletionMove()
                 self.n_deletes += 1
@@ -1250,12 +1250,12 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
 
     def insertionMove(self):
         """
-        Carry out a random water insertion move on the current system
+        Carry out a random molecule insertion move on the current system
         """
         # Choose a random site in the sphere to insert a molecule
         new_positions, insert_mol = self.insertRandomMolecule()
 
-        # Recouple this water
+        # Recouple this molecule
         self.adjustSpecificMolecule(insert_mol, 1.0)
 
         self.context.setPositions(new_positions)
@@ -1285,7 +1285,7 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
 
     def deletionMove(self):
         """
-        Carry out a random water deletion move on the current system
+        Carry out a random molecule deletion move on the current system
         """
         # Choose a random molecule in the sphere to be deleted
         delete_mol = self.deleteRandomMolecule()
@@ -1293,7 +1293,7 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
         if delete_mol is None:
             return None
 
-        # Switch water off
+        # Switch molecule off
         self.adjustSpecificMolecule(delete_mol, 0.0)
         # Calculate energy of new state and acceptance probability
         final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
@@ -1329,7 +1329,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                  log='gcmc.log', createCustomForces=True, dcd=None, rst=None, overwrite=False,
                  dihedrals=[], distribution={}, conf=None, maxN=999, recordTraj=False):
         """
-        Initialise the object to be used for sampling NCMC-enhanced water insertion/deletion moves
+        Initialise the object to be used for sampling NCMC-enhanced molecule insertion/deletion moves
 
         Parameters
         ----------
@@ -1348,10 +1348,10 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             potential
         excessChemicalPotential : openmm.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
-            -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
+            -6.09 kcal/mol. This should be the hydration free energy of molecule, and may need to be changed for specific
             simulation parameters.
         standardVolume : openmm.unit.Quantity
-            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
+            Standard volume of molecule - corresponds to the volume per molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         nPertSteps : int
@@ -1365,8 +1365,8 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         resname : str
             Resname of the molecule of interest. Default = "HOH"
         ghostFile : str
-            Name of a file to write out the residue IDs of ghost water molecules. This is
-            useful if you want to visualise the sampling, as you can then remove these waters
+            Name of a file to write out the residue IDs of ghost molecles. This is
+            useful if you want to visualise the sampling, as you can then remove these molecules
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
         referenceAtoms : list
             List containing dictionaries describing the atoms to use as the centre of the GCMC region
@@ -1429,7 +1429,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         self.insert_works = []  # Store work values of moves
         self.delete_works = []
         self.n_explosions = 0
-        self.n_left_sphere = 0  # Number of moves rejected because the water left the sphere
+        self.n_left_sphere = 0  # Number of moves rejected because the molecule left the sphere
         self.record = recordTraj
 
         self.integrator = integrator
@@ -1461,16 +1461,16 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
         #  Execute moves
         for i in range(n):
-            if self.record:  # If we want to record traj
-                self.moveDCD, self.dcd_name = utils.setupmoveTraj(self.n_moves) # Run the function to setup a move trajectory which is hidden in utils
-            # Insert or delete a water, based on random choice
+            # Insert or delete a molecule, based on random choice
             if self.rng.integers(2) == 1:
-                # Attempt to insert a water
+                # Attempt to insert a molecule
                 self.move_lambdas = (0.0, 0.0)
+                if self.record:  # If we want to record traj
+                    self.moveDCD, self.dcd_name = utils.setupmoveTraj(self.n_moves)  # Run the function to setup a move trajectory which is hidden in utils
                 self.insertionMove()
                 self.n_inserts += 1
             else:
-                # Attempt to delete a water
+                # Attempt to delete a molecule
                 self.move_lambdas = (1.0, 1.0)
                 self.deletionMove()
                 self.n_deletes += 1
@@ -1481,7 +1481,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
     def insertionMove(self):
         """
-        Carry out a nonequilibrium insertion move for a random water molecule
+        Carry out a nonequilibrium insertion move for a random molecule
         """
         # Store initial positions
         old_positions = deepcopy(self.positions)
@@ -1500,9 +1500,9 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         self.context.setPositions(new_positions)
         # Assign random velocities to the inserted atoms
         self.randomiseAtomVelocities(self.mol_atom_ids[insert_mol])
-        if self.record:
-            current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
-            self.moveDCD.report(self.simulation, current_state)
+        # if self.record:
+        #     current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
+        #     self.moveDCD.report(self.simulation, current_state)
         # Start running perturbation and propagation kernels
         protocol_work = 0.0 * unit.kilocalories_per_mole
         explosion = False
@@ -1521,11 +1521,10 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                 #self.ncmc_integrator.step(self.n_prop_steps_per_pert)
                 for j in range(self.n_prop_steps_per_pert):
                     self.integrator.step(1)
-                    if self.record:
-                        if i % 4 == 0:
-                            if j % 50 == 0:
-                                current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
-                                self.moveDCD.report(self.simulation, current_state)
+                if self.record:
+                    if i % 2 == 0:
+                        current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
+                        self.moveDCD.report(self.simulation, current_state)
             except:
                 print("Caught explosion!")
                 explosion = True
@@ -1542,12 +1541,12 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         self.positions = state.getPositions(asNumpy=True)
         self.updateGCMCSphere(state)
 
-        # Check which waters are still in the GCMC sphere
+        # Check which molecules are still in the GCMC sphere
         gcmc_mols_new = self.getMolStatusResids(1)
 
         # Calculate acceptance probability
         if insert_mol not in gcmc_mols_new:
-            # If the inserted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
+            # If the inserted molecule leaves the sphere, the move cannot be reversed and therefore cannot be accepted
             acc_prob = -1
             self.n_left_sphere += 1
             self.logger.info("Move rejected due to molecule leaving the GCMC sphere")
@@ -1563,7 +1562,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         # Update or reset the system, depending on whether the move is accepted or rejected
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             if self.record:
-                os.remove(self.dcd_name)
+                os.rename(self.dcd_name, '{}_rejected_insertion.dcd'.format(self.dcd_name))
             # Need to revert the changes made if the move is to be rejected
             self.adjustSpecificMolecule(insert_mol, 0.0)
             self.context.setPositions(old_positions)
@@ -1589,12 +1588,12 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
     def deletionMove(self):
         """
-        Carry out a nonequilibrium deletion move for a random water molecule
+        Carry out a nonequilibrium deletion move for a random molecule
         """
         # Store initial positions
         old_positions = deepcopy(self.positions)
 
-        # Choose a random water in the sphere to be deleted
+        # Choose a random molecule in the sphere to be deleted
         delete_mol = self.deleteRandomMolecule()
 
         # Deletion may not be possible
@@ -1609,24 +1608,24 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         for i in range(self.n_pert_steps):
             state = self.context.getState(getEnergy=True)
             energy_initial = state.getPotentialEnergy()
-            # Adjust interactions of this water
+            # Adjust interactions of this molecule
             self.adjustSpecificMolecule(delete_mol, self.lambdas[-(2+i)])
             state = self.context.getState(getEnergy=True)
             energy_final = state.getPotentialEnergy()
             protocol_work += energy_final - energy_initial
-            if self.record:
-                current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
-                self.moveDCD.report(self.simulation, current_state)
+            # if self.record:
+            #     current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
+            #     self.moveDCD.report(self.simulation, current_state)
             # Propagate the system
             try:
                 #self.ncmc_integrator.step(self.n_prop_steps_per_pert)
                 for j in range(self.n_prop_steps_per_pert):
                     self.integrator.step(1)
-                    if self.record:
-                        if i % 4 == 0:
-                            if j % 50 == 0:
-                                current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
-                                self.moveDCD.report(self.simulation, current_state)
+                    # if self.record:
+                    #     if i % 4 == 0:
+                    #         if j % 50 == 0:
+                    #             current_state = self.simulation.context.getState(enforcePeriodicBox=True, getPositions=True)
+                    #             self.moveDCD.report(self.simulation, current_state)
             except:
                 print("Caught explosion!")
                 explosion = True
@@ -1638,18 +1637,18 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         self.delete_works.append(protocol_work)
 
         # Update variables and GCMC sphere
-        # Leaving the molecule as 'on' here to check that the deleted water doesn't leave
+        # Leaving the molecule as 'on' here to check that the deleted molecule doesn't leave
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
         self.positions = state.getPositions(asNumpy=True)
         old_N = self.N
         self.updateGCMCSphere(state)
 
-        # Check which waters are still in the GCMC sphere
+        # Check which molecules are still in the GCMC sphere
         gcmc_mols_new = self.getMolStatusResids(1)
 
         # Calculate acceptance probability
         if delete_mol not in gcmc_mols_new:
-            # If the deleted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
+            # If the deleted molecule leaves the sphere, the move cannot be reversed and therefore cannot be accepted
             acc_prob = 0
             self.n_left_sphere += 1
             self.logger.info("Move rejected due to molecule leaving the GCMC sphere")
@@ -1664,8 +1663,8 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
         # Update or reset the system, depending on whether the move is accepted or rejected
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
-            if self.record:
-                os.remove(self.dcd_name)
+            # if self.record:
+            #     os.remove(self.dcd_name)
             # Need to revert the changes made if the move is to be rejected
             self.adjustSpecificMolecule(delete_mol, 1.0)
             self.context.setPositions(old_positions)
@@ -1676,10 +1675,10 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             self.updateGCMCSphere(state)
         else:
             # Update some variables if move is accepted
-            if self.record:
-                os.rename(self.dcd_name, '{}_accepted_deletion.dcd'.format(self.dcd_name))
+            # if self.record:
+            #     os.rename(self.dcd_name, '{}_accepted_deletion.dcd'.format(self.dcd_name))
             self.setMolStatus(delete_mol, 0)
-            self.N = len(gcmc_mols_new) - 1  # Accounting for the deleted water
+            self.N = len(gcmc_mols_new) - 1  # Accounting for the deleted molecule
             self.n_accepted += 1
             self.n_accepted_deletes += 1
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
@@ -1726,7 +1725,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
                  ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', dcd=None, createCustomForces=True, rst=None,
                  overwrite=False, dihedrals=[], distribution={}, conf=None):
         """
-        Initialise the object to be used for sampling water insertion/deletion moves
+        Initialise the object to be used for sampling molecule insertion/deletion moves
 
         Parameters
         ----------
@@ -1744,17 +1743,17 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
             potential
         excessChemicalPotential : openmm.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
-            -6.09 kcal/mol (water). This should be the hydration free energy of the molecule, and may need to be changed
+            -6.09 kcal/mol (molecule). This should be the hydration free energy of the molecule, and may need to be changed
         standardVolume : openmm.unit.Quantity
             Standard volume of the molecule - corresponds to the volume per molecule in bulk solution. The default value is
-            30.345 A^3 (water)
+            30.345 A^3 (molecule)
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         boxVectors : openmm.unit.Quantity
             Box vectors for the simulation cell
         ghostFile : str
-            Name of a file to write out the residue IDs of ghost water molecules. This is
-            useful if you want to visualise the sampling, as you can then remove these waters
+            Name of a file to write out the residue IDs of ghost molecles. This is
+            useful if you want to visualise the sampling, as you can then remove these molecules
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
         log : str
             Log file to write out
@@ -1802,7 +1801,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
         context : openmm.Context
             Current context of the simulation
         ghostResids : list
-            List of residue IDs corresponding to the ghost waters added
+            List of residue IDs corresponding to the ghost molecules added
         """
         if len(ghostResids) == 0 or ghostResids is None:
             self.raiseError("No ghost molecules given! Cannot insert molecules without any ghosts!")
@@ -1829,7 +1828,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
                                         box_vectors[1, 1]._value,
                                         box_vectors[2, 2]._value]) * unit.nanometer
 
-        # Delete ghost waters
+        # Delete ghost molecules
         self.deleteGhostMolecules(ghostResids)
 
         # Count N
@@ -1844,17 +1843,17 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
         Returns
         -------
         new_positions : openmm.unit.Quantity
-            Positions following the 'insertion' of the ghost water
+            Positions following the 'insertion' of the ghost molecule
         insert_mol : int
             Resid of the molecule to insert
         """
-        # Select a ghost water to insert
+        # Select a ghost molecule to insert
         ghost_mols = self.getMolStatusResids(0)
         # Check that there are any ghosts present
         if len(ghost_mols) == 0:
             self.raiseError("No ghost molecules left, so insertion moves cannot occur - add more ghosts")
 
-        insert_mol = np.random.choice(ghost_mols)  # Position in list of GCMC waters
+        insert_mol = np.random.choice(ghost_mols)  # Position in list of GCMC molecules
 
         # Select a point to insert the molecule (based on centre of heavy atoms)
         insert_point = np.random.rand(3) * self.simulation_box
@@ -1866,7 +1865,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
 
     def deleteRandomMolecule(self):
         """
-        Choose a random water to be deleted
+        Choose a random molecule to be deleted
 
         Returns
         -------
@@ -1878,7 +1877,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
         if len(gcmc_mols) == 0:
             return None
 
-        # Select a water residue to delete
+        # Select a molecule residue to delete
         delete_mol = np.random.choice(gcmc_mols)  # Position in list of GCMC molecules
         return delete_mol
 
@@ -1895,7 +1894,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
                  ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', createCustomForces=True, dcd=None, rst=None,
                  overwrite=False):
         """
-        Initialise the object to be used for sampling instantaneous water insertion/deletion moves
+        Initialise the object to be used for sampling instantaneous molecule insertion/deletion moves
 
         Parameters
         ----------
@@ -1923,8 +1922,8 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         boxVectors : openmm.unit.Quantity
             Box vectors for the simulation cell
         ghostFile : str
-            Name of a file to write out the residue IDs of ghost water molecules. This is
-            useful if you want to visualise the sampling, as you can then remove these waters
+            Name of a file to write out the residue IDs of ghost molecles. This is
+            useful if you want to visualise the sampling, as you can then remove these molecules
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
         log : str
             Name of the log file to write out
@@ -1968,14 +1967,14 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
 
         # Execute moves
         for i in range(n):
-            # Insert or delete a water, based on random choice
+            # Insert or delete a molecule, based on random choice
             if self.rng.integers(2) == 1:
-                # Attempt to insert a water
+                # Attempt to insert a molecule
                 self.move_lambdas = (0.0, 0.0)
                 self.insertionMove()
                 self.n_inserts += 1
             else:
-                # Attempt to delete a water
+                # Attempt to delete a molecule
                 self.move_lambdas = (1.0, 1.0)
                 self.deletionMove()
                 self.n_deletes += 1
@@ -1986,12 +1985,12 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
 
     def insertionMove(self):
         """
-        Carry out a random water insertion move on the current system
+        Carry out a random molecule insertion move on the current system
         """
-        # Insert a ghost water to a random site
+        # Insert a ghost molecule to a random site
         new_positions, insert_mol = self.insertRandomMolecule()
 
-        # Recouple this water
+        # Recouple this molecule
         self.adjustSpecificMolecule(insert_mol, 1.0)
 
         self.context.setPositions(new_positions)
@@ -2002,7 +2001,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
 
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             # Need to revert the changes made if the move is to be rejected
-            # Switch off nonbonded interactions involving this water
+            # Switch off nonbonded interactions involving this molecule
             self.adjustSpecificMolecule(insert_mol, 0.0)
             self.context.setPositions(self.positions)  # Not sure this is necessary...
         else:
@@ -2021,15 +2020,15 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
 
     def deletionMove(self):
         """
-        Carry out a random water deletion move on the current system
+        Carry out a random molecule deletion move on the current system
         """
-        # Choose a random water to be deleted
+        # Choose a random molecule to be deleted
         delete_mol = self.deleteRandomMolecule()
         # Deletion may not be possible
         if delete_mol is None:
             return None
 
-        # Switch water off
+        # Switch molecule off
         self.adjustSpecificMolecule(delete_mol, 0.0)
         # Calculate energy of new state and acceptance probability
         final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
@@ -2037,7 +2036,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         self.acceptance_probabilities.append(acc_prob)
 
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
-            # Switch the water back on if the move is rejected
+            # Switch the molecule back on if the move is rejected
             self.adjustSpecificMolecule(delete_mol, 1.0)
         else:
             # Update some variables if move is accepted
@@ -2065,7 +2064,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
                  ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', createCustomForces=True, dcd=None, rst=None,
                  overwrite=False, lambdas=None, dihedrals=[], distribution={}, conf=None):
         """
-        Initialise the object to be used for sampling NCMC-enhanced water insertion/deletion moves
+        Initialise the object to be used for sampling NCMC-enhanced molecule insertion/deletion moves
 
         Parameters
         ----------
@@ -2086,10 +2085,10 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             potential
         excessChemicalPotential : openmm.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
-            -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
+            -6.09 kcal/mol. This should be the hydration free energy of molecule, and may need to be changed for specific
             simulation parameters.
         standardVolume : openmm.unit.Quantity
-            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
+            Standard volume of molecule - corresponds to the volume per molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         nPertSteps : int
@@ -2103,8 +2102,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         boxVectors : openmm.unit.Quantity
             Box vectors for the simulation cell
         ghostFile : str
-            Name of a file to write out the residue IDs of ghost water molecules. This is
-            useful if you want to visualise the sampling, as you can then remove these waters
+            Name of a file to write out the residue IDs of ghost molecles. This is
+            useful if you want to visualise the sampling, as you can then remove these molecules
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
         log : str
             Name of the log file to write out
@@ -2170,14 +2169,14 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
 
         #  Execute moves
         for i in range(n):
-            # Insert or delete a water, based on random choice
+            # Insert or delete a molecule, based on random choice
             if self.rng.integers(2) == 1:
-                # Attempt to insert a water
+                # Attempt to insert a molecule
                 self.move_lambdas = (0.0, 0.0)
                 self.insertionMove()
                 self.n_inserts += 1
             else:
-                # Attempt to delete a water
+                # Attempt to delete a molecule
                 self.move_lambdas = (1.0, 1.0)
                 self.deletionMove()
                 self.n_deletes += 1
@@ -2188,9 +2187,9 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
 
     def insertionMove(self):
         """
-        Carry out a nonequilibrium insertion move for a random water molecule
+        Carry out a nonequilibrium insertion move for a random molecule
         """
-        # Insert a ghost water to a random site
+        # Insert a ghost molecule to a random site
         new_positions, insert_mol = self.insertRandomMolecule()
 
         # Need to update the context positions
@@ -2206,7 +2205,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         for i in range(self.n_pert_steps):
             state = self.context.getState(getEnergy=True)
             energy_initial = state.getPotentialEnergy()
-            # Adjust interactions of this water
+            # Adjust interactions of this molecule
             self.adjustSpecificMolecule(insert_mol, self.lambdas[i+1])
             state = self.context.getState(getEnergy=True)
             energy_final = state.getPotentialEnergy()
@@ -2255,9 +2254,9 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
 
     def deletionMove(self):
         """
-        Carry out a nonequilibrium deletion move for a random water molecule
+        Carry out a nonequilibrium deletion move for a random molecule
         """
-        # Choose a random water to be deleted
+        # Choose a random molecule to be deleted
         delete_mol = self.deleteRandomMolecule()
         # Deletion may not be possible
         if delete_mol is None:
@@ -2270,7 +2269,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         for i in range(self.n_pert_steps):
             state = self.context.getState(getEnergy=True)
             energy_initial = state.getPotentialEnergy()
-            # Adjust interactions of this water
+            # Adjust interactions of this molecule
             self.adjustSpecificMolecule(delete_mol, self.lambdas[-(2+i)])
             state = self.context.getState(getEnergy=True)
             energy_final = state.getPotentialEnergy()
@@ -2354,7 +2353,7 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
                  log='gcmc.log', createCustomForces=True, dcd=None, rst=None, overwrite=False,
                  dihedrals=[], distribution={}, conf=None):
         """
-        Initialise the object to be used for sampling water insertion/deletion moves
+        Initialise the object to be used for sampling molecule insertion/deletion moves
 
         Parameters
         ----------
@@ -2370,17 +2369,17 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
             potential
         excessChemicalPotential : openmm.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
-            -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
+            -6.09 kcal/mol. This should be the hydration free energy of molecule, and may need to be changed for specific
             simulation parameters.
         standardVolume : openmm.unit.Quantity
-            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
+            Standard volume of molecule - corresponds to the volume per molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         resname : str
             Resname of the molecule of interest. Default = "HOH"
         ghostFile : str
-            Name of a file to write out the residue IDs of ghost water molecules. This is
-            useful if you want to visualise the sampling, as you can then remove these waters
+            Name of a file to write out the residue IDs of ghost molecles. This is
+            useful if you want to visualise the sampling, as you can then remove these molecules
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
         log : str
             Log file to write out
@@ -2511,7 +2510,7 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
         context : openmm.Context
             Current context of the simulation
         ghostResids : list
-            List of residue IDs corresponding to the ghost waters added
+            List of residue IDs corresponding to the ghost molecules added
         """
 
         # Load context into sampler
@@ -2536,7 +2535,7 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
 
         # Get sphere-specific variables
         self.updateGCMCCylinder(state)
-        # Delete ghost waters
+        # Delete ghost molecules
         if len(ghostResids) > 0:
             print('Deleting Ghosts')
             self.deleteGhostMolecules(ghostResids)
@@ -2560,7 +2559,7 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
         Returns
         -------
         context : openmm.Context
-            Updated context after deleting the relevant waters
+            Updated context after deleting the relevant molecules
         """
         #  Read in positions of the context and update GCMC box
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
@@ -2598,7 +2597,7 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
             if resid not in self.mol_resids:
                 continue
 
-            # Ghost molecules automatically count as GCMC waters
+            # Ghost molecules automatically count as GCMC molecules
             if self.getMolStatusValue(resid) == 0:
                 continue
 
@@ -2641,7 +2640,7 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
         Returns
         -------
         new_positions : openmm.unit.Quantity
-            Positions following the 'insertion' of the ghost water
+            Positions following the 'insertion' of the ghost molecule
         insert_mol : int
             Resid of the molecule to insert
         """
@@ -2653,7 +2652,7 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
 
         insert_mol = np.random.choice(ghost_mols)  # Position in list of GCMC molecules
 
-        # Select a point to insert the water (based on O position)
+        # Select a point to insert the molecule (based on O position)
         xy_rand_nums = np.random.randn(2)
         xy_insert_point = self.cylinder_center[:2] + (
                 self.cylinder_radius * np.power(np.random.rand(), 1.0 / 2) * xy_rand_nums) / np.linalg.norm(xy_rand_nums)
@@ -2673,7 +2672,7 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
 
     def deleteRandomMolecule(self):
         """
-        Choose a random water to be deleted
+        Choose a random molecule to be deleted
 
         Returns
         -------
@@ -2684,12 +2683,12 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
         mol_id : int
             Overall ID for this molecule
         """
-        # Cannot carry out deletion if there are no GCMC waters on
+        # Cannot carry out deletion if there are no GCMC molecules on
         gcmc_mols = self.getMolStatusResids(1)  # Get all the 'on' resids
         if len(gcmc_mols) == 0:
             return None
 
-        # Select a water residue to delete
+        # Select a molecule residue to delete
         delete_mol = np.random.choice(gcmc_mols)  # Position in list of GCMC molecules
 
         atom_indices = []  # Dont think i Need
@@ -2712,7 +2711,7 @@ class StandardGCMCCylinderSampler(GCMCCylinderSampler):
                  faceCenter=None, faceRadius=None, MaxZCoord=None, cylinderHeight=None,
                  log='gcmc.log', createCustomForces=True, dcd=None, rst=None, overwrite=False):
         """
-        Initialise the object to be used for sampling instantaneous water insertion/deletion moves
+        Initialise the object to be used for sampling instantaneous molecule insertion/deletion moves
 
         Parameters
         ----------
@@ -2728,15 +2727,15 @@ class StandardGCMCCylinderSampler(GCMCCylinderSampler):
             potential
         excessChemicalPotential : openmm.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
-            -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
+            -6.09 kcal/mol. This should be the hydration free energy of molecule, and may need to be changed for specific
             simulation parameters.
         standardVolume : openmm.unit.Quantity
-            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
+            Standard volume of molecule - corresponds to the volume per molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         ghostFile : str
-            Name of a file to write out the residue IDs of ghost water molecules. This is
-            useful if you want to visualise the sampling, as you can then remove these waters
+            Name of a file to write out the residue IDs of ghost molecles. This is
+            useful if you want to visualise the sampling, as you can then remove these molecules
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
         log : str
             Name of the log file to write out
@@ -2790,14 +2789,14 @@ class StandardGCMCCylinderSampler(GCMCCylinderSampler):
 
         # Execute moves
         for i in range(n):
-            # Insert or delete a water, based on random choice
+            # Insert or delete a molecule, based on random choice
             if self.rng.integers(2) == 1:
-                # Attempt to insert a water
+                # Attempt to insert a molecule
                 self.move_lambdas = (0.0, 0.0)
                 self.insertionMove()
                 self.n_inserts += 1
             else:
-                # Attempt to delete a water
+                # Attempt to delete a molecule
                 self.move_lambdas = (1.0, 1.0)
                 self.deletionMove()
                 self.n_deletes += 1
@@ -2808,12 +2807,12 @@ class StandardGCMCCylinderSampler(GCMCCylinderSampler):
 
     def insertionMove(self):
         """
-        Carry out a random water insertion move on the current system
+        Carry out a random molecule insertion move on the current system
         """
         # Choose a random site in the sphere to insert a molecule
         new_positions, insert_mol = self.insertRandomMolecule()
 
-        # Recouple this water
+        # Recouple this molecule
         self.adjustSpecificMolecule(insert_mol, 1.0)
 
         self.context.setPositions(new_positions)
@@ -2843,7 +2842,7 @@ class StandardGCMCCylinderSampler(GCMCCylinderSampler):
 
     def deletionMove(self):
         """
-        Carry out a random water deletion move on the current system
+        Carry out a random molecule deletion move on the current system
         """
         # Choose a random molecule in the sphere to be deleted
         delete_mol = self.deleteRandomMolecule()
@@ -2851,7 +2850,7 @@ class StandardGCMCCylinderSampler(GCMCCylinderSampler):
         if delete_mol is None:
             return None
 
-        # Switch water off
+        # Switch molecule off
         self.adjustSpecificMolecule(delete_mol, 0.0)
         # Calculate energy of new state and acceptance probability
         final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
@@ -2887,7 +2886,7 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
                  log='gcmc.log', createCustomForces=True, dcd=None, rst=None, overwrite=False,
                  dihedrals=[], distribution={}, conf=None, maxN=999, recordTraj=False):
         """
-        Initialise the object to be used for sampling NCMC-enhanced water insertion/deletion moves
+        Initialise the object to be used for sampling NCMC-enhanced molecule insertion/deletion moves
 
         Parameters
         ----------
@@ -2906,10 +2905,10 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
             potential
         excessChemicalPotential : openmm.unit.Quantity
             Excess chemical potential of the system that the simulation should be in equilibrium with, default is
-            -6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
+            -6.09 kcal/mol. This should be the hydration free energy of molecule, and may need to be changed for specific
             simulation parameters.
         standardVolume : openmm.unit.Quantity
-            Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3
+            Standard volume of molecule - corresponds to the volume per molecule in bulk. The default value is 30.345 A^3
         adamsShift : float
             Shift the B value from Bequil, if B isn't explicitly set. Default is 0.0
         nPertSteps : int
@@ -2923,8 +2922,8 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
         resname : str
             Resname of the molecule of interest. Default = "HOH"
         ghostFile : str
-            Name of a file to write out the residue IDs of ghost water molecules. This is
-            useful if you want to visualise the sampling, as you can then remove these waters
+            Name of a file to write out the residue IDs of ghost molecles. This is
+            useful if you want to visualise the sampling, as you can then remove these molecules
             from view, as they are non-interacting. Default is 'gcmc-ghost-wats.txt'
         referenceAtoms : list
             List containing dictionaries describing the atoms to use as the centre of the GCMC region
@@ -2987,7 +2986,7 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
         self.insert_works = []  # Store work values of moves
         self.delete_works = []
         self.n_explosions = 0
-        self.n_left_sphere = 0  # Number of moves rejected because the water left the sphere
+        self.n_left_sphere = 0  # Number of moves rejected because the molecule left the sphere
         self.record = recordTraj
 
         self.integrator = integrator
@@ -3020,14 +3019,14 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
         for i in range(n):
             if self.record:  # If we want to record traj
                 self.moveDCD, self.dcd_name = utils.setupmoveTraj(self.n_moves) # Run the function to setup a move trajectory which is hidden in utils
-            # Insert or delete a water, based on random choice
+            # Insert or delete a molecule, based on random choice
             if self.rng.integers(2) == 1:
-                # Attempt to insert a water
+                # Attempt to insert a molecule
                 self.move_lambdas = (0.0, 0.0)
                 self.insertionMove()
                 self.n_inserts += 1
             else:
-                # Attempt to delete a water
+                # Attempt to delete a molecule
                 self.move_lambdas = (1.0, 1.0)
                 self.deletionMove()
                 self.n_deletes += 1
@@ -3038,7 +3037,7 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
 
     def insertionMove(self):
         """
-        Carry out a nonequilibrium insertion move for a random water molecule
+        Carry out a nonequilibrium insertion move for a random molecule
         """
         # Store initial positions
         old_positions = deepcopy(self.positions)
@@ -3099,12 +3098,12 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
         self.positions = state.getPositions(asNumpy=True)
         self.updateGCMCCylinder(state)
 
-        # Check which waters are still in the GCMC sphere
+        # Check which molecules are still in the GCMC sphere
         gcmc_mols_new = self.getMolStatusResids(1)
 
         # Calculate acceptance probability
         if insert_mol not in gcmc_mols_new:
-            # If the inserted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
+            # If the inserted molecule leaves the sphere, the move cannot be reversed and therefore cannot be accepted
             acc_prob = -1
             self.n_left_sphere += 1
             self.logger.info("Move rejected due to molecule leaving the GCMC sphere")
@@ -3146,12 +3145,12 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
 
     def deletionMove(self):
         """
-        Carry out a nonequilibrium deletion move for a random water molecule
+        Carry out a nonequilibrium deletion move for a random molecule
         """
         # Store initial positions
         old_positions = deepcopy(self.positions)
 
-        # Choose a random water in the sphere to be deleted
+        # Choose a random molecule in the sphere to be deleted
         delete_mol = self.deleteRandomMolecule()
 
         # Deletion may not be possible
@@ -3169,7 +3168,7 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
         for i in range(self.n_pert_steps):
             state = self.context.getState(getEnergy=True)
             energy_initial = state.getPotentialEnergy()
-            # Adjust interactions of this water
+            # Adjust interactions of this molecule
             self.adjustSpecificMolecule(delete_mol, self.lambdas[-(2+i)])
             state = self.context.getState(getEnergy=True)
             energy_final = state.getPotentialEnergy()
@@ -3195,18 +3194,18 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
         self.delete_works.append(protocol_work)
 
         # Update variables and GCMC sphere
-        # Leaving the molecule as 'on' here to check that the deleted water doesn't leave
+        # Leaving the molecule as 'on' here to check that the deleted molecule doesn't leave
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
         self.positions = state.getPositions(asNumpy=True)
         old_N = self.N
         self.updateGCMCCylinder(state)
 
-        # Check which waters are still in the GCMC sphere
+        # Check which molecules are still in the GCMC sphere
         gcmc_mols_new = self.getMolStatusResids(1)
 
         # Calculate acceptance probability
         if delete_mol not in gcmc_mols_new:
-            # If the deleted water leaves the sphere, the move cannot be reversed and therefore cannot be accepted
+            # If the deleted molecule leaves the sphere, the move cannot be reversed and therefore cannot be accepted
             acc_prob = 0
             self.n_left_sphere += 1
             self.logger.info("Move rejected due to molecule leaving the GCMC Cylinder")
@@ -3236,7 +3235,7 @@ class NonequilibriumGCMCCylinderSampler(GCMCCylinderSampler):
             if self.record:
                 os.rename(self.dcd_name, '{}_{}_accepted_deletion.dcd'.format(delete_mol, self.dcd_name))
             self.setMolStatus(delete_mol, 0)
-            self.N = len(gcmc_mols_new) - 1  # Accounting for the deleted water
+            self.N = len(gcmc_mols_new) - 1  # Accounting for the deleted molecule
             self.n_accepted += 1
             self.n_accepted_deletes += 1
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
