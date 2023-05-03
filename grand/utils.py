@@ -27,7 +27,7 @@ import rdkit
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import itertools
-
+from tqdm import tqdm
 
 class PDBRestartReporter(object):
     """
@@ -304,6 +304,28 @@ def convert_conc_to_volume(conc):
 
     return v_per_mol
 
+
+def convert_vol_to_conc(v_per_mol):
+    """
+    Calculate the volume per molecule from a given concentration
+    (can be calculated exactly by rearrangement)
+
+    Parameters
+    ----------
+    v_per_mol : openmm.unit.Quantity
+        Volume per molecule
+
+    Returns
+    -------
+    conc : openmm.unit.Quantity
+        Concentration of interest
+    """
+    v_per_mol = v_per_mol.in_units_of(unit.angstroms ** 3)
+
+    # Make sure that the concentration has units of M - this should raise an error otherwise
+    conc = (1 / (v_per_mol * unit.AVOGADRO_CONSTANT_NA)).in_units_of(unit.molar)
+
+    return conc
 
 def read_prepi(filename):
     """
@@ -1323,49 +1345,64 @@ def cluster_waters(topology, trajectory, sphere_radius, ref_atoms=None, sphere_c
                                                                             ref_atom['resname'].capitalize(),
                                                                             ref_atom['resid']))
 
-    wat_coords = []  # Store a list of water coordinates
-    wat_frames = []  # Store a list of the frame that each water is in
+    #wat_coords = []  # Store a list of water coordinates
+    #wat_frames = []  # Store a list of the frame that each water is in
 
     # Get list of water oxygen atom IDs
     wat_ox_ids = []
     for residue in t.topology.residues:
-        if residue.name.lower() in ['wat', 'hoh']:
+        if residue.name.lower() in ['wat', 'hoh', 'sol']:
             for atom in residue.atoms:
                 if atom.name.lower() == 'o':
                     wat_ox_ids.append(atom.index)
 
-    # Get the coordinates of all GCMC water oxygen atoms
-    for f in range(n_frames):
+    try:
+        wat_coords = np.load('wat_coords.npy')
+        wat_frames = np.load('wat_frames.npy')
+    except:
+        wat_coords = []  # Store a list of water coordinates
+        wat_frames = []  # Store a list of the frame that each water is in
 
-        # Calculate sphere centre for this frame
-        if ref_atoms is not None:
-            centre = np.zeros(3)
-            for idx in ref_indices:
-                centre += t.xyz[f, idx, :]
-            centre /= len(ref_indices)
-        else:
-            centre = sphere_centre.in_units_of(unit.nanometer)._value
 
-        # For all waters, check the distance to the sphere centre
-        for o in wat_ox_ids:
-            # Calculate PBC-corrected vector
-            vector = t.xyz[f, o, :] - centre
+        # Get the coordinates of all GCMC water oxygen atoms
+        for f in tqdm(range(n_frames)):
 
-            # Check length and add to list if within sphere
-            if 10*np.linalg.norm(vector) <= sphere_radius:  # *10 to give Angstroms
-                wat_coords.append(10 * t.xyz[f, o, :])  # Convert to Angstroms
-                wat_frames.append(f)
+            # Calculate sphere centre for this frame
+            if ref_atoms is not None:
+                centre = np.zeros(3)
+                for idx in ref_indices:
+                    centre += t.xyz[f, idx, :]
+                centre /= len(ref_indices)
+            else:
+                centre = sphere_centre.in_units_of(unit.nanometer)._value
+
+            # For all waters, check the distance to the sphere centre
+            for o in wat_ox_ids:
+                # Calculate PBC-corrected vector
+                vector = t.xyz[f, o, :] - centre
+
+                # Check length and add to list if within sphere
+                if 10*np.linalg.norm(vector) <= sphere_radius:  # *10 to give Angstroms
+                    wat_coords.append(10 * t.xyz[f, o, :])  # Convert to Angstroms
+                    wat_frames.append(f)
+
+        np.save('wat_coords.npy', wat_coords)
+        np.save('wat_frames.npy', wat_frames)
 
     # Calculate water-water distances - if the waters are in the same frame are assigned a very large distance
-    dist_list = []
-    for i in range(len(wat_coords)):
-        for j in range(i+1, len(wat_coords)):
-            if wat_frames[i] == wat_frames[j]:
-                dist = 1e8
-            else:
-                dist = np.linalg.norm(wat_coords[i] - wat_coords[j])
-            dist_list.append(dist)
+    try:
+        dist_list = np.load('dist_list.npy')
+    except:
+        dist_list = []
+        for i in tqdm(range(len(wat_coords))):
+            for j in range(i+1, len(wat_coords)):
+                if wat_frames[i] == wat_frames[j]:
+                    dist = 1e8
+                else:
+                    dist = np.linalg.norm(wat_coords[i] - wat_coords[j])
+                dist_list.append(dist)
 
+        np.save('dist_list.npy', dist_list)
     # Cluster the waters hierarchically
     tree = hierarchy.linkage(dist_list, method='average')
     wat_clust_ids = hierarchy.fcluster(tree, t=cutoff, criterion='distance')
@@ -1373,16 +1410,16 @@ def cluster_waters(topology, trajectory, sphere_radius, ref_atoms=None, sphere_c
 
     # Sort the clusters by occupancy
     clusts = []
-    for i in range(1, n_clusts+1):
+    for i in tqdm(range(1, n_clusts+1)):
         occ = len([wat for wat in wat_clust_ids if wat == i])
         clusts.append([i, occ])
     clusts = sorted(clusts, key=lambda x: -x[1])
     clust_ids_sorted = [x[0] for x in clusts]
     clust_occs_sorted = [x[1] for x in clusts]
-
+    print(clust_occs_sorted)
     # Calculate the cluster centre and representative position for each cluster
     rep_coords = []
-    for i in range(n_clusts):
+    for i in tqdm(range(n_clusts)):
         clust_id = clust_ids_sorted[i]
         # Calculate the mean position of the cluster
         clust_centre = np.zeros(3)
