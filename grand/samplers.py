@@ -1562,7 +1562,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         # Update or reset the system, depending on whether the move is accepted or rejected
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             if self.record:
-                os.rename(self.dcd_name, '{}_rejected_insertion.dcd'.format(self.dcd_name))
+                os.rename(self.dcd_name, '{}_resi{}_rejected_insertion.dcd'.format(self.dcd_name, insert_mol))
             # Need to revert the changes made if the move is to be rejected
             self.adjustSpecificMolecule(insert_mol, 0.0)
             self.context.setPositions(old_positions)
@@ -1575,7 +1575,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         else:
             # Update some variables if move is accepted
             if self.record:
-                os.rename(self.dcd_name, '{}_accepted_insertion.dcd'.format(self.dcd_name))
+                os.rename(self.dcd_name, '{}__resi{}_accepted_insertion.dcd'.format(self.dcd_name, insert_mol))
             self.N = len(gcmc_mols_new)
             self.n_accepted += 1
             self.n_accepted_inserts += 1
