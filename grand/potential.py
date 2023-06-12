@@ -129,25 +129,6 @@ def calc_mu_ex(system, topology, positions, resname, resid, box_vectors, tempera
     simulation.context.setVelocitiesToTemperature(temperature)
     simulation.context.setPeriodicBoxVectors(*box_vectors)
     print('Simulation created')
-    force_labels = {}
-    for i, force in enumerate(system.getForces()):
-        force_labels[force] = i
-    # Separate all forces into separate force groups.
-    for force_index, force in enumerate(system.getForces()):
-        force.setForceGroup(force_index)
-    new_sys = copy.deepcopy(system)
-    inte_1 = VerletIntegrator(1.0 * femtosecond)
-    contex_1 = Context(new_sys, inte_1)
-    contex_1.setPositions(positions)
-    energy_components = collections.OrderedDict()
-    for force_label, force_index in force_labels.items():
-        energy_components[force_label] = contex_1.getState(getEnergy=True,
-                                                          groups=2 ** force_index).getPotentialEnergy()
-    for key in energy_components.keys():
-        print(f'{key} - {energy_components[key]}')
-
-    print(f'Total energy = {simulation.context.getState(getEnergy=True).getPotentialEnergy()}')
-    quit()
 
     # Make sure the GCMC sampler has access to the Context
     gcmc_mover.context = simulation.context
@@ -165,6 +146,9 @@ def calc_mu_ex(system, topology, positions, resname, resid, box_vectors, tempera
         print('Simulating at lambda = {:.4f}'.format(np.round(lambdas[i], 4)))
         gcmc_mover.logger.info('Simulating at lambda = {:.4f}'.format(np.round(lambdas[i], 4)))
         gcmc_mover.adjustSpecificMolecule(resid, lambdas[i])
+        # Minimise and equilibrate at this lambda briefly
+        simulation.minimizeEnergy()
+        simulation.step(n_equil * 5)
         for k in range(n_samples):
             # Run production MD
             simulation.step(n_equil)
