@@ -1,5 +1,5 @@
 package:
-  name: grand
+  name: grandlig
   version: 1.0.1
 
 source:
@@ -10,7 +10,7 @@ build:
   noarch: python
   script:
     - mkdir -p $PREFIX/site-packages
-    - cp -r $RECIPE_DIR/../grand $PREFIX/site-packages/grand
+    - cp -r $RECIPE_DIR/../grandlig $PREFIX/site-packages/grandlig
 
 requirements:
   build:
@@ -26,7 +26,7 @@ test:
     - pytest
 
 about:
-  home: https://github.com/essex-lab/grand
+  home: https://github.com/essex-lab/grandlig
   summary: A Python module for carrying out GCMC insertions and deletions of water molecules in OpenMM.
   license: MIT
 

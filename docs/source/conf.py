@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# grand documentation build configuration file, created by
+# grandlig documentation build configuration file, created by
 # sphinx-quickstart on Fri Apr 24 08:48:08 2020.
 #
 # This file is execfile()d with the current directory set to its
@@ -56,7 +56,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'grand'
+project = 'grandlig'
 copyright = '2023, Essex Group, School of Chemistry, University of Southampton'
 author = 'Marley Samways, Will Poole'
 
@@ -138,7 +138,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'grand.tex', 'grand Documentation',
+    (master_doc, 'grandlig.tex', 'grandlig Documentation',
      'Marley Samways', 'manual'),
 ]
 
@@ -148,7 +148,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'grand', 'grand Documentation',
+    (master_doc, 'grandlig', 'grandlig Documentation',
      [author], 1)
 ]
 
@@ -159,8 +159,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'grand', 'grand Documentation',
-     author, 'grand', 'GCMC sampling of small molecules in OpenMM',
+    (master_doc, 'grandlig', 'grandlig Documentation',
+     author, 'grandlig', 'GCMC sampling of small molecules in OpenMM',
      'Miscellaneous'),
 ]
 

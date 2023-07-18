@@ -22,7 +22,7 @@ from copy import deepcopy
 from openmm import unit
 import openmm
 from rdkit import Chem
-from grand import utils
+from grandlig import utils
 
 
 class BaseGrandCanonicalMonteCarloSampler(object):
@@ -972,7 +972,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
                 if i == j:
                     continue
                 if not np.isclose(box_vectors[i, j]._value, 0.0):
-                    self.raiseError("grand only accepts cuboidal simulation cells at this time.")
+                    self.raiseError("grandlig only accepts cuboidal simulation cells at this time.")
 
         # Get sphere-specific variables
         self.updateGCMCSphere(state)
@@ -1822,7 +1822,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
                 if i == j:
                     continue
                 if not np.isclose(box_vectors[i, j]._value, 0.0):
-                    self.raiseError("grand only accepts cuboidal simulation cells at this time.")
+                    self.raiseError("grandlig only accepts cuboidal simulation cells at this time.")
 
         self.simulation_box = np.array([box_vectors[0, 0]._value,
                                         box_vectors[1, 1]._value,
@@ -2531,7 +2531,7 @@ class GCMCCylinderSampler(BaseGrandCanonicalMonteCarloSampler):
                 if i == j:
                     continue
                 if not np.isclose(box_vectors[i, j]._value, 0.0):
-                    self.raiseError("grand only accepts cuboidal simulation cells at this time.")
+                    self.raiseError("grandlig only accepts cuboidal simulation cells at this time.")
 
         # Get sphere-specific variables
         self.updateGCMCCylinder(state)

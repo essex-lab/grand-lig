@@ -3,7 +3,7 @@
 """
 Description
 -----------
-Functions to provide support for grand canonical sampling in OpenMM.
+Functions to provide support for grandlig canonical sampling in OpenMM.
 These functions are not used during the simulation, but will be relevant in setting up
 simulations and processing results
 
@@ -1441,7 +1441,7 @@ def cluster_waters(topology, trajectory, sphere_radius, ref_atoms=None, sphere_c
 
     # Write the cluster coordinates to a PDB file
     with open(output, 'w') as f:
-        f.write("REMARK Clustered GCMC water positions written by grand\n")
+        f.write("REMARK Clustered GCMC water positions written by grandlig\n")
         for i in range(n_clusts):
             coords = rep_coords[i]
             occ1 = clust_occs_sorted[i]
@@ -1592,7 +1592,7 @@ def cluster_molecules(topology, trajectory, sphere_radius, resname='L02', ref_at
 
     # Write the cluster coordinates to a PDB file
     with open(output, 'w') as f:
-        f.write("REMARK Clustered GCMC water positions written by grand\n")
+        f.write("REMARK Clustered GCMC water positions written by grandlig\n")
         for i in range(n_clusts):
             coords = rep_coords[i]
             occ1 = clust_occs_sorted[i]

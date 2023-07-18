@@ -1,7 +1,7 @@
 """
 Description
 -----------
-This file contains functions written to test the functions in the grand.samplers sub-module
+This file contains functions written to test the functions in the grandlig.samplers sub-module
 
 Marley Samways
 """

@@ -16,7 +16,7 @@ from openmm.app import *
 from openmm import *
 from openmm.unit import *
 from sys import stdout
-import grand
+import grandlig as grand
 import os
 import collections
 import copy

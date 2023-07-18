@@ -1,7 +1,7 @@
 """
 Description
 -----------
-This file contains functions written to test the functions in the grand.utils sub-module
+This file contains functions written to test the functions in the grandlig.utils sub-module
 
 Marley Samways
 """
@@ -21,7 +21,7 @@ outdir = os.path.join(os.path.dirname(__file__), 'output', 'utils')
 
 class TestUtils(unittest.TestCase):
     """
-    Class to store the tests for grand.utils
+    Class to store the tests for grandlig.utils
     """
     @classmethod
     def setUpClass(cls):

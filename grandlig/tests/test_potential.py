@@ -1,7 +1,7 @@
 """
 Description
 -----------
-This file contains functions written to test the functions in the grand.potential sub-module
+This file contains functions written to test the functions in the grandlig.potential sub-module
 
 Marley Samways
 """
@@ -21,7 +21,7 @@ outdir = os.path.join(os.path.dirname(__file__), 'output', 'potential')
 
 class TestPotential(unittest.TestCase):
     """
-    Class to store the tests for grand.potential
+    Class to store the tests for grandlig.potential
     """
     @classmethod
     def setUpClass(cls):
@@ -74,7 +74,7 @@ class TestPotential(unittest.TestCase):
         system = ff.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=12.0 * angstroms,
                                  constraints=HBonds, switchDistance=10 * angstroms)
 
-        # Run free energy calculation using grand
+        # Run free energy calculation using grandlig
         log_file = os.path.join(outdir, 'free_energy_test.log')
         free_energy = potential.calc_mu_ex(system=system, topology=pdb.topology, positions=pdb.positions,
                                            box_vectors=pdb.topology.getPeriodicBoxVectors(), temperature=298*kelvin,
@@ -103,7 +103,7 @@ class TestPotential(unittest.TestCase):
         system = ff.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=12.0 * angstroms,
                                  constraints=HBonds, switchDistance=10 * angstroms)
 
-        # Run std volume calculation using grand
+        # Run std volume calculation using grandlig
         std_volume = potential.calc_std_volume(system=system, topology=pdb.topology, positions=pdb.positions,
                                                box_vectors=pdb.topology.getPeriodicBoxVectors(),
                                                temperature=298*kelvin, n_samples=10, n_equil=1)
