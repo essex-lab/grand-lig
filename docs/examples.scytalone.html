@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Example 2: Scytalone Dehydratase &mdash; grand 1.0.2-dev-lig documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Example 3: Bulk Water" href="examples.water.html" />
+    <link rel="prev" title="Example 1: Bovine Pancreatic Trypsin Inhibitor" href="examples.bpti.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            grand
+          </a>
+              <div class="version">
+                1.0.2
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="intro.html">grand : Grand Canonical Sampling of Waters in OpenMM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="grand.html">grand package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Change Log</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="examples.html">Examples</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="examples.bpti.html">Example 1: Bovine Pancreatic Trypsin Inhibitor</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Example 2: Scytalone Dehydratase</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.water.html">Example 3: Bulk Water</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">grand</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="examples.html">Examples</a></li>
+      <li class="breadcrumb-item active">Example 2: Scytalone Dehydratase</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/examples.scytalone.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="example-2-scytalone-dehydratase">
+<h1>Example 2: Scytalone Dehydratase<a class="headerlink" href="#example-2-scytalone-dehydratase" title="Permalink to this heading"></a></h1>
+<p>When the system contains a non-standard small molecule, such as a protein-bound ligand, a few extra steps are necessary.
+The <code class="docutils literal notranslate"><span class="pre">grand.utils.write_conect()</span></code> function write CONECT lines to a PDB file for the ligand bonds, which is necessary for OpenMM to understand the ligand topology from a PDB structure.
+Additionally, an XML file for the ligand parameters should be written using the <code class="docutils literal notranslate"><span class="pre">grand.utils.create_ligand_xml()</span></code> function.
+These functions could be run prior to the simulation script if desired.</p>
+<p>The documentation for these functions can be found in the “grand package” section.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Description</span>
+<span class="sd">-----------</span>
+<span class="sd">Example script of how to run GCMC/MD in OpenMM for a scytalone dehydratase (SD) system</span>
+
+<span class="sd">Note that this simulation is only an example, and is not long enough</span>
+<span class="sd">to see equilibrated behaviour</span>
+
+<span class="sd">Marley Samways</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">simtk.openmm.app</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">simtk.openmm</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">simtk.unit</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">sys</span> <span class="kn">import</span> <span class="n">stdout</span>
+
+<span class="kn">from</span> <span class="nn">openmmtools.integrators</span> <span class="kn">import</span> <span class="n">BAOABIntegrator</span>
+
+<span class="kn">import</span> <span class="nn">grand</span>
+
+<span class="c1"># Write CONECT lines to PDB</span>
+<span class="n">grand</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">write_conect</span><span class="p">(</span><span class="s1">&#39;scytalone-equil.pdb&#39;</span><span class="p">,</span> <span class="s1">&#39;MQ1&#39;</span><span class="p">,</span> <span class="s1">&#39;mq1.prepi&#39;</span><span class="p">,</span> <span class="s1">&#39;sd-conect.pdb&#39;</span><span class="p">)</span>
+
+<span class="c1"># Write ligand XML</span>
+<span class="n">grand</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">create_ligand_xml</span><span class="p">(</span><span class="s1">&#39;mq1.prmtop&#39;</span><span class="p">,</span> <span class="s1">&#39;mq1.prepi&#39;</span><span class="p">,</span> <span class="s1">&#39;MQ1&#39;</span><span class="p">,</span> <span class="s1">&#39;mq1.xml&#39;</span><span class="p">)</span>
+
+<span class="c1"># Load in PDB file</span>
+<span class="n">pdb</span> <span class="o">=</span> <span class="n">PDBFile</span><span class="p">(</span><span class="s1">&#39;sd-conect.pdb&#39;</span><span class="p">)</span>
+
+<span class="c1"># Add ghost water molecules, which can be inserted</span>
+<span class="n">pdb</span><span class="o">.</span><span class="n">topology</span><span class="p">,</span> <span class="n">pdb</span><span class="o">.</span><span class="n">positions</span><span class="p">,</span> <span class="n">ghosts</span> <span class="o">=</span> <span class="n">grand</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">add_ghosts</span><span class="p">(</span><span class="n">pdb</span><span class="o">.</span><span class="n">topology</span><span class="p">,</span>
+                                                             <span class="n">pdb</span><span class="o">.</span><span class="n">positions</span><span class="p">,</span>
+                                                             <span class="n">n</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+                                                             <span class="n">pdb</span><span class="o">=</span><span class="s1">&#39;sd-ghosts.pdb&#39;</span><span class="p">)</span>
+
+<span class="c1"># Create system</span>
+<span class="n">ff</span> <span class="o">=</span> <span class="n">ForceField</span><span class="p">(</span><span class="s1">&#39;amber14-all.xml&#39;</span><span class="p">,</span> <span class="s1">&#39;amber14/tip3p.xml&#39;</span><span class="p">,</span> <span class="s1">&#39;mq1.xml&#39;</span><span class="p">)</span>
+<span class="n">system</span> <span class="o">=</span> <span class="n">ff</span><span class="o">.</span><span class="n">createSystem</span><span class="p">(</span><span class="n">pdb</span><span class="o">.</span><span class="n">topology</span><span class="p">,</span>
+                         <span class="n">nonbondedMethod</span><span class="o">=</span><span class="n">PME</span><span class="p">,</span>
+                         <span class="n">nonbondedCutoff</span><span class="o">=</span><span class="mf">12.0</span><span class="o">*</span><span class="n">angstroms</span><span class="p">,</span>
+                         <span class="n">switchDistance</span><span class="o">=</span><span class="mf">10.0</span><span class="o">*</span><span class="n">angstroms</span><span class="p">,</span>
+                         <span class="n">constraints</span><span class="o">=</span><span class="n">HBonds</span><span class="p">)</span>
+
+<span class="c1"># Define reference atoms around which the GCMC sphere is based</span>
+<span class="n">ref_atoms</span> <span class="o">=</span> <span class="p">[{</span><span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;OH&#39;</span><span class="p">,</span> <span class="s1">&#39;resname&#39;</span><span class="p">:</span> <span class="s1">&#39;TYR&#39;</span><span class="p">,</span> <span class="s1">&#39;resid&#39;</span><span class="p">:</span> <span class="s1">&#39;23&#39;</span><span class="p">},</span>
+             <span class="p">{</span><span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;OH&#39;</span><span class="p">,</span> <span class="s1">&#39;resname&#39;</span><span class="p">:</span> <span class="s1">&#39;TYR&#39;</span><span class="p">,</span> <span class="s1">&#39;resid&#39;</span><span class="p">:</span> <span class="s1">&#39;43&#39;</span><span class="p">}]</span>
+
+<span class="c1"># Create GCMC Sampler object</span>
+<span class="n">gcmc_mover</span> <span class="o">=</span> <span class="n">grand</span><span class="o">.</span><span class="n">samplers</span><span class="o">.</span><span class="n">StandardGCMCSphereSampler</span><span class="p">(</span><span class="n">system</span><span class="o">=</span><span class="n">system</span><span class="p">,</span>
+                                                      <span class="n">topology</span><span class="o">=</span><span class="n">pdb</span><span class="o">.</span><span class="n">topology</span><span class="p">,</span>
+                                                      <span class="n">temperature</span><span class="o">=</span><span class="mi">300</span><span class="o">*</span><span class="n">kelvin</span><span class="p">,</span>
+                                                      <span class="n">referenceAtoms</span><span class="o">=</span><span class="n">ref_atoms</span><span class="p">,</span>
+                                                      <span class="n">sphereRadius</span><span class="o">=</span><span class="mi">4</span><span class="o">*</span><span class="n">angstroms</span><span class="p">,</span>
+                                                      <span class="n">log</span><span class="o">=</span><span class="s1">&#39;sd-gcmc.log&#39;</span><span class="p">,</span>
+                                                      <span class="n">dcd</span><span class="o">=</span><span class="s1">&#39;sd-raw.dcd&#39;</span><span class="p">,</span>
+                                                      <span class="n">rst</span><span class="o">=</span><span class="s1">&#39;sd-gcmc.rst7&#39;</span><span class="p">,</span>
+                                                      <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="c1"># BAOAB Langevin integrator (important)</span>
+<span class="n">integrator</span> <span class="o">=</span> <span class="n">BAOABIntegrator</span><span class="p">(</span><span class="mi">300</span><span class="o">*</span><span class="n">kelvin</span><span class="p">,</span> <span class="mf">1.0</span><span class="o">/</span><span class="n">picosecond</span><span class="p">,</span> <span class="mf">0.002</span><span class="o">*</span><span class="n">picoseconds</span><span class="p">)</span>
+
+<span class="n">platform</span> <span class="o">=</span> <span class="n">Platform</span><span class="o">.</span><span class="n">getPlatformByName</span><span class="p">(</span><span class="s1">&#39;CUDA&#39;</span><span class="p">)</span>
+<span class="n">platform</span><span class="o">.</span><span class="n">setPropertyDefaultValue</span><span class="p">(</span><span class="s1">&#39;Precision&#39;</span><span class="p">,</span> <span class="s1">&#39;mixed&#39;</span><span class="p">)</span>
+
+<span class="n">simulation</span> <span class="o">=</span> <span class="n">Simulation</span><span class="p">(</span><span class="n">pdb</span><span class="o">.</span><span class="n">topology</span><span class="p">,</span> <span class="n">system</span><span class="p">,</span> <span class="n">integrator</span><span class="p">,</span> <span class="n">platform</span><span class="p">)</span>
+<span class="n">simulation</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">setPositions</span><span class="p">(</span><span class="n">pdb</span><span class="o">.</span><span class="n">positions</span><span class="p">)</span>
+<span class="n">simulation</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">setVelocitiesToTemperature</span><span class="p">(</span><span class="mi">300</span><span class="o">*</span><span class="n">kelvin</span><span class="p">)</span>
+<span class="n">simulation</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">setPeriodicBoxVectors</span><span class="p">(</span><span class="o">*</span><span class="n">pdb</span><span class="o">.</span><span class="n">topology</span><span class="o">.</span><span class="n">getPeriodicBoxVectors</span><span class="p">())</span>
+
+<span class="c1"># Switch off ghost waters and in sphere</span>
+<span class="n">gcmc_mover</span><span class="o">.</span><span class="n">initialise</span><span class="p">(</span><span class="n">simulation</span><span class="o">.</span><span class="n">context</span><span class="p">,</span> <span class="n">ghosts</span><span class="p">)</span>
+<span class="n">gcmc_mover</span><span class="o">.</span><span class="n">deleteWatersInGCMCSphere</span><span class="p">()</span>
+
+<span class="c1"># Equilibrate water distribution - 10k moves over 5 ps</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Equilibration...&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">50</span><span class="p">):</span>
+    <span class="c1"># Carry out 200 moves every 100 fs</span>
+    <span class="n">gcmc_mover</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">simulation</span><span class="o">.</span><span class="n">context</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
+    <span class="n">simulation</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2"> equilibration GCMC moves accepted. N = </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">gcmc_mover</span><span class="o">.</span><span class="n">n_accepted</span><span class="p">,</span>
+                                                               <span class="n">gcmc_mover</span><span class="o">.</span><span class="n">n_moves</span><span class="p">,</span>
+                                                               <span class="n">gcmc_mover</span><span class="o">.</span><span class="n">N</span><span class="p">))</span>
+
+<span class="c1"># Add StateDataReporter for production</span>
+<span class="n">simulation</span><span class="o">.</span><span class="n">reporters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">StateDataReporter</span><span class="p">(</span><span class="n">stdout</span><span class="p">,</span>
+                                              <span class="mi">1000</span><span class="p">,</span>
+                                              <span class="n">step</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                                              <span class="n">potentialEnergy</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                                              <span class="n">temperature</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                                              <span class="n">volume</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+<span class="c1"># Reset GCMC statistics</span>
+<span class="n">gcmc_mover</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+
+<span class="c1"># Run simulation - 5k moves over 50 ps</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Production&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">50</span><span class="p">):</span>
+    <span class="c1"># Carry out 100 GCMC moves per 1 ps of MD</span>
+    <span class="n">simulation</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="mi">500</span><span class="p">)</span>
+    <span class="n">gcmc_mover</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">simulation</span><span class="o">.</span><span class="n">context</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+    <span class="c1"># Write data out</span>
+    <span class="n">gcmc_mover</span><span class="o">.</span><span class="n">report</span><span class="p">(</span><span class="n">simulation</span><span class="p">)</span>
+
+<span class="c1">#</span>
+<span class="c1"># Need to process the trajectory for visualisation</span>
+<span class="c1">#</span>
+
+<span class="c1"># Move ghost waters out of the simulation cell</span>
+<span class="n">trj</span> <span class="o">=</span> <span class="n">grand</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">shift_ghost_waters</span><span class="p">(</span><span class="n">ghost_file</span><span class="o">=</span><span class="s1">&#39;gcmc-ghost-wats.txt&#39;</span><span class="p">,</span>
+                                     <span class="n">topology</span><span class="o">=</span><span class="s1">&#39;sd-ghosts.pdb&#39;</span><span class="p">,</span>
+                                     <span class="n">trajectory</span><span class="o">=</span><span class="s1">&#39;sd-raw.dcd&#39;</span><span class="p">)</span>
+
+<span class="c1"># Recentre the trajectory on a particular residue</span>
+<span class="n">trj</span> <span class="o">=</span> <span class="n">grand</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">recentre_traj</span><span class="p">(</span><span class="n">t</span><span class="o">=</span><span class="n">trj</span><span class="p">,</span> <span class="n">resname</span><span class="o">=</span><span class="s1">&#39;TYR&#39;</span><span class="p">,</span> <span class="n">resid</span><span class="o">=</span><span class="mi">23</span><span class="p">)</span>
+
+<span class="c1"># Align the trajectory to the protein</span>
+<span class="n">grand</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">align_traj</span><span class="p">(</span><span class="n">t</span><span class="o">=</span><span class="n">trj</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="s1">&#39;sd-gcmc.dcd&#39;</span><span class="p">)</span>
+
+<span class="c1"># Write out a trajectory of the GCMC sphere</span>
+<span class="n">grand</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">write_sphere_traj</span><span class="p">(</span><span class="n">radius</span><span class="o">=</span><span class="mf">4.0</span><span class="p">,</span>
+                              <span class="n">ref_atoms</span><span class="o">=</span><span class="n">ref_atoms</span><span class="p">,</span>
+                              <span class="n">topology</span><span class="o">=</span><span class="s1">&#39;sd-ghosts.pdb&#39;</span><span class="p">,</span>
+                              <span class="n">trajectory</span><span class="o">=</span><span class="s1">&#39;sd-gcmc.dcd&#39;</span><span class="p">,</span>
+                              <span class="n">output</span><span class="o">=</span><span class="s1">&#39;gcmc_sphere.pdb&#39;</span><span class="p">,</span>
+                              <span class="n">initial_frame</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+</pre></div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="examples.bpti.html" class="btn btn-neutral float-left" title="Example 1: Bovine Pancreatic Trypsin Inhibitor" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="examples.water.html" class="btn btn-neutral float-right" title="Example 3: Bulk Water" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Essex Group, School of Chemistry, University of Southampton.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>grand.potential module &mdash; grand 1.0.2-dev-lig documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="grand.samplers module" href="grand.samplers.html" />
+    <link rel="prev" title="grand package" href="grand.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            grand
+          </a>
+              <div class="version">
+                1.0.2
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="intro.html">grand : Grand Canonical Sampling of Waters in OpenMM</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="grand.html">grand package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="grand.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">grand.potential module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#description">Description</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#grand.potential.calc_avg_volume"><code class="docutils literal notranslate"><span class="pre">calc_avg_volume()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#grand.potential.calc_mu_ex"><code class="docutils literal notranslate"><span class="pre">calc_mu_ex()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#grand.potential.calc_mu_ex_independant"><code class="docutils literal notranslate"><span class="pre">calc_mu_ex_independant()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#grand.potential.get_lambda_values"><code class="docutils literal notranslate"><span class="pre">get_lambda_values()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="grand.samplers.html">grand.samplers module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="grand.utils.html">grand.utils module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Change Log</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">grand</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="grand.html">grand package</a></li>
+      <li class="breadcrumb-item active">grand.potential module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/grand.potential.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-grand.potential">
+<span id="grand-potential-module"></span><h1>grand.potential module<a class="headerlink" href="#module-grand.potential" title="Permalink to this heading"></a></h1>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this heading"></a></h2>
+<p>Set of functions to calibrate the excess chemical potential and standard state volume of water</p>
+<p>Will Poole
+Marley Samways</p>
+</section>
+<dl class="py function">
+<dt class="sig sig-object py" id="grand.potential.calc_avg_volume">
+<span class="sig-prename descclassname"><span class="pre">grand.potential.</span></span><span class="sig-name descname"><span class="pre">calc_avg_volume</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">box_vectors</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_equil</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.potential.calc_avg_volume" title="Permalink to this definition"></a></dt>
+<dd><p>Calculate the average volume of each species in a given system and parameters, this is the volume
+per molecule &amp; will also return concentration</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>system</strong> (<em>openmm.System</em>) – System of interest</p></li>
+<li><p><strong>topology</strong> (<em>openmm.app.Topology</em>) – Topology of the system</p></li>
+<li><p><strong>positions</strong> (<em>openmm.unit.Quantity</em>) – Initial positions for the simulation</p></li>
+<li><p><strong>box_vectors</strong> (<em>openmm.unit.Quantity</em>) – Periodic box vectors for the system</p></li>
+<li><p><strong>temperature</strong> (<em>openmm.unit.Quantity</em>) – Temperature of the simulation</p></li>
+<li><p><strong>n_samples</strong> (<em>int</em>) – Number of volume samples to collect</p></li>
+<li><p><strong>n_equil</strong> (<em>int</em>) – Number of MD steps to run between each sample</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>avg_vol_dict</strong> (<em>dict</em>) – Dictionary storing the average volume per molecule for each species</p></li>
+<li><p><strong>conc_dict</strong> (<em>dict</em>) – Dictionary storing the average concentration for each species (directly related to average volume, but
+returning both for convenience)</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grand.potential.calc_mu_ex">
+<span class="sig-prename descclassname"><span class="pre">grand.potential.</span></span><span class="sig-name descname"><span class="pre">calc_mu_ex</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">box_vectors</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_lambdas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_equil</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pressure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">turnOff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.potential.calc_mu_ex" title="Permalink to this definition"></a></dt>
+<dd><p>Calculate the excess chemical potential of a molecule in a given system,
+as the hydration free energy, using MBAR</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>system</strong> (<em>openmm.System</em>) – System of interest</p></li>
+<li><p><strong>topology</strong> (<em>openmm.app.Topology</em>) – Topology of the system</p></li>
+<li><p><strong>positions</strong> (<em>openmm.unit.Quantity</em>) – Initial positions for the simulation</p></li>
+<li><p><strong>resname</strong> (<em>str</em>) – Resname of the molecule to couple</p></li>
+<li><p><strong>resid</strong> (<em>int</em>) – Resid of the residue to couple</p></li>
+<li><p><strong>box_vectors</strong> (<em>openmm.unit.Quantity</em>) – Periodic box vectors for the system</p></li>
+<li><p><strong>temperature</strong> (<em>openmm.unit.Quantity</em>) – Temperature of the simulation</p></li>
+<li><p><strong>n_lambdas</strong> (<em>int</em>) – Number of lambda values</p></li>
+<li><p><strong>n_samples</strong> (<em>int</em>) – Number of energy samples to collect at each lambda value</p></li>
+<li><p><strong>n_equil</strong> (<em>int</em>) – Number of MD steps to run between each sample</p></li>
+<li><p><strong>log_file</strong> (<em>str</em>) – Name of the log file to write out</p></li>
+<li><p><strong>pressure</strong> (<em>openmm.unit.Quantity</em>) – Pressure of the simulation, will default to NVT</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>dG</strong> – Calculated free energy value</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>openmm.unit.Quantity</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grand.potential.calc_mu_ex_independant">
+<span class="sig-prename descclassname"><span class="pre">grand.potential.</span></span><span class="sig-name descname"><span class="pre">calc_mu_ex_independant</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">box_vectors</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_lambdas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_equil</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pressure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">turnOff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.potential.calc_mu_ex_independant" title="Permalink to this definition"></a></dt>
+<dd><p>Calculate the excess chemical potential of a molecule in a given system,
+as the hydration free energy, using MBAR</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>system</strong> (<em>openmm.System</em>) – System of interest</p></li>
+<li><p><strong>topology</strong> (<em>openmm.app.Topology</em>) – Topology of the system</p></li>
+<li><p><strong>positions</strong> (<em>openmm.unit.Quantity</em>) – Initial positions for the simulation</p></li>
+<li><p><strong>resname</strong> (<em>str</em>) – Resname of the molecule to couple</p></li>
+<li><p><strong>resid</strong> (<em>int</em>) – Resid of the residue to couple</p></li>
+<li><p><strong>box_vectors</strong> (<em>openmm.unit.Quantity</em>) – Periodic box vectors for the system</p></li>
+<li><p><strong>temperature</strong> (<em>openmm.unit.Quantity</em>) – Temperature of the simulation</p></li>
+<li><p><strong>n_lambdas</strong> (<em>int</em>) – Number of lambda values</p></li>
+<li><p><strong>n_samples</strong> (<em>int</em>) – Number of energy samples to collect at each lambda value</p></li>
+<li><p><strong>n_equil</strong> (<em>int</em>) – Number of MD steps to run between each sample</p></li>
+<li><p><strong>log_file</strong> (<em>str</em>) – Name of the log file to write out</p></li>
+<li><p><strong>pressure</strong> (<em>openmm.unit.Quantity</em>) – Pressure of the simulation, will default to NVT</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>dG</strong> – Calculated free energy value</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>openmm.unit.Quantity</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grand.potential.get_lambda_values">
+<span class="sig-prename descclassname"><span class="pre">grand.potential.</span></span><span class="sig-name descname"><span class="pre">get_lambda_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lambda_in</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.potential.get_lambda_values" title="Permalink to this definition"></a></dt>
+<dd><p>Calculate the lambda_sterics and lambda_electrostatics values for a given lambda.
+Electrostatics are decoupled from lambda=1 to 0.5, and sterics are decoupled from
+lambda=0.5 to 0.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>lambda_in</strong> (<em>float</em>) – Input lambda value</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>lambda_vdw</strong> (<em>float</em>) – Lambda value for steric interactions</p></li>
+<li><p><strong>lambda_ele</strong> (<em>float</em>) – Lambda value for electrostatic interactions</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="grand.html" class="btn btn-neutral float-left" title="grand package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="grand.samplers.html" class="btn btn-neutral float-right" title="grand.samplers module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Essex Group, School of Chemistry, University of Southampton.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

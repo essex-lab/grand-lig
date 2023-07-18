@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>grand : Grand Canonical Sampling of Waters in OpenMM &mdash; grand 1.0.2-dev-lig documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="grand package" href="grand.html" />
+    <link rel="prev" title="Welcome to grand’s documentation!" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            grand
+          </a>
+              <div class="version">
+                1.0.2
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">grand : Grand Canonical Sampling of Waters in OpenMM</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#background">Background</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#installation-usage">Installation &amp; Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#contributors">Contributors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#contact">Contact</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="grand.html">grand package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Change Log</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">grand</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">grand : Grand Canonical Sampling of Waters in OpenMM</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/intro.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="grand-grand-canonical-sampling-of-waters-in-openmm">
+<h1>grand : Grand Canonical Sampling of Waters in OpenMM<a class="headerlink" href="#grand-grand-canonical-sampling-of-waters-in-openmm" title="Permalink to this heading"></a></h1>
+<section id="background">
+<h2>Background<a class="headerlink" href="#background" title="Permalink to this heading"></a></h2>
+<p>This Python module is designed to be run with OpenMM in order to simulate grand
+canonical Monte Carlo (GCMC) insertion and deletion moves of small molecules.
+This allows the particle number to vary according to a fixed chemical
+potential, and offers enhanced sampling of small molecules in occluded
+binding sites.
+The theory behind our work on GCMC sampling can be found in the References
+section below.</p>
+</section>
+<section id="installation-usage">
+<h2>Installation &amp; Usage<a class="headerlink" href="#installation-usage" title="Permalink to this heading"></a></h2>
+<p>This module can be installed from this directory by running the following
+command:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python setup.py install
+</pre></div>
+</div>
+<p>The dependencies of this module can be installed as:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>conda install -c omnia openmm mdtraj parmed openmmtools pymbar
+pip install lxml
+</pre></div>
+</div>
+<p>Alternatively, grand can be installed directly, using conda:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>conda install -c omnia -c anaconda -c conda-forge -c essexlab grand
+</pre></div>
+</div>
+<p>The grand module is released under the MIT licence. If results from this
+module contribute to a publication, we only ask that you cite the
+publications below - particularly reference 1, in which the grand module
+was first presented).</p>
+</section>
+<section id="contributors">
+<h2>Contributors<a class="headerlink" href="#contributors" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Will Poole <cite>&lt;wp1g16&#64;soton.ac.uk&gt;</cite></p></li>
+<li><p>Marley Samways <cite>&lt;mls2g13&#64;soton.ac.uk&gt;</cite></p></li>
+<li><p>Ollie Melling <cite>&lt;ojm2g16&#64;soton.ac.uk&gt;</cite></p></li>
+<li><p>Hannah Bruce Macdonald</p></li>
+</ul>
+</section>
+<section id="contact">
+<h2>Contact<a class="headerlink" href="#contact" title="Permalink to this heading"></a></h2>
+<p>If you have any problems or questions regarding this module, please contact
+one of the contributors, or send an email to <cite>&lt;j.w.essex&#64;soton.ac.uk&gt;</cite>.</p>
+</section>
+<section id="references">
+<h2>References<a class="headerlink" href="#references" title="Permalink to this heading"></a></h2>
+<p>1. M. L. Samways, H. E. Bruce Macdonald, J. W. Essex, J. Chem. Inf. Model.,
+2020, 60, 4436-4441, DOI: <a class="reference external" href="https://doi.org/10.1021/acs.jcim.0c00648">https://doi.org/10.1021/acs.jcim.0c00648</a></p>
+<p>2. O. J. Melling, M. L. Samways, Y. Ge, D. L. Mobley, J. W. Essex, J. Chem. Theory Comput., 2023,
+DOI: <a class="reference external" href="https://doi.org/10.1021/acs.jctc.2c00823">https://doi.org/10.1021/acs.jctc.2c00823</a></p>
+<p>3. G. A. Ross, M. S. Bodnarchuk, J. W. Essex, J. Am. Chem. Soc., 2015,
+137, 47, 14930-14943, DOI: <a class="reference external" href="https://doi.org/10.1021/jacs.5b07940">https://doi.org/10.1021/jacs.5b07940</a></p>
+<p>4. G. A. Ross, H. E. Bruce Macdonald, C. Cave-Ayland, A. I. Cabedo
+Martinez, J. W. Essex, J. Chem. Theory Comput., 2017, 13, 12, 6373-6381, DOI:
+<a class="reference external" href="https://doi.org/10.1021/acs.jctc.7b00738">https://doi.org/10.1021/acs.jctc.7b00738</a></p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Welcome to grand’s documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="grand.html" class="btn btn-neutral float-right" title="grand package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Essex Group, School of Chemistry, University of Southampton.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>grand.samplers module &mdash; grand 1.0.2-dev-lig documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="grand.utils module" href="grand.utils.html" />
+    <link rel="prev" title="grand.potential module" href="grand.potential.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            grand
+          </a>
+              <div class="version">
+                1.0.2
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="intro.html">grand : Grand Canonical Sampling of Waters in OpenMM</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="grand.html">grand package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="grand.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="grand.potential.html">grand.potential module</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">grand.samplers module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#description">Description</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler"><code class="docutils literal notranslate"><span class="pre">BaseGrandCanonicalMonteCarloSampler</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#grand.samplers.GCMCCylinderSampler"><code class="docutils literal notranslate"><span class="pre">GCMCCylinderSampler</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#grand.samplers.GCMCSphereSampler"><code class="docutils literal notranslate"><span class="pre">GCMCSphereSampler</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#grand.samplers.GCMCSystemSampler"><code class="docutils literal notranslate"><span class="pre">GCMCSystemSampler</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#grand.samplers.NonequilibriumGCMCCylinderSampler"><code class="docutils literal notranslate"><span class="pre">NonequilibriumGCMCCylinderSampler</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#grand.samplers.NonequilibriumGCMCSphereSampler"><code class="docutils literal notranslate"><span class="pre">NonequilibriumGCMCSphereSampler</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#grand.samplers.NonequilibriumGCMCSystemSampler"><code class="docutils literal notranslate"><span class="pre">NonequilibriumGCMCSystemSampler</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#grand.samplers.StandardGCMCCylinderSampler"><code class="docutils literal notranslate"><span class="pre">StandardGCMCCylinderSampler</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#grand.samplers.StandardGCMCSphereSampler"><code class="docutils literal notranslate"><span class="pre">StandardGCMCSphereSampler</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#grand.samplers.StandardGCMCSystemSampler"><code class="docutils literal notranslate"><span class="pre">StandardGCMCSystemSampler</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="grand.utils.html">grand.utils module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Change Log</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">grand</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="grand.html">grand package</a></li>
+      <li class="breadcrumb-item active">grand.samplers module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/grand.samplers.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-grand.samplers">
+<span id="grand-samplers-module"></span><h1>grand.samplers module<a class="headerlink" href="#module-grand.samplers" title="Permalink to this heading"></a></h1>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this heading"></a></h2>
+<p>This module is written to execute GCMC moves with molecules in OpenMM, via a series of
+Sampler objects.</p>
+<p>Will Poole
+Marley Samways
+Ollie Melling</p>
+</section>
+<dl class="py class">
+<dt class="sig sig-object py" id="grand.samplers.BaseGrandCanonicalMonteCarloSampler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">grand.samplers.</span></span><span class="sig-name descname"><span class="pre">BaseGrandCanonicalMonteCarloSampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'HOH'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-ghost-wats.txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc.log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">createCustomForces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dcd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dihedrals</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distribution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Base class for carrying out GCMC moves in OpenMM.
+All other Sampler objects are derived from this</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.BaseGrandCanonicalMonteCarloSampler.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'HOH'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-ghost-wats.txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc.log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">createCustomForces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dcd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dihedrals</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distribution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler.__init__" title="Permalink to this definition"></a></dt>
+<dd><p>Initialise the object to be used for sampling insertion/deletion moves</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>system</strong> (<em>openmm.System</em>) – System object to be used for the simulation</p></li>
+<li><p><strong>topology</strong> (<em>openmm.app.Topology</em>) – Topology object for the system to be simulated</p></li>
+<li><p><strong>temperature</strong> (<em>openmm.unit.Quantity</em>) – Temperature of the simulation, must be in appropriate units</p></li>
+<li><p><strong>resname</strong> (<em>str</em>) – Resname of the molecule of interest. Default = “HOH”</p></li>
+<li><p><strong>ghostFile</strong> (<em>str</em>) – Name of a file to write out the residue IDs of ghost molecules. This is
+useful if you want to visualise the sampling, as you can then remove these molecules
+from view, as they are non-interacting. Default is ‘gcmc-ghost-wats.txt’</p></li>
+<li><p><strong>log</strong> (<em>str</em>) – Log file to write out</p></li>
+<li><p><strong>createCustomForces</strong> (<em>bool</em>) – If True (default), will create CustomForce objects to handle interaction switching. If False, these forces
+must be created elsewhere</p></li>
+<li><p><strong>dcd</strong> (<em>str</em>) – Name of the DCD file to write the system out to</p></li>
+<li><p><strong>rst</strong> (<em>str</em>) – Name of the restart file to write out (.pdb or .rst7)</p></li>
+<li><p><strong>overwrite</strong> (<em>bool</em>) – Overwrite any data already present</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.BaseGrandCanonicalMonteCarloSampler.adjustSpecificMolecule">
+<span class="sig-name descname"><span class="pre">adjustSpecificMolecule</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_lambda</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ele</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vdw</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler.adjustSpecificMolecule" title="Permalink to this definition"></a></dt>
+<dd><p>Adjust the coupling of a specific molecule, by adjusting the lambda value</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>resid</strong> (<em>int</em>) – Resid of the molecule to be adjusted</p></li>
+<li><p><strong>new_lambda</strong> (<em>float</em>) – Value to set lambda to for this particle</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.BaseGrandCanonicalMonteCarloSampler.calculateCOG">
+<span class="sig-name descname"><span class="pre">calculateCOG</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resid</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler.calculateCOG" title="Permalink to this definition"></a></dt>
+<dd><p>Calculate centre of geometry (COG) of a resid based on heavy atoms</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>resid</strong> (<em>int</em>) – Residue ID of interest</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>heavy_cog</strong> – Centre of geometry, based on heavy atoms</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>openmm.unit.Quantity</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.BaseGrandCanonicalMonteCarloSampler.deleteGhostMolecules">
+<span class="sig-name descname"><span class="pre">deleteGhostMolecules</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ghostResids</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler.deleteGhostMolecules" title="Permalink to this definition"></a></dt>
+<dd><p>Switch off nonbonded interactions involving the ghost molecules initially added
+This function should be executed before beginning the simulation, to prevent any
+explosions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ghostResids</strong> (<em>list</em>) – List of residue IDs corresponding to the ghost molecules added</p></li>
+<li><p><strong>ghostFile</strong> (<em>str</em>) – File containing residue IDs of ghost molecules. Will switch off those on the
+last line. This will be useful in restarting simulations</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>context</strong> – Updated context, with ghost molecules switched off</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>openmm.Context</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.BaseGrandCanonicalMonteCarloSampler.getMolStatusResids">
+<span class="sig-name descname"><span class="pre">getMolStatusResids</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler.getMolStatusResids" title="Permalink to this definition"></a></dt>
+<dd><p>Get a list of resids which have a particular status value</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>value</strong> (<em>int</em>) – Value of the water status. 0: ghost, 1: GCMC water, 2: Non-tracked water</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>resids</strong> – List of residues which match that status</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.array</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.BaseGrandCanonicalMonteCarloSampler.getMolStatusValue">
+<span class="sig-name descname"><span class="pre">getMolStatusValue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resid</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler.getMolStatusValue" title="Permalink to this definition"></a></dt>
+<dd><p>Get the status value of a particular resid</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>resid</strong> (<em>int</em>) – Residue to update the status for</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>value</strong> – Value of the water status. 0: ghost, 1: GCMC water, 2: Non-tracked water</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.BaseGrandCanonicalMonteCarloSampler.getMoleculeAtoms">
+<span class="sig-name descname"><span class="pre">getMoleculeAtoms</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler.getMoleculeAtoms" title="Permalink to this definition"></a></dt>
+<dd><p>Get all atom IDs for each molecule, noting heavy atoms in a second list</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.BaseGrandCanonicalMonteCarloSampler.getMoleculeExceptions">
+<span class="sig-name descname"><span class="pre">getMoleculeExceptions</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler.getMoleculeExceptions" title="Permalink to this definition"></a></dt>
+<dd><p>Find out the IDs of atoms and exceptions belonging to each molecule</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.BaseGrandCanonicalMonteCarloSampler.getMoleculeParameters">
+<span class="sig-name descname"><span class="pre">getMoleculeParameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resname</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler.getMoleculeParameters" title="Permalink to this definition"></a></dt>
+<dd><p>Get the non-bonded parameters for each of the atoms in the water model used</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>resname</strong> (<em>str</em>) – Name of the molecule residues</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>wat_params</strong> – List of dictionaries containing the charge, sigma and epsilon for each water atom</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.BaseGrandCanonicalMonteCarloSampler.getMoleculeResids">
+<span class="sig-name descname"><span class="pre">getMoleculeResids</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resname</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler.getMoleculeResids" title="Permalink to this definition"></a></dt>
+<dd><p>Get the residue IDs of all molecule molecules in the system</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>resname</strong> (<em>str</em>) – Name of the molecule residues</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>resid_list</strong> – List of residue ID numbers</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.BaseGrandCanonicalMonteCarloSampler.move">
+<span class="sig-name descname"><span class="pre">move</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler.move" title="Permalink to this definition"></a></dt>
+<dd><p>Returns an error if someone attempts to execute a move with the parent object
+Parameters are designed to match the signature of the inheriting classes</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>context</strong> (<em>openmm.Context</em>) – Current context of the simulation</p></li>
+<li><p><strong>n</strong> (<em>int</em>) – Number of moves to execute</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.BaseGrandCanonicalMonteCarloSampler.raiseError">
+<span class="sig-name descname"><span class="pre">raiseError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">error_msg</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler.raiseError" title="Permalink to this definition"></a></dt>
+<dd><p>Make it nice and easy to report an error in a consisent way - also easier to manage error handling in future</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>error_msg</strong> (<em>str</em>) – Message describing the error</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.BaseGrandCanonicalMonteCarloSampler.randomMolecularRotation">
+<span class="sig-name descname"><span class="pre">randomMolecularRotation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_centre</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler.randomMolecularRotation" title="Permalink to this definition"></a></dt>
+<dd><p>Rotate a molecule randomly about it’s centre of geometry (based only on heavy atoms)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>resid</strong> (<em>int</em>) – Residue of interest</p></li>
+<li><p><strong>new_centre</strong> (<em>openmm.unit.Quantity</em>) – Translate the molecule to this position after the rotation, if given</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>new_positions</strong> – New positions for the whole context, including this rotation</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>openmm.unit.Quantity</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.BaseGrandCanonicalMonteCarloSampler.randomiseAtomVelocities">
+<span class="sig-name descname"><span class="pre">randomiseAtomVelocities</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">atom_ids</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler.randomiseAtomVelocities" title="Permalink to this definition"></a></dt>
+<dd><p>Assign random velocities (from the Maxwell-Boltzmann) to a subset of atoms</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>atom_ids</strong> (<em>list</em>) – List of atom indices to assign random velocities to. All other velocities will be unchanged</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.BaseGrandCanonicalMonteCarloSampler.randomiseMoleculeConformer">
+<span class="sig-name descname"><span class="pre">randomiseMoleculeConformer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resid</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler.randomiseMoleculeConformer" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.BaseGrandCanonicalMonteCarloSampler.report">
+<span class="sig-name descname"><span class="pre">report</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulation</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler.report" title="Permalink to this definition"></a></dt>
+<dd><p>Function to report any useful data</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>simulation</strong> (<em>openmm.app.Simulation</em>) – Simulation object being used</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.BaseGrandCanonicalMonteCarloSampler.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler.reset" title="Permalink to this definition"></a></dt>
+<dd><p>Reset counted values (such as number of total or accepted moves) to zero</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.BaseGrandCanonicalMonteCarloSampler.setCustomForces">
+<span class="sig-name descname"><span class="pre">setCustomForces</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">param_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">custom_nb_force</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">elec_bond_force</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">steric_bond_force</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler.setCustomForces" title="Permalink to this definition"></a></dt>
+<dd><p>Set the custom force objects to forces created elsewhere - if createCustomForces was set to False, this function
+must be run before the Simulation object is created</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>param_list</strong> (<em>list</em>) – List of parameters for each atom (in correct order) - each entry must be a dictionary containing ‘charge’,
+‘sigma’, and ‘epsilon’</p></li>
+<li><p><strong>custom_nb_force</strong> (<em>openmm.CustomNonbondedForce</em>) – Handles the softcore LJ interactions</p></li>
+<li><p><strong>elec_bond_force</strong> (<em>openmm.CustomBondForce</em>) – Handles the electrostatic exceptions (if relevant, None otherwise)</p></li>
+<li><p><strong>steric_bond_force</strong> (<em>openmm.CustomBondForce</em>) – Handles the steric exceptions (if relevant, None otherwise)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.BaseGrandCanonicalMonteCarloSampler.setMolStatus">
+<span class="sig-name descname"><span class="pre">setMolStatus</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler.setMolStatus" title="Permalink to this definition"></a></dt>
+<dd><p>Set the status of a particular water to a particular value</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>resid</strong> (<em>int</em>) – Residue to update the status for</p></li>
+<li><p><strong>new_value</strong> (<em>int</em>) – New value of the water status. 0: ghost, 1: GCMC water, 2: Non-tracked water</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.BaseGrandCanonicalMonteCarloSampler.writeGhostMoleculeResids">
+<span class="sig-name descname"><span class="pre">writeGhostMoleculeResids</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler.writeGhostMoleculeResids" title="Permalink to this definition"></a></dt>
+<dd><p>Write out a comma-separated list of the residue IDs of molecules which are
+non-interacting, so that they can be removed from visualisations. It is important
+to execute this function when writing to trajectory files, so that each line
+in the ghost molecule file corresponds to a frame in the trajectory</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grand.samplers.GCMCCylinderSampler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">grand.samplers.</span></span><span class="sig-name descname"><span class="pre">GCMCCylinderSampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adams</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">excessChemicalPotential</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=-6.09,</span> <span class="pre">unit=kilocalorie</span> <span class="pre">/</span> <span class="pre">mole)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardVolume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=30.345,</span> <span class="pre">unit=angstrom**3)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adamsShift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'HOH'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-ghost-wats.txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">faceCenter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">faceRadius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">MaxZCoord</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cylinderHeight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc.log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">createCustomForces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dcd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dihedrals</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distribution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCCylinderSampler" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler" title="grand.samplers.BaseGrandCanonicalMonteCarloSampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseGrandCanonicalMonteCarloSampler</span></code></a></p>
+<p>Base class for carrying out GCMC moves in OpenMM, using a GCMC Cyclinder to sample the system - ideal for membrane bound
+proteins</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.GCMCCylinderSampler.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adams</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">excessChemicalPotential</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=-6.09,</span> <span class="pre">unit=kilocalorie</span> <span class="pre">/</span> <span class="pre">mole)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardVolume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=30.345,</span> <span class="pre">unit=angstrom**3)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adamsShift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'HOH'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-ghost-wats.txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">faceCenter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">faceRadius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">MaxZCoord</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cylinderHeight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc.log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">createCustomForces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dcd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dihedrals</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distribution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCCylinderSampler.__init__" title="Permalink to this definition"></a></dt>
+<dd><p>Initialise the object to be used for sampling water insertion/deletion moves</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>system</strong> (<em>openmm.System</em>) – System object to be used for the simulation</p></li>
+<li><p><strong>topology</strong> (<em>openmm.app.Topology</em>) – Topology object for the system to be simulated</p></li>
+<li><p><strong>temperature</strong> (<em>openmm.unit.Quantity</em>) – Temperature of the simulation, must be in appropriate units</p></li>
+<li><p><strong>adams</strong> (<em>float</em>) – Adams B value for the simulation (dimensionless). Default is None,
+if None, the B value is calculated from the box volume and chemical
+potential</p></li>
+<li><p><strong>excessChemicalPotential</strong> (<em>openmm.unit.Quantity</em>) – Excess chemical potential of the system that the simulation should be in equilibrium with, default is
+-6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
+simulation parameters.</p></li>
+<li><p><strong>standardVolume</strong> (<em>openmm.unit.Quantity</em>) – Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3</p></li>
+<li><p><strong>adamsShift</strong> (<em>float</em>) – Shift the B value from Bequil, if B isn’t explicitly set. Default is 0.0</p></li>
+<li><p><strong>resname</strong> (<em>str</em>) – Resname of the molecule of interest. Default = “HOH”</p></li>
+<li><p><strong>ghostFile</strong> (<em>str</em>) – Name of a file to write out the residue IDs of ghost water molecules. This is
+useful if you want to visualise the sampling, as you can then remove these waters
+from view, as they are non-interacting. Default is ‘gcmc-ghost-wats.txt’</p></li>
+<li><p><strong>log</strong> (<em>str</em>) – Log file to write out</p></li>
+<li><p><strong>createCustomForces</strong> (<em>bool</em>) – If True (default), will create CustomForce objects to handle interaction switching. If False, these forces
+must be created elsewhere</p></li>
+<li><p><strong>dcd</strong> (<em>str</em>) – Name of the DCD file to write the system out to</p></li>
+<li><p><strong>rst</strong> (<em>str</em>) – Name of the restart file to write out (.pdb or .rst7)</p></li>
+<li><p><strong>overwrite</strong> (<em>bool</em>) – Overwrite any data already present</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.GCMCCylinderSampler.deleteMoleculesInGCMCCylinder">
+<span class="sig-name descname"><span class="pre">deleteMoleculesInGCMCCylinder</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCCylinderSampler.deleteMoleculesInGCMCCylinder" title="Permalink to this definition"></a></dt>
+<dd><p>Function to delete all of the molecules currently present in the GCMC region
+This may be useful the plan is to generate a distribution for this
+region from scratch. If so, it would be recommended to interleave the GCMC
+sampling with coordinate propagation, as this will converge faster.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>context</strong> (<em>openmm.Context</em>) – Current context of the system. Only needs to be supplied if the context
+has changed since the last update</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>context</strong> – Updated context after deleting the relevant waters</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>openmm.Context</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.GCMCCylinderSampler.deleteRandomMolecule">
+<span class="sig-name descname"><span class="pre">deleteRandomMolecule</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCCylinderSampler.deleteRandomMolecule" title="Permalink to this definition"></a></dt>
+<dd><p>Choose a random water to be deleted</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p><strong>delete_mol</strong> (<em>int</em>) – Resid of the molecule to delete</p></li>
+<li><p><strong>gcmc_id</strong> (<em>int</em>) – GCMC ID for this molecule</p></li>
+<li><p><strong>mol_id</strong> (<em>int</em>) – Overall ID for this molecule</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.GCMCCylinderSampler.getCylinderCentre">
+<span class="sig-name descname"><span class="pre">getCylinderCentre</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCCylinderSampler.getCylinderCentre" title="Permalink to this definition"></a></dt>
+<dd><p>Update the coordinates of the cylinder centre
+Need to make sure it isn’t affected by the reference atoms being split across PBCs</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.GCMCCylinderSampler.getReferenceAtomIndices">
+<span class="sig-name descname"><span class="pre">getReferenceAtomIndices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ref_atoms</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCCylinderSampler.getReferenceAtomIndices" title="Permalink to this definition"></a></dt>
+<dd><p>Get the index of the atom used to define the centre of the GCMC box</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ref_atoms</strong> (<em>list</em>) – List of dictionaries containing the atom name, residue name and (optionally) residue ID and chain,
+as marked by keys ‘name’, ‘resname’, ‘resid’ and ‘chain’</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>atom_indices</strong> – Indices of the atoms chosen</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.GCMCCylinderSampler.initialise">
+<span class="sig-name descname"><span class="pre">initialise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">simulation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostResids</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCCylinderSampler.initialise" title="Permalink to this definition"></a></dt>
+<dd><p>Prepare the GCMC sphere for simulation by loading the coordinates from a
+Context object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>context</strong> (<em>openmm.Context</em>) – Current context of the simulation</p></li>
+<li><p><strong>ghostResids</strong> (<em>list</em>) – List of residue IDs corresponding to the ghost waters added</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.GCMCCylinderSampler.insertRandomMolecule">
+<span class="sig-name descname"><span class="pre">insertRandomMolecule</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCCylinderSampler.insertRandomMolecule" title="Permalink to this definition"></a></dt>
+<dd><p>Translate a random ghost to a random point in the GCMC sphere to allow subsequent insertion</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p><strong>new_positions</strong> (<em>openmm.unit.Quantity</em>) – Positions following the ‘insertion’ of the ghost water</p></li>
+<li><p><strong>insert_mol</strong> (<em>int</em>) – Resid of the molecule to insert</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.GCMCCylinderSampler.updateGCMCCylinder">
+<span class="sig-name descname"><span class="pre">updateGCMCCylinder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">state</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCCylinderSampler.updateGCMCCylinder" title="Permalink to this definition"></a></dt>
+<dd><p>Update the relevant GCMC-cylinder related parameters. This also involves monitoring
+which molecules are in/out of the region</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grand.samplers.GCMCSphereSampler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">grand.samplers.</span></span><span class="sig-name descname"><span class="pre">GCMCSphereSampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adams</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">excessChemicalPotential</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=-6.09,</span> <span class="pre">unit=kilocalorie</span> <span class="pre">/</span> <span class="pre">mole)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardVolume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=30.345,</span> <span class="pre">unit=angstrom**3)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adamsShift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'HOH'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-ghost-wats.txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">referenceAtoms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sphereRadius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sphereCentre</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc.log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">createCustomForces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dcd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dihedrals</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distribution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCSphereSampler" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler" title="grand.samplers.BaseGrandCanonicalMonteCarloSampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseGrandCanonicalMonteCarloSampler</span></code></a></p>
+<p>Base class for carrying out GCMC moves in OpenMM, using a GCMC sphere to sample the system</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.GCMCSphereSampler.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adams</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">excessChemicalPotential</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=-6.09,</span> <span class="pre">unit=kilocalorie</span> <span class="pre">/</span> <span class="pre">mole)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardVolume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=30.345,</span> <span class="pre">unit=angstrom**3)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adamsShift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'HOH'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-ghost-wats.txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">referenceAtoms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sphereRadius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sphereCentre</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc.log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">createCustomForces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dcd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dihedrals</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distribution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCSphereSampler.__init__" title="Permalink to this definition"></a></dt>
+<dd><p>Initialise the object to be used for sampling water insertion/deletion moves</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>system</strong> (<em>openmm.System</em>) – System object to be used for the simulation</p></li>
+<li><p><strong>topology</strong> (<em>openmm.app.Topology</em>) – Topology object for the system to be simulated</p></li>
+<li><p><strong>temperature</strong> (<em>openmm.unit.Quantity</em>) – Temperature of the simulation, must be in appropriate units</p></li>
+<li><p><strong>adams</strong> (<em>float</em>) – Adams B value for the simulation (dimensionless). Default is None,
+if None, the B value is calculated from the box volume and chemical
+potential</p></li>
+<li><p><strong>excessChemicalPotential</strong> (<em>openmm.unit.Quantity</em>) – Excess chemical potential of the system that the simulation should be in equilibrium with, default is
+-6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
+simulation parameters.</p></li>
+<li><p><strong>standardVolume</strong> (<em>openmm.unit.Quantity</em>) – Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3</p></li>
+<li><p><strong>adamsShift</strong> (<em>float</em>) – Shift the B value from Bequil, if B isn’t explicitly set. Default is 0.0</p></li>
+<li><p><strong>resname</strong> (<em>str</em>) – Resname of the molecule of interest. Default = “HOH”</p></li>
+<li><p><strong>ghostFile</strong> (<em>str</em>) – Name of a file to write out the residue IDs of ghost water molecules. This is
+useful if you want to visualise the sampling, as you can then remove these waters
+from view, as they are non-interacting. Default is ‘gcmc-ghost-wats.txt’</p></li>
+<li><p><strong>referenceAtoms</strong> (<em>list</em>) – List containing dictionaries describing the atoms to use as the centre of the GCMC region
+Must contain ‘name’ and ‘resname’ as keys, and optionally ‘resid’ (recommended) and ‘chain’
+e.g. [{‘name’: ‘C1’, ‘resname’: ‘LIG’, ‘resid’: ‘123’}]</p></li>
+<li><p><strong>sphereRadius</strong> (<em>openmm.unit.Quantity</em>) – Radius of the spherical GCMC region</p></li>
+<li><p><strong>sphereCentre</strong> (<em>openmm.unit.Quantity</em>) – Coordinates around which the GCMC sphere is based</p></li>
+<li><p><strong>log</strong> (<em>str</em>) – Log file to write out</p></li>
+<li><p><strong>createCustomForces</strong> (<em>bool</em>) – If True (default), will create CustomForce objects to handle interaction switching. If False, these forces
+must be created elsewhere</p></li>
+<li><p><strong>dcd</strong> (<em>str</em>) – Name of the DCD file to write the system out to</p></li>
+<li><p><strong>rst</strong> (<em>str</em>) – Name of the restart file to write out (.pdb or .rst7)</p></li>
+<li><p><strong>overwrite</strong> (<em>bool</em>) – Overwrite any data already present</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.GCMCSphereSampler.deleteMoleculesInGCMCSphere">
+<span class="sig-name descname"><span class="pre">deleteMoleculesInGCMCSphere</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCSphereSampler.deleteMoleculesInGCMCSphere" title="Permalink to this definition"></a></dt>
+<dd><p>Function to delete all of the molecules currently present in the GCMC region
+This may be useful the plan is to generate a distribution for this
+region from scratch. If so, it would be recommended to interleave the GCMC
+sampling with coordinate propagation, as this will converge faster.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>context</strong> (<em>openmm.Context</em>) – Current context of the system. Only needs to be supplied if the context
+has changed since the last update</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>context</strong> – Updated context after deleting the relevant waters</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>openmm.Context</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.GCMCSphereSampler.deleteRandomMolecule">
+<span class="sig-name descname"><span class="pre">deleteRandomMolecule</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCSphereSampler.deleteRandomMolecule" title="Permalink to this definition"></a></dt>
+<dd><p>Choose a random water to be deleted</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p><strong>delete_mol</strong> (<em>int</em>) – Resid of the molecule to delete</p></li>
+<li><p><strong>gcmc_id</strong> (<em>int</em>) – GCMC ID for this molecule</p></li>
+<li><p><strong>mol_id</strong> (<em>int</em>) – Overall ID for this molecule</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.GCMCSphereSampler.getReferenceAtomIndices">
+<span class="sig-name descname"><span class="pre">getReferenceAtomIndices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ref_atoms</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCSphereSampler.getReferenceAtomIndices" title="Permalink to this definition"></a></dt>
+<dd><p>Get the index of the atom used to define the centre of the GCMC box</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ref_atoms</strong> (<em>list</em>) – List of dictionaries containing the atom name, residue name and (optionally) residue ID and chain,
+as marked by keys ‘name’, ‘resname’, ‘resid’ and ‘chain’</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>atom_indices</strong> – Indices of the atoms chosen</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.GCMCSphereSampler.getSphereCentre">
+<span class="sig-name descname"><span class="pre">getSphereCentre</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCSphereSampler.getSphereCentre" title="Permalink to this definition"></a></dt>
+<dd><p>Update the coordinates of the sphere centre
+Need to make sure it isn’t affected by the reference atoms being split across PBCs</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.GCMCSphereSampler.initialise">
+<span class="sig-name descname"><span class="pre">initialise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">simulation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostResids</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCSphereSampler.initialise" title="Permalink to this definition"></a></dt>
+<dd><p>Prepare the GCMC sphere for simulation by loading the coordinates from a
+Context object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>context</strong> (<em>openmm.Context</em>) – Current context of the simulation</p></li>
+<li><p><strong>ghostResids</strong> (<em>list</em>) – List of residue IDs corresponding to the ghost waters added</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.GCMCSphereSampler.insertRandomMolecule">
+<span class="sig-name descname"><span class="pre">insertRandomMolecule</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCSphereSampler.insertRandomMolecule" title="Permalink to this definition"></a></dt>
+<dd><p>Translate a random ghost to a random point in the GCMC sphere to allow subsequent insertion</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p><strong>new_positions</strong> (<em>openmm.unit.Quantity</em>) – Positions following the ‘insertion’ of the ghost water</p></li>
+<li><p><strong>insert_mol</strong> (<em>int</em>) – Resid of the molecule to insert</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.GCMCSphereSampler.updateGCMCSphere">
+<span class="sig-name descname"><span class="pre">updateGCMCSphere</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">state</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCSphereSampler.updateGCMCSphere" title="Permalink to this definition"></a></dt>
+<dd><p>Update the relevant GCMC-sphere related parameters. This also involves monitoring
+which molecules are in/out of the region</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grand.samplers.GCMCSystemSampler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">grand.samplers.</span></span><span class="sig-name descname"><span class="pre">GCMCSystemSampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'HOH'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adams</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">excessChemicalPotential</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=-6.09,</span> <span class="pre">unit=kilocalorie</span> <span class="pre">/</span> <span class="pre">mole)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardVolume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=30.345,</span> <span class="pre">unit=angstrom**3)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adamsShift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boxVectors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-ghost-wats.txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc.log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dcd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">createCustomForces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dihedrals</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distribution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCSystemSampler" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#grand.samplers.BaseGrandCanonicalMonteCarloSampler" title="grand.samplers.BaseGrandCanonicalMonteCarloSampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseGrandCanonicalMonteCarloSampler</span></code></a></p>
+<p>Base class for carrying out GCMC moves in OpenMM, sampling the whole system with GCMC</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.GCMCSystemSampler.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'HOH'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adams</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">excessChemicalPotential</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=-6.09,</span> <span class="pre">unit=kilocalorie</span> <span class="pre">/</span> <span class="pre">mole)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardVolume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=30.345,</span> <span class="pre">unit=angstrom**3)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adamsShift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boxVectors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-ghost-wats.txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc.log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dcd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">createCustomForces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dihedrals</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distribution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCSystemSampler.__init__" title="Permalink to this definition"></a></dt>
+<dd><p>Initialise the object to be used for sampling water insertion/deletion moves</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>system</strong> (<em>openmm.System</em>) – System object to be used for the simulation</p></li>
+<li><p><strong>topology</strong> (<em>openmm.app.Topology</em>) – Topology object for the system to be simulated</p></li>
+<li><p><strong>temperature</strong> (<em>openmm.unit.Quantity</em>) – Temperature of the simulation, must be in appropriate units</p></li>
+<li><p><strong>resname</strong> (<em>str</em>) – Resname of the molecule of interest. Default = “HOH”</p></li>
+<li><p><strong>adams</strong> (<em>float</em>) – Adams B value for the simulation (dimensionless). Default is None,
+if None, the B value is calculated from the box volume and chemical
+potential</p></li>
+<li><p><strong>excessChemicalPotential</strong> (<em>openmm.unit.Quantity</em>) – Excess chemical potential of the system that the simulation should be in equilibrium with, default is
+-6.09 kcal/mol (water). This should be the hydration free energy of the molecule, and may need to be changed</p></li>
+<li><p><strong>standardVolume</strong> (<em>openmm.unit.Quantity</em>) – Standard volume of the molecule - corresponds to the volume per molecule in bulk solution. The default value is
+30.345 A^3 (water)</p></li>
+<li><p><strong>adamsShift</strong> (<em>float</em>) – Shift the B value from Bequil, if B isn’t explicitly set. Default is 0.0</p></li>
+<li><p><strong>boxVectors</strong> (<em>openmm.unit.Quantity</em>) – Box vectors for the simulation cell</p></li>
+<li><p><strong>ghostFile</strong> (<em>str</em>) – Name of a file to write out the residue IDs of ghost water molecules. This is
+useful if you want to visualise the sampling, as you can then remove these waters
+from view, as they are non-interacting. Default is ‘gcmc-ghost-wats.txt’</p></li>
+<li><p><strong>log</strong> (<em>str</em>) – Log file to write out</p></li>
+<li><p><strong>createCustomForces</strong> (<em>bool</em>) – If True (default), will create CustomForce objects to handle interaction switching. If False, these forces
+must be created elsewhere</p></li>
+<li><p><strong>dcd</strong> (<em>str</em>) – Name of the DCD file to write the system out to</p></li>
+<li><p><strong>rst</strong> (<em>str</em>) – Name of the restart file to write out (.pdb or .rst7)</p></li>
+<li><p><strong>overwrite</strong> (<em>bool</em>) – Overwrite any data already present</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.GCMCSystemSampler.deleteRandomMolecule">
+<span class="sig-name descname"><span class="pre">deleteRandomMolecule</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCSystemSampler.deleteRandomMolecule" title="Permalink to this definition"></a></dt>
+<dd><p>Choose a random water to be deleted</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>delete_mol</strong> – Resid of the molecule to delete</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.GCMCSystemSampler.initialise">
+<span class="sig-name descname"><span class="pre">initialise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">simulation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostResids</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCSystemSampler.initialise" title="Permalink to this definition"></a></dt>
+<dd><p>Prepare the GCMC SYSTEM for simulation by loading the coordinates from a
+Context object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>context</strong> (<em>openmm.Context</em>) – Current context of the simulation</p></li>
+<li><p><strong>ghostResids</strong> (<em>list</em>) – List of residue IDs corresponding to the ghost waters added</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.GCMCSystemSampler.insertRandomMolecule">
+<span class="sig-name descname"><span class="pre">insertRandomMolecule</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.GCMCSystemSampler.insertRandomMolecule" title="Permalink to this definition"></a></dt>
+<dd><p>Translate a random ghost to a random point in the simulation box to allow subsequent insertion</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p><strong>new_positions</strong> (<em>openmm.unit.Quantity</em>) – Positions following the ‘insertion’ of the ghost water</p></li>
+<li><p><strong>insert_mol</strong> (<em>int</em>) – Resid of the molecule to insert</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grand.samplers.NonequilibriumGCMCCylinderSampler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">grand.samplers.</span></span><span class="sig-name descname"><span class="pre">NonequilibriumGCMCCylinderSampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">integrator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adams</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">excessChemicalPotential</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=-6.09,</span> <span class="pre">unit=kilocalorie</span> <span class="pre">/</span> <span class="pre">mole)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardVolume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=30.345,</span> <span class="pre">unit=angstrom**3)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adamsShift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nPertSteps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nPropStepsPerPert</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeStep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=2,</span> <span class="pre">unit=femtosecond)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lambdas</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'HOH'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-ghost-wats.txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">faceCenter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">faceRadius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">MaxZCoord</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cylinderHeight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc.log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">createCustomForces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dcd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dihedrals</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distribution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxN</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">999</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recordTraj</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.NonequilibriumGCMCCylinderSampler" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#grand.samplers.GCMCCylinderSampler" title="grand.samplers.GCMCCylinderSampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">GCMCCylinderSampler</span></code></a></p>
+<p>Class to carry out GCMC moves in OpenMM, using nonequilibrium candidate Monte Carlo (NCMC)
+to boost acceptance rates</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.NonequilibriumGCMCCylinderSampler.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">integrator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adams</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">excessChemicalPotential</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=-6.09,</span> <span class="pre">unit=kilocalorie</span> <span class="pre">/</span> <span class="pre">mole)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardVolume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=30.345,</span> <span class="pre">unit=angstrom**3)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adamsShift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nPertSteps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nPropStepsPerPert</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeStep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=2,</span> <span class="pre">unit=femtosecond)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lambdas</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'HOH'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-ghost-wats.txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">faceCenter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">faceRadius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">MaxZCoord</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cylinderHeight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc.log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">createCustomForces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dcd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dihedrals</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distribution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxN</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">999</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recordTraj</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.NonequilibriumGCMCCylinderSampler.__init__" title="Permalink to this definition"></a></dt>
+<dd><p>Initialise the object to be used for sampling NCMC-enhanced water insertion/deletion moves</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>system</strong> (<em>openmm.System</em>) – System object to be used for the simulation</p></li>
+<li><p><strong>topology</strong> (<em>openmm.app.Topology</em>) – Topology object for the system to be simulated</p></li>
+<li><p><strong>temperature</strong> (<em>openmm.unit.Quantity</em>) – Temperature of the simulation, must be in appropriate units</p></li>
+<li><p><strong>integrator</strong> (<em>openmm.CustomIntegrator</em>) – Integrator to use to propagate the dynamics of the system. Currently want to make sure that this
+is the customised Langevin integrator found in openmmtools which uses BAOAB (VRORV) splitting.</p></li>
+<li><p><strong>adams</strong> (<em>float</em>) – Adams B value for the simulation (dimensionless). Default is None,
+if None, the B value is calculated from the box volume and chemical
+potential</p></li>
+<li><p><strong>excessChemicalPotential</strong> (<em>openmm.unit.Quantity</em>) – Excess chemical potential of the system that the simulation should be in equilibrium with, default is
+-6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
+simulation parameters.</p></li>
+<li><p><strong>standardVolume</strong> (<em>openmm.unit.Quantity</em>) – Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3</p></li>
+<li><p><strong>adamsShift</strong> (<em>float</em>) – Shift the B value from Bequil, if B isn’t explicitly set. Default is 0.0</p></li>
+<li><p><strong>nPertSteps</strong> (<em>int</em>) – Number of pertubation steps over which to shift lambda between 0 and 1 (or vice versa).</p></li>
+<li><p><strong>nPropStepsPerPert</strong> (<em>int</em>) – Number of propagation steps to carry out for</p></li>
+<li><p><strong>timeStep</strong> (<em>openmm.unit.Quantity</em>) – Time step to use for non-equilibrium integration during the propagation steps</p></li>
+<li><p><strong>lambdas</strong> (<em>list</em>) – Series of lambda values corresponding to the pathway over which the molecules are perturbed</p></li>
+<li><p><strong>resname</strong> (<em>str</em>) – Resname of the molecule of interest. Default = “HOH”</p></li>
+<li><p><strong>ghostFile</strong> (<em>str</em>) – Name of a file to write out the residue IDs of ghost water molecules. This is
+useful if you want to visualise the sampling, as you can then remove these waters
+from view, as they are non-interacting. Default is ‘gcmc-ghost-wats.txt’</p></li>
+<li><p><strong>referenceAtoms</strong> (<em>list</em>) – List containing dictionaries describing the atoms to use as the centre of the GCMC region
+Must contain ‘name’ and ‘resname’ as keys, and optionally ‘resid’ (recommended) and ‘chain’
+e.g. [{‘name’: ‘C1’, ‘resname’: ‘LIG’, ‘resid’: ‘123’}]</p></li>
+<li><p><strong>sphereRadius</strong> (<em>openmm.unit.Quantity</em>) – Radius of the spherical GCMC region</p></li>
+<li><p><strong>sphereCentre</strong> (<em>openmm.unit.Quantity</em>) – Coordinates around which the GCMC sphere is based</p></li>
+<li><p><strong>log</strong> (<em>str</em>) – Name of the log file to write out</p></li>
+<li><p><strong>createCustomForces</strong> (<em>bool</em>) – If True (default), will create CustomForce objects to handle interaction switching. If False, these forces
+must be created elsewhere</p></li>
+<li><p><strong>dcd</strong> (<em>str</em>) – Name of the DCD file to write the system out to</p></li>
+<li><p><strong>rst</strong> (<em>str</em>) – Name of the restart file to write out (.pdb or .rst7)</p></li>
+<li><p><strong>overwrite</strong> (<em>bool</em>) – Indicates whether to overwrite already existing data</p></li>
+<li><p><strong>dihedrals</strong> (<em>list</em>) – List of dihedrals in the insertion molecule</p></li>
+<li><p><strong>distribution</strong> (<em>dict</em>) – Dictionary of the conformation distribution in the moelcule and their populations</p></li>
+<li><p><strong>conf</strong> (<em>rdkit thing</em>) – RDKit conformer for use when inserting flexible molecules</p></li>
+<li><p><strong>maxN</strong> (<em>int</em>) – User can supply the maximum number of N molecules to have in the sphere - this will massively speed up calculations
+to prevent un-needed insertions.</p></li>
+<li><p><strong>recordTraj</strong> (<em>bool</em>) – User can specifiy if they want the insertion/deletion trajectories to be recorded. Note requires large amount
+of disk space.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.NonequilibriumGCMCCylinderSampler.deletionMove">
+<span class="sig-name descname"><span class="pre">deletionMove</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.NonequilibriumGCMCCylinderSampler.deletionMove" title="Permalink to this definition"></a></dt>
+<dd><p>Carry out a nonequilibrium deletion move for a random water molecule</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.NonequilibriumGCMCCylinderSampler.insertionMove">
+<span class="sig-name descname"><span class="pre">insertionMove</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.NonequilibriumGCMCCylinderSampler.insertionMove" title="Permalink to this definition"></a></dt>
+<dd><p>Carry out a nonequilibrium insertion move for a random water molecule</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.NonequilibriumGCMCCylinderSampler.move">
+<span class="sig-name descname"><span class="pre">move</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.NonequilibriumGCMCCylinderSampler.move" title="Permalink to this definition"></a></dt>
+<dd><p>Carry out a nonequilibrium GCMC move</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>context</strong> (<em>openmm.Context</em>) – Current context of the simulation</p></li>
+<li><p><strong>n</strong> (<em>int</em>) – Number of moves to execute</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.NonequilibriumGCMCCylinderSampler.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.NonequilibriumGCMCCylinderSampler.reset" title="Permalink to this definition"></a></dt>
+<dd><p>Reset counted values (such as number of total or accepted moves) to zero</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grand.samplers.NonequilibriumGCMCSphereSampler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">grand.samplers.</span></span><span class="sig-name descname"><span class="pre">NonequilibriumGCMCSphereSampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">integrator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adams</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">excessChemicalPotential</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=-6.09,</span> <span class="pre">unit=kilocalorie</span> <span class="pre">/</span> <span class="pre">mole)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardVolume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=30.345,</span> <span class="pre">unit=angstrom**3)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adamsShift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nPertSteps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nPropStepsPerPert</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeStep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=2,</span> <span class="pre">unit=femtosecond)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lambdas</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'HOH'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-ghost-wats.txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">referenceAtoms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sphereRadius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sphereCentre</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc.log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">createCustomForces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dcd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dihedrals</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distribution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxN</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">999</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recordTraj</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.NonequilibriumGCMCSphereSampler" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#grand.samplers.GCMCSphereSampler" title="grand.samplers.GCMCSphereSampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">GCMCSphereSampler</span></code></a></p>
+<p>Class to carry out GCMC moves in OpenMM, using nonequilibrium candidate Monte Carlo (NCMC)
+to boost acceptance rates</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.NonequilibriumGCMCSphereSampler.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">integrator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adams</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">excessChemicalPotential</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=-6.09,</span> <span class="pre">unit=kilocalorie</span> <span class="pre">/</span> <span class="pre">mole)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardVolume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=30.345,</span> <span class="pre">unit=angstrom**3)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adamsShift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nPertSteps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nPropStepsPerPert</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeStep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=2,</span> <span class="pre">unit=femtosecond)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lambdas</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'HOH'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-ghost-wats.txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">referenceAtoms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sphereRadius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sphereCentre</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc.log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">createCustomForces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dcd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dihedrals</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distribution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxN</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">999</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recordTraj</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.NonequilibriumGCMCSphereSampler.__init__" title="Permalink to this definition"></a></dt>
+<dd><p>Initialise the object to be used for sampling NCMC-enhanced water insertion/deletion moves</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>system</strong> (<em>openmm.System</em>) – System object to be used for the simulation</p></li>
+<li><p><strong>topology</strong> (<em>openmm.app.Topology</em>) – Topology object for the system to be simulated</p></li>
+<li><p><strong>temperature</strong> (<em>openmm.unit.Quantity</em>) – Temperature of the simulation, must be in appropriate units</p></li>
+<li><p><strong>integrator</strong> (<em>openmm.CustomIntegrator</em>) – Integrator to use to propagate the dynamics of the system. Currently want to make sure that this
+is the customised Langevin integrator found in openmmtools which uses BAOAB (VRORV) splitting.</p></li>
+<li><p><strong>adams</strong> (<em>float</em>) – Adams B value for the simulation (dimensionless). Default is None,
+if None, the B value is calculated from the box volume and chemical
+potential</p></li>
+<li><p><strong>excessChemicalPotential</strong> (<em>openmm.unit.Quantity</em>) – Excess chemical potential of the system that the simulation should be in equilibrium with, default is
+-6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
+simulation parameters.</p></li>
+<li><p><strong>standardVolume</strong> (<em>openmm.unit.Quantity</em>) – Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3</p></li>
+<li><p><strong>adamsShift</strong> (<em>float</em>) – Shift the B value from Bequil, if B isn’t explicitly set. Default is 0.0</p></li>
+<li><p><strong>nPertSteps</strong> (<em>int</em>) – Number of pertubation steps over which to shift lambda between 0 and 1 (or vice versa).</p></li>
+<li><p><strong>nPropStepsPerPert</strong> (<em>int</em>) – Number of propagation steps to carry out for</p></li>
+<li><p><strong>timeStep</strong> (<em>openmm.unit.Quantity</em>) – Time step to use for non-equilibrium integration during the propagation steps</p></li>
+<li><p><strong>lambdas</strong> (<em>list</em>) – Series of lambda values corresponding to the pathway over which the molecules are perturbed</p></li>
+<li><p><strong>resname</strong> (<em>str</em>) – Resname of the molecule of interest. Default = “HOH”</p></li>
+<li><p><strong>ghostFile</strong> (<em>str</em>) – Name of a file to write out the residue IDs of ghost water molecules. This is
+useful if you want to visualise the sampling, as you can then remove these waters
+from view, as they are non-interacting. Default is ‘gcmc-ghost-wats.txt’</p></li>
+<li><p><strong>referenceAtoms</strong> (<em>list</em>) – List containing dictionaries describing the atoms to use as the centre of the GCMC region
+Must contain ‘name’ and ‘resname’ as keys, and optionally ‘resid’ (recommended) and ‘chain’
+e.g. [{‘name’: ‘C1’, ‘resname’: ‘LIG’, ‘resid’: ‘123’}]</p></li>
+<li><p><strong>sphereRadius</strong> (<em>openmm.unit.Quantity</em>) – Radius of the spherical GCMC region</p></li>
+<li><p><strong>sphereCentre</strong> (<em>openmm.unit.Quantity</em>) – Coordinates around which the GCMC sphere is based</p></li>
+<li><p><strong>log</strong> (<em>str</em>) – Name of the log file to write out</p></li>
+<li><p><strong>createCustomForces</strong> (<em>bool</em>) – If True (default), will create CustomForce objects to handle interaction switching. If False, these forces
+must be created elsewhere</p></li>
+<li><p><strong>dcd</strong> (<em>str</em>) – Name of the DCD file to write the system out to</p></li>
+<li><p><strong>rst</strong> (<em>str</em>) – Name of the restart file to write out (.pdb or .rst7)</p></li>
+<li><p><strong>overwrite</strong> (<em>bool</em>) – Indicates whether to overwrite already existing data</p></li>
+<li><p><strong>dihedrals</strong> (<em>list</em>) – List of dihedrals in the insertion molecule</p></li>
+<li><p><strong>distribution</strong> (<em>dict</em>) – Dictionary of the conformation distribution in the moelcule and their populations</p></li>
+<li><p><strong>conf</strong> (<em>rdkit thing</em>) – RDKit conformer for use when inserting flexible molecules</p></li>
+<li><p><strong>maxN</strong> (<em>int</em>) – User can supply the maximum number of N molecules to have in the sphere - this will massively speed up calculations
+to prevent un-needed insertions.</p></li>
+<li><p><strong>recordTraj</strong> (<em>bool</em>) – User can specifiy if they want the insertion/deletion trajectories to be recorded. Note requires large amount
+of disk space.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.NonequilibriumGCMCSphereSampler.deletionMove">
+<span class="sig-name descname"><span class="pre">deletionMove</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.NonequilibriumGCMCSphereSampler.deletionMove" title="Permalink to this definition"></a></dt>
+<dd><p>Carry out a nonequilibrium deletion move for a random water molecule</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.NonequilibriumGCMCSphereSampler.insertionMove">
+<span class="sig-name descname"><span class="pre">insertionMove</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.NonequilibriumGCMCSphereSampler.insertionMove" title="Permalink to this definition"></a></dt>
+<dd><p>Carry out a nonequilibrium insertion move for a random water molecule</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.NonequilibriumGCMCSphereSampler.move">
+<span class="sig-name descname"><span class="pre">move</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.NonequilibriumGCMCSphereSampler.move" title="Permalink to this definition"></a></dt>
+<dd><p>Carry out a nonequilibrium GCMC move</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>context</strong> (<em>openmm.Context</em>) – Current context of the simulation</p></li>
+<li><p><strong>n</strong> (<em>int</em>) – Number of moves to execute</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.NonequilibriumGCMCSphereSampler.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.NonequilibriumGCMCSphereSampler.reset" title="Permalink to this definition"></a></dt>
+<dd><p>Reset counted values (such as number of total or accepted moves) to zero</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grand.samplers.NonequilibriumGCMCSystemSampler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">grand.samplers.</span></span><span class="sig-name descname"><span class="pre">NonequilibriumGCMCSystemSampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">integrator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'HOH'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adams</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">excessChemicalPotential</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=-6.09,</span> <span class="pre">unit=kilocalorie</span> <span class="pre">/</span> <span class="pre">mole)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardVolume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=30.345,</span> <span class="pre">unit=angstrom**3)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adamsShift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nPertSteps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nPropStepsPerPert</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeStep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=2,</span> <span class="pre">unit=femtosecond)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boxVectors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-ghost-wats.txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc.log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">createCustomForces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dcd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lambdas</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dihedrals</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distribution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.NonequilibriumGCMCSystemSampler" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#grand.samplers.GCMCSystemSampler" title="grand.samplers.GCMCSystemSampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">GCMCSystemSampler</span></code></a></p>
+<p>Class to carry out GCMC moves in OpenMM, using nonequilibrium candidate Monte Carlo (NCMC)
+to boost acceptance rates</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.NonequilibriumGCMCSystemSampler.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">integrator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'HOH'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adams</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">excessChemicalPotential</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=-6.09,</span> <span class="pre">unit=kilocalorie</span> <span class="pre">/</span> <span class="pre">mole)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardVolume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=30.345,</span> <span class="pre">unit=angstrom**3)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adamsShift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nPertSteps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nPropStepsPerPert</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeStep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=2,</span> <span class="pre">unit=femtosecond)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boxVectors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-ghost-wats.txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc.log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">createCustomForces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dcd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lambdas</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dihedrals</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distribution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.NonequilibriumGCMCSystemSampler.__init__" title="Permalink to this definition"></a></dt>
+<dd><p>Initialise the object to be used for sampling NCMC-enhanced water insertion/deletion moves</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>system</strong> (<em>openmm.System</em>) – System object to be used for the simulation</p></li>
+<li><p><strong>topology</strong> (<em>openmm.app.Topology</em>) – Topology object for the system to be simulated</p></li>
+<li><p><strong>temperature</strong> (<em>openmm.unit.Quantity</em>) – Temperature of the simulation, must be in appropriate units</p></li>
+<li><p><strong>integrator</strong> (<em>openmm.CustomIntegrator</em>) – Integrator to use to propagate the dynamics of the system. Currently want to make sure that this
+is the customised Langevin integrator found in openmmtools which uses BAOAB (VRORV) splitting.</p></li>
+<li><p><strong>resname</strong> (<em>str</em>) – Resname of the molecule of interest. Default = “HOH”</p></li>
+<li><p><strong>adams</strong> (<em>float</em>) – Adams B value for the simulation (dimensionless). Default is None,
+if None, the B value is calculated from the box volume and chemical
+potential</p></li>
+<li><p><strong>excessChemicalPotential</strong> (<em>openmm.unit.Quantity</em>) – Excess chemical potential of the system that the simulation should be in equilibrium with, default is
+-6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
+simulation parameters.</p></li>
+<li><p><strong>standardVolume</strong> (<em>openmm.unit.Quantity</em>) – Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3</p></li>
+<li><p><strong>adamsShift</strong> (<em>float</em>) – Shift the B value from Bequil, if B isn’t explicitly set. Default is 0.0</p></li>
+<li><p><strong>nPertSteps</strong> (<em>int</em>) – Number of pertubation steps over which to shift lambda between 0 and 1 (or vice versa).</p></li>
+<li><p><strong>nPropStepsPerPert</strong> (<em>int</em>) – Number of propagation steps to carry out for</p></li>
+<li><p><strong>timeStep</strong> (<em>openmm.unit.Quantity</em>) – Time step to use for non-equilibrium integration during the propagation steps</p></li>
+<li><p><strong>lambdas</strong> (<em>list</em>) – Series of lambda values corresponding to the pathway over which the molecules are perturbed</p></li>
+<li><p><strong>boxVectors</strong> (<em>openmm.unit.Quantity</em>) – Box vectors for the simulation cell</p></li>
+<li><p><strong>ghostFile</strong> (<em>str</em>) – Name of a file to write out the residue IDs of ghost water molecules. This is
+useful if you want to visualise the sampling, as you can then remove these waters
+from view, as they are non-interacting. Default is ‘gcmc-ghost-wats.txt’</p></li>
+<li><p><strong>log</strong> (<em>str</em>) – Name of the log file to write out</p></li>
+<li><p><strong>createCustomForces</strong> (<em>bool</em>) – If True (default), will create CustomForce objects to handle interaction switching. If False, these forces
+must be created elsewhere</p></li>
+<li><p><strong>dcd</strong> (<em>str</em>) – Name of the DCD file to write the system out to</p></li>
+<li><p><strong>rst</strong> (<em>str</em>) – Name of the restart file to write out (.pdb or .rst7)</p></li>
+<li><p><strong>overwrite</strong> (<em>bool</em>) – Indicates whether to overwrite already existing data</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.NonequilibriumGCMCSystemSampler.deletionMove">
+<span class="sig-name descname"><span class="pre">deletionMove</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.NonequilibriumGCMCSystemSampler.deletionMove" title="Permalink to this definition"></a></dt>
+<dd><p>Carry out a nonequilibrium deletion move for a random water molecule</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.NonequilibriumGCMCSystemSampler.insertionMove">
+<span class="sig-name descname"><span class="pre">insertionMove</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.NonequilibriumGCMCSystemSampler.insertionMove" title="Permalink to this definition"></a></dt>
+<dd><p>Carry out a nonequilibrium insertion move for a random water molecule</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.NonequilibriumGCMCSystemSampler.move">
+<span class="sig-name descname"><span class="pre">move</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.NonequilibriumGCMCSystemSampler.move" title="Permalink to this definition"></a></dt>
+<dd><p>Carry out a nonequilibrium GCMC move</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>context</strong> (<em>openmm.Context</em>) – Current context of the simulation</p></li>
+<li><p><strong>n</strong> (<em>int</em>) – Number of moves to execute</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.NonequilibriumGCMCSystemSampler.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.NonequilibriumGCMCSystemSampler.reset" title="Permalink to this definition"></a></dt>
+<dd><p>Reset counted values (such as number of total or accepted moves) to zero</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grand.samplers.StandardGCMCCylinderSampler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">grand.samplers.</span></span><span class="sig-name descname"><span class="pre">StandardGCMCCylinderSampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adams</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">excessChemicalPotential</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=-6.09,</span> <span class="pre">unit=kilocalorie</span> <span class="pre">/</span> <span class="pre">mole)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardVolume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=30.345,</span> <span class="pre">unit=angstrom**3)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adamsShift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'HOH'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-ghost-wats.txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">faceCenter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">faceRadius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">MaxZCoord</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cylinderHeight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc.log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">createCustomForces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dcd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.StandardGCMCCylinderSampler" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#grand.samplers.GCMCCylinderSampler" title="grand.samplers.GCMCCylinderSampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">GCMCCylinderSampler</span></code></a></p>
+<p>Class to carry out instantaneous GCMC moves in OpenMM</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.StandardGCMCCylinderSampler.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adams</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">excessChemicalPotential</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=-6.09,</span> <span class="pre">unit=kilocalorie</span> <span class="pre">/</span> <span class="pre">mole)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardVolume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=30.345,</span> <span class="pre">unit=angstrom**3)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adamsShift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'HOH'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-ghost-wats.txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">faceCenter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">faceRadius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">MaxZCoord</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cylinderHeight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc.log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">createCustomForces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dcd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.StandardGCMCCylinderSampler.__init__" title="Permalink to this definition"></a></dt>
+<dd><p>Initialise the object to be used for sampling instantaneous water insertion/deletion moves</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>system</strong> (<em>openmm.System</em>) – System object to be used for the simulation</p></li>
+<li><p><strong>topology</strong> (<em>openmm.app.Topology</em>) – Topology object for the system to be simulated</p></li>
+<li><p><strong>temperature</strong> (<em>openmm.unit.Quantity</em>) – Temperature of the simulation, must be in appropriate units</p></li>
+<li><p><strong>adams</strong> (<em>float</em>) – Adams B value for the simulation (dimensionless). Default is None,
+if None, the B value is calculated from the box volume and chemical
+potential</p></li>
+<li><p><strong>excessChemicalPotential</strong> (<em>openmm.unit.Quantity</em>) – Excess chemical potential of the system that the simulation should be in equilibrium with, default is
+-6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
+simulation parameters.</p></li>
+<li><p><strong>standardVolume</strong> (<em>openmm.unit.Quantity</em>) – Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3</p></li>
+<li><p><strong>adamsShift</strong> (<em>float</em>) – Shift the B value from Bequil, if B isn’t explicitly set. Default is 0.0</p></li>
+<li><p><strong>ghostFile</strong> (<em>str</em>) – Name of a file to write out the residue IDs of ghost water molecules. This is
+useful if you want to visualise the sampling, as you can then remove these waters
+from view, as they are non-interacting. Default is ‘gcmc-ghost-wats.txt’</p></li>
+<li><p><strong>log</strong> (<em>str</em>) – Name of the log file to write out</p></li>
+<li><p><strong>createCustomForces</strong> (<em>bool</em>) – If True (default), will create CustomForce objects to handle interaction switching. If False, these forces
+must be created elsewhere</p></li>
+<li><p><strong>dcd</strong> (<em>str</em>) – Name of the DCD file to write the system out to</p></li>
+<li><p><strong>rst</strong> (<em>str</em>) – Name of the restart file to write out (.pdb or .rst7)</p></li>
+<li><p><strong>overwrite</strong> (<em>bool</em>) – Indicates whether to overwrite already existing data</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.StandardGCMCCylinderSampler.deletionMove">
+<span class="sig-name descname"><span class="pre">deletionMove</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.StandardGCMCCylinderSampler.deletionMove" title="Permalink to this definition"></a></dt>
+<dd><p>Carry out a random water deletion move on the current system</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.StandardGCMCCylinderSampler.insertionMove">
+<span class="sig-name descname"><span class="pre">insertionMove</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.StandardGCMCCylinderSampler.insertionMove" title="Permalink to this definition"></a></dt>
+<dd><p>Carry out a random water insertion move on the current system</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.StandardGCMCCylinderSampler.move">
+<span class="sig-name descname"><span class="pre">move</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.StandardGCMCCylinderSampler.move" title="Permalink to this definition"></a></dt>
+<dd><p>Execute a number of GCMC moves on the current system</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>context</strong> (<em>openmm.Context</em>) – Current context of the simulation</p></li>
+<li><p><strong>n</strong> (<em>int</em>) – Number of moves to execute</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grand.samplers.StandardGCMCSphereSampler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">grand.samplers.</span></span><span class="sig-name descname"><span class="pre">StandardGCMCSphereSampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adams</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">excessChemicalPotential</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=-6.09,</span> <span class="pre">unit=kilocalorie</span> <span class="pre">/</span> <span class="pre">mole)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardVolume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=30.345,</span> <span class="pre">unit=angstrom**3)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adamsShift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'HOH'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-ghost-wats.txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">referenceAtoms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sphereRadius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sphereCentre</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc.log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">createCustomForces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dcd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.StandardGCMCSphereSampler" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#grand.samplers.GCMCSphereSampler" title="grand.samplers.GCMCSphereSampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">GCMCSphereSampler</span></code></a></p>
+<p>Class to carry out instantaneous GCMC moves in OpenMM</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.StandardGCMCSphereSampler.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adams</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">excessChemicalPotential</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=-6.09,</span> <span class="pre">unit=kilocalorie</span> <span class="pre">/</span> <span class="pre">mole)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardVolume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=30.345,</span> <span class="pre">unit=angstrom**3)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adamsShift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'HOH'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-ghost-wats.txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">referenceAtoms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sphereRadius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sphereCentre</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc.log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">createCustomForces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dcd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.StandardGCMCSphereSampler.__init__" title="Permalink to this definition"></a></dt>
+<dd><p>Initialise the object to be used for sampling instantaneous water insertion/deletion moves</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>system</strong> (<em>openmm.System</em>) – System object to be used for the simulation</p></li>
+<li><p><strong>topology</strong> (<em>openmm.app.Topology</em>) – Topology object for the system to be simulated</p></li>
+<li><p><strong>temperature</strong> (<em>openmm.unit.Quantity</em>) – Temperature of the simulation, must be in appropriate units</p></li>
+<li><p><strong>adams</strong> (<em>float</em>) – Adams B value for the simulation (dimensionless). Default is None,
+if None, the B value is calculated from the box volume and chemical
+potential</p></li>
+<li><p><strong>excessChemicalPotential</strong> (<em>openmm.unit.Quantity</em>) – Excess chemical potential of the system that the simulation should be in equilibrium with, default is
+-6.09 kcal/mol. This should be the hydration free energy of water, and may need to be changed for specific
+simulation parameters.</p></li>
+<li><p><strong>standardVolume</strong> (<em>openmm.unit.Quantity</em>) – Standard volume of water - corresponds to the volume per water molecule in bulk. The default value is 30.345 A^3</p></li>
+<li><p><strong>adamsShift</strong> (<em>float</em>) – Shift the B value from Bequil, if B isn’t explicitly set. Default is 0.0</p></li>
+<li><p><strong>ghostFile</strong> (<em>str</em>) – Name of a file to write out the residue IDs of ghost water molecules. This is
+useful if you want to visualise the sampling, as you can then remove these waters
+from view, as they are non-interacting. Default is ‘gcmc-ghost-wats.txt’</p></li>
+<li><p><strong>referenceAtoms</strong> (<em>list</em>) – List containing dictionaries describing the atoms to use as the centre of the GCMC region
+Must contain ‘name’ and ‘resname’ as keys, and optionally ‘resid’ (recommended) and ‘chain’
+e.g. [{‘name’: ‘C1’, ‘resname’: ‘LIG’, ‘resid’: ‘123’}]</p></li>
+<li><p><strong>sphereRadius</strong> (<em>openmm.unit.Quantity</em>) – Radius of the spherical GCMC region</p></li>
+<li><p><strong>sphereCentre</strong> (<em>openmm.unit.Quantity</em>) – Coordinates around which the GCMC sphere is based</p></li>
+<li><p><strong>log</strong> (<em>str</em>) – Name of the log file to write out</p></li>
+<li><p><strong>createCustomForces</strong> (<em>bool</em>) – If True (default), will create CustomForce objects to handle interaction switching. If False, these forces
+must be created elsewhere</p></li>
+<li><p><strong>dcd</strong> (<em>str</em>) – Name of the DCD file to write the system out to</p></li>
+<li><p><strong>rst</strong> (<em>str</em>) – Name of the restart file to write out (.pdb or .rst7)</p></li>
+<li><p><strong>overwrite</strong> (<em>bool</em>) – Indicates whether to overwrite already existing data</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.StandardGCMCSphereSampler.deletionMove">
+<span class="sig-name descname"><span class="pre">deletionMove</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.StandardGCMCSphereSampler.deletionMove" title="Permalink to this definition"></a></dt>
+<dd><p>Carry out a random water deletion move on the current system</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.StandardGCMCSphereSampler.insertionMove">
+<span class="sig-name descname"><span class="pre">insertionMove</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.StandardGCMCSphereSampler.insertionMove" title="Permalink to this definition"></a></dt>
+<dd><p>Carry out a random water insertion move on the current system</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.StandardGCMCSphereSampler.move">
+<span class="sig-name descname"><span class="pre">move</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.StandardGCMCSphereSampler.move" title="Permalink to this definition"></a></dt>
+<dd><p>Execute a number of GCMC moves on the current system</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>context</strong> (<em>openmm.Context</em>) – Current context of the simulation</p></li>
+<li><p><strong>n</strong> (<em>int</em>) – Number of moves to execute</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grand.samplers.StandardGCMCSystemSampler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">grand.samplers.</span></span><span class="sig-name descname"><span class="pre">StandardGCMCSystemSampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'HOH'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adams</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">excessChemicalPotential</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=-6.09,</span> <span class="pre">unit=kilocalorie</span> <span class="pre">/</span> <span class="pre">mole)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardVolume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=30.345,</span> <span class="pre">unit=angstrom**3)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adamsShift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boxVectors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-ghost-wats.txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc.log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">createCustomForces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dcd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.StandardGCMCSystemSampler" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#grand.samplers.GCMCSystemSampler" title="grand.samplers.GCMCSystemSampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">GCMCSystemSampler</span></code></a></p>
+<p>Class to carry out instantaneous GCMC moves in OpenMM</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.StandardGCMCSystemSampler.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'HOH'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adams</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">excessChemicalPotential</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=-6.09,</span> <span class="pre">unit=kilocalorie</span> <span class="pre">/</span> <span class="pre">mole)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardVolume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Quantity(value=30.345,</span> <span class="pre">unit=angstrom**3)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adamsShift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boxVectors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghostFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-ghost-wats.txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc.log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">createCustomForces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dcd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.StandardGCMCSystemSampler.__init__" title="Permalink to this definition"></a></dt>
+<dd><p>Initialise the object to be used for sampling instantaneous water insertion/deletion moves</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>system</strong> (<em>openmm.System</em>) – System object to be used for the simulation</p></li>
+<li><p><strong>topology</strong> (<em>openmm.app.Topology</em>) – Topology object for the system to be simulated</p></li>
+<li><p><strong>temperature</strong> (<em>openmm.unit.Quantity</em>) – Temperature of the simulation, must be in appropriate units</p></li>
+<li><p><strong>resname</strong> (<em>str</em>) – Resname of the molecule of interest. Default = “HOH”</p></li>
+<li><p><strong>adams</strong> (<em>float</em>) – Adams B value for the simulation (dimensionless). Default is None,
+if None, the B value is calculated from the box volume and chemical
+potential</p></li>
+<li><p><strong>excessChemicalPotential</strong> (<em>openmm.unit.Quantity</em>) – Excess chemical potential of the system that the simulation should be in equilibrium with, default is
+-6.09 kcal/mol (water). This should be the hydration free energy of the molecule, and may need to be
+changed</p></li>
+<li><p><strong>standardVolume</strong> (<em>openmm.unit.Quantity</em>) – Standard volume of the molecule - corresponds to the volume per molecule in bulk solution. The default value is
+30.345 A^3 (water)</p></li>
+<li><p><strong>adamsShift</strong> (<em>float</em>) – Shift the B value from Bequil, if B isn’t explicitly set. Default is 0.0</p></li>
+<li><p><strong>boxVectors</strong> (<em>openmm.unit.Quantity</em>) – Box vectors for the simulation cell</p></li>
+<li><p><strong>ghostFile</strong> (<em>str</em>) – Name of a file to write out the residue IDs of ghost water molecules. This is
+useful if you want to visualise the sampling, as you can then remove these waters
+from view, as they are non-interacting. Default is ‘gcmc-ghost-wats.txt’</p></li>
+<li><p><strong>log</strong> (<em>str</em>) – Name of the log file to write out</p></li>
+<li><p><strong>createCustomForces</strong> (<em>bool</em>) – If True (default), will create CustomForce objects to handle interaction switching. If False, these forces
+must be created elsewhere</p></li>
+<li><p><strong>dcd</strong> (<em>str</em>) – Name of the DCD file to write the system out to</p></li>
+<li><p><strong>rst</strong> (<em>str</em>) – Name of the restart file to write out (.pdb or .rst7)</p></li>
+<li><p><strong>overwrite</strong> (<em>bool</em>) – Indicates whether to overwrite already existing data</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.StandardGCMCSystemSampler.deletionMove">
+<span class="sig-name descname"><span class="pre">deletionMove</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.StandardGCMCSystemSampler.deletionMove" title="Permalink to this definition"></a></dt>
+<dd><p>Carry out a random water deletion move on the current system</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.StandardGCMCSystemSampler.insertionMove">
+<span class="sig-name descname"><span class="pre">insertionMove</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.StandardGCMCSystemSampler.insertionMove" title="Permalink to this definition"></a></dt>
+<dd><p>Carry out a random water insertion move on the current system</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grand.samplers.StandardGCMCSystemSampler.move">
+<span class="sig-name descname"><span class="pre">move</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.samplers.StandardGCMCSystemSampler.move" title="Permalink to this definition"></a></dt>
+<dd><p>Execute a number of GCMC moves on the current system</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>context</strong> (<em>openmm.Context</em>) – Current context of the simulation</p></li>
+<li><p><strong>n</strong> (<em>int</em>) – Number of moves to execute</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="grand.potential.html" class="btn btn-neutral float-left" title="grand.potential module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="grand.utils.html" class="btn btn-neutral float-right" title="grand.utils module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Essex Group, School of Chemistry, University of Southampton.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
