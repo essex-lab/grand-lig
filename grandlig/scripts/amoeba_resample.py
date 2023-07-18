@@ -13,9 +13,9 @@ with the states distributed by their probabilities according to the AMOEBA force
 import argparse
 import numpy as np
 from copy import deepcopy
-from simtk.openmm.app import *
-from simtk.openmm import *
-from simtk.unit import *
+from openmm import *
+from openmm.app import *
+from openmm.unit import *
 
 
 def create_fixed_charge_simulation(pdb, force_field, simulation_dict):

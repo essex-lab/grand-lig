@@ -10,11 +10,11 @@ import os
 import unittest
 import numpy as np
 from copy import deepcopy
-from simtk.openmm.app import *
-from simtk.openmm import *
-from simtk.unit import *
-from grand import samplers
-from grand import utils
+from openmm.app import *
+from openmm import *
+from openmm.unit import *
+from grandlig import samplers
+from grandlig import utils
 
 
 outdir = os.path.join(os.path.dirname(__file__), 'output', 'samplers')

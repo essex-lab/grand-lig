@@ -9,11 +9,11 @@ Marley Samways
 import os
 import unittest
 import numpy as np
-from simtk.unit import *
-from simtk.openmm.app import *
-from simtk.openmm import *
-from grand import potential
-from grand import utils
+from openmm.unit import *
+from openmm.app import *
+from openmm import *
+from grandlig import potential
+from grandlig import utils
 
 
 outdir = os.path.join(os.path.dirname(__file__), 'output', 'potential')

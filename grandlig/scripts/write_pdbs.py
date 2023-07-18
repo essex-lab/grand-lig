@@ -12,8 +12,8 @@ Script to write PDBs from a trajectory, either every N frames, or just the last 
 import argparse
 import os
 import MDAnalysis as mda
-from simtk.openmm.app import PDBFile
-from grand.utils import remove_ghosts
+from openmm.app import PDBFile
+from grandlig.utils import remove_ghosts
 
 
 # Parse command line arguments

@@ -10,10 +10,10 @@ import os
 import unittest
 import numpy as np
 import mdtraj
-from simtk.unit import *
-from simtk.openmm import *
-from simtk.openmm.app import *
-from grand import utils
+from openmm.unit import *
+from openmm import *
+from openmm.app import *
+from grandlig import utils
 
 
 outdir = os.path.join(os.path.dirname(__file__), 'output', 'utils')
