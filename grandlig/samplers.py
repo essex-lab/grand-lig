@@ -2148,7 +2148,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
 
         self.logger.info("NonequilibriumGCMCSystemSampler object initialised")
 
-    def move(self, context, n=1):
+    def move(self, context, n=1, force=None):
         """
         Carry out a nonequilibrium GCMC move
 
@@ -2166,23 +2166,36 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         self.velocities = deepcopy(state.getVelocities(asNumpy=True))
         self.move_lambdas = ()
 
-        #  Execute moves
-        for i in range(n):
-            # Insert or delete a molecule, based on random choice
-            if self.rng.integers(2) == 1:
-                # Attempt to insert a molecule
+        if force == None:
+            #  Execute moves
+            for i in range(n):
+                # Insert or delete a molecule, based on random choice
+                if self.rng.integers(2) == 1:
+                    # Attempt to insert a molecule
+                    self.move_lambdas = (0.0, 0.0)
+                    self.insertionMove()
+                    self.n_inserts += 1
+                else:
+                    # Attempt to delete a molecule
+                    self.move_lambdas = (1.0, 1.0)
+                    self.deletionMove()
+                    self.n_deletes += 1
+                self.n_moves += 1
+                self.Ns.append(self.N)
+
+            return None
+        else:
+            print("You are forcing an insertion or a deletion. This breaks detailed balence and there should be a good reason for doing so.")
+            if force == 'insertion':
                 self.move_lambdas = (0.0, 0.0)
                 self.insertionMove()
                 self.n_inserts += 1
-            else:
-                # Attempt to delete a molecule
+            elif force == 'deletion':
                 self.move_lambdas = (1.0, 1.0)
                 self.deletionMove()
                 self.n_deletes += 1
             self.n_moves += 1
             self.Ns.append(self.N)
-
-        return None
 
     def insertionMove(self):
         """
