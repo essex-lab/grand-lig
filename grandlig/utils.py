@@ -727,7 +727,7 @@ def LinearAlchemicalFunction(start, end, lambda_in):
     elif lambda_in >= end:
         return 1.
     else:
-        return (lambda_in - start) / (lambda_in - start)
+        return (lambda_in - start) / (end - start)
 
 def get_lambda_values(lambda_in):
     """
