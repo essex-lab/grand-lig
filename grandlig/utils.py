@@ -714,7 +714,11 @@ def LinearAlchemicalFunction(start, end, lambda_in):
 
     Parameters
     ----------
-    x : float
+    start : float
+        The lambda value at and below which the function will have a value of 0.
+    end : float
+        The lambda value at and above which the function will have a value of 1.
+    lambda_in : float
         The value at which to evaluate the LinearAlchemicalFunction.
 
     Returns
