@@ -708,12 +708,34 @@ def create_custom_forces(system, topology, resnames):
     #return param_dict, custom_sterics, electrostatic_exceptions, steric_exceptions
     return param_dict, custom_sterics, None, None
 
+def LinearAlchemicalFunction(start, end, lambda_in):
+    """
+    Evaluates the alchemical function.
+
+    Parameters
+    ----------
+    x : float
+        The value at which to evaluate the LinearAlchemicalFunction.
+
+    Returns
+    -------
+    y : float
+        The evaluated LinearAlchemicalFunction.
+    """
+    if lambda_in <= start:
+        return 0.
+    elif lambda_in >= end:
+        return 1.
+    else:
+        return (lambda_in - start) / (lambda_in - start)
+
 def get_lambda_values(lambda_in):
     """
     Calculate the lambda_sterics and lambda_electrostatics values for a given lambda.
-    Electrostatics are decoupled from lambda=1 to 0.5, and sterics are decoupled from
-    lambda=0.5 to 0.
-
+    For a deletion move:
+        Electrostatics are decoupled from lambda=1 to 0.75, and sterics are decoupled from lambda=0.75 to 0.
+    For an Insertion move:
+        Sterics are coupled from lambda=0 to 0.75. Electrostatics are coupled from 0.75 to 1.
     Parameters
     ----------
     lambda_in : float
@@ -735,9 +757,9 @@ def get_lambda_values(lambda_in):
         lambda_vdw = 0.0
         lambda_ele = 0.0
     else:
-        # Scale values between 0 and 1
-        lambda_vdw = min([1.0, 2.0*lambda_in])
-        lambda_ele = max([0.0, 2.0*(lambda_in-0.5)])
+        # Evaluate the LinearAlchemicalFunction
+        lambda_vdw = LinearAlchemicalFunction(0, 0.75)
+        lambda_ele = LinearAlchemicalFunction(0.75, 1)
     return lambda_vdw, lambda_ele
 
 def random_rotation_matrix():
