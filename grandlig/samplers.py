@@ -103,6 +103,8 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.n_moves = 0
         self.n_accepted = 0
         self.acceptance_probabilities = []  # Store acceptance probabilities
+        self.insert_acceptance_probabilities = []
+        self.delete_acceptance_probabilities = []
         self.n_inserts = 0
         self.n_deletes = 0
         self.n_accepted_inserts = 0
@@ -237,6 +239,8 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.n_moves = 0
         self.Ns = []
         self.acceptance_probabilities = []
+        self.insert_acceptance_probabilities = []
+        self.delete_acceptance_probabilities = []
         self.n_inserts = 0
         self.n_deletes = 0
         self.n_accepted_inserts = 0
@@ -1262,6 +1266,7 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
         final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
         acc_prob = math.exp(self.B) * math.exp(-(final_energy - self.energy) / self.kT) / (self.N + 1)
         self.acceptance_probabilities.append(acc_prob)
+        self.insert_acceptance_probabilities.append(acc_prob)
 
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             # Need to revert the changes made if the move is to be rejected
@@ -1298,6 +1303,7 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
         final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
         acc_prob = self.N * math.exp(-self.B) * math.exp(-(final_energy - self.energy) / self.kT)
         self.acceptance_probabilities.append(acc_prob)
+        self.delete_acceptance_probabilities.append(acc_prob)
 
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             # Switch the molecule back on if the move is rejected
@@ -1427,6 +1433,9 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
         self.insert_works = []  # Store work values of moves
         self.delete_works = []
+        self.accepted_insert_works = []
+        self.accepted_delete_works = []
+
         self.n_explosions = 0
         self.n_left_sphere = 0  # Number of moves rejected because the molecule left the sphere
         self.record = recordTraj
@@ -1530,10 +1539,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                 self.n_explosions += 1
                 break
 
-        # Store the protocol work
-        self.logger.info("Insertion work = {}".format(protocol_work))
-        self.insert_works.append(protocol_work)
-
         # Update variables and GCMC sphere
         self.setMolStatus(insert_mol, 1)
         state = self.context.getState(getPositions=True, enforcePeriodicBox=True)
@@ -1553,10 +1558,14 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             acc_prob = -1
             self.logger.info("Move rejected due to an instability during integration")
         else:
+            # Store the protocol work
+            self.logger.info("Insertion work = {}".format(protocol_work))
+            self.insert_works.append(protocol_work)
             # Calculate acceptance probability based on protocol work
             acc_prob = math.exp(self.B) * math.exp(-protocol_work/self.kT) / self.N  # Here N is the new value
 
         self.acceptance_probabilities.append(acc_prob)
+        self.insert_acceptance_probabilities.append(acc_prob)
 
         # Update or reset the system, depending on whether the move is accepted or rejected
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
@@ -1573,6 +1582,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             self.updateGCMCSphere(state)
         else:
             # Update some variables if move is accepted
+            self.accepted_insert_works.append(protocol_work)
             if self.record:
                 os.rename(self.dcd_name, '{}__resi{}_accepted_insertion.dcd'.format(self.dcd_name, insert_mol))
             self.N = len(gcmc_mols_new)
@@ -1631,9 +1641,6 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                 self.n_explosions += 1
                 break
 
-        # Get the protocol work
-        self.logger.info("Deletion work = {}".format(protocol_work))
-        self.delete_works.append(protocol_work)
 
         # Update variables and GCMC sphere
         # Leaving the molecule as 'on' here to check that the deleted molecule doesn't leave
@@ -1655,10 +1662,14 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             acc_prob = 0
             self.logger.info("Move rejected due to an instability during integration")
         else:
+            # Get the protocol work
+            self.logger.info("Deletion work = {}".format(protocol_work))
+            self.delete_works.append(protocol_work)
             # Calculate acceptance probability based on protocol work
             acc_prob = old_N * math.exp(-self.B) * math.exp(-protocol_work/self.kT)  # N is the old value
 
         self.acceptance_probabilities.append(acc_prob)
+        self.delete_acceptance_probabilities.append(acc_prob)
 
         # Update or reset the system, depending on whether the move is accepted or rejected
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
@@ -1674,6 +1685,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             self.updateGCMCSphere(state)
         else:
             # Update some variables if move is accepted
+            self.accepted_delete_works.append(protocol_work)
             # if self.record:
             #     os.rename(self.dcd_name, '{}_accepted_deletion.dcd'.format(self.dcd_name))
             self.setMolStatus(delete_mol, 0)
@@ -1696,6 +1708,8 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         self.n_moves = 0
         self.Ns = []
         self.acceptance_probabilities = []
+        self.insert_acceptance_probabilities = []
+        self.delete_acceptance_probabilities = []
         self.n_inserts = 0
         self.n_deletes = 0
         self.n_accepted_inserts = 0
@@ -1704,6 +1718,9 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         # NCMC-specific variables
         self.insert_works = []
         self.delete_works = []
+        self.accepted_insert_works = []
+        self.accepted_delete_works = []
+
         self.n_explosions = 0
         self.n_left_sphere = 0
 
@@ -1997,6 +2014,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
         acc_prob = math.exp(self.B) * math.exp(-(final_energy - self.energy) / self.kT) / (self.N + 1)
         self.acceptance_probabilities.append(acc_prob)
+        self.insert_acceptance_probabilities.append(acc_prob)
 
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             # Need to revert the changes made if the move is to be rejected
@@ -2033,6 +2051,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         final_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
         acc_prob = self.N * math.exp(-self.B) * math.exp(-(final_energy - self.energy) / self.kT)
         self.acceptance_probabilities.append(acc_prob)
+        self.delete_acceptance_probabilities.append(acc_prob)
 
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
             # Switch the molecule back on if the move is rejected
@@ -2141,6 +2160,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
 
         self.insert_works = []  # Store work values of moves
         self.delete_works = []
+        self.accepted_insert_works = []
+        self.accepted_delete_works = []
         self.n_explosions = 0
 
 
@@ -2231,18 +2252,19 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
                 self.n_explosions += 1
                 break
 
-        # Get the protocol work
-        #self.logger.info("Insertion work = {}".format(protocol_work))
-        self.insert_works.append(protocol_work)
 
         if explosion:
             acc_prob = -1
             self.logger.info("Move rejected due to an instability during integration")
         else:
+            # Get the protocol work
+            # self.logger.info("Insertion work = {}".format(protocol_work))
+            self.insert_works.append(protocol_work)
             # Calculate acceptance probability based on protocol work
             acc_prob = math.exp(self.B) * math.exp(-protocol_work/self.kT) / (self.N + 1)  # Here N is the old value
 
         self.acceptance_probabilities.append(acc_prob)
+        self.insert_acceptance_probabilities.append(acc_prob)
 
         # Update or reset the system, depending on whether the move is accepted or rejected
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
@@ -2254,6 +2276,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             self.velocities = -self.velocities
         else:
             # Update some variables if move is accepted
+            self.accepted_insert_works.append(protocol_work)
             self.N += 1
             self.n_accepted += 1
             self.n_accepted_inserts += 1
@@ -2295,18 +2318,20 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
                 self.n_explosions += 1
                 break
 
-        # Get the protocol work
-        #self.logger.info("Deletion work = {}".format(protocol_work))
-        self.delete_works.append(protocol_work)
+
 
         if explosion:
             acc_prob = 0
             self.logger.info("Move rejected due to an instability during integration")
         else:
+            # Get the protocol work
+            # self.logger.info("Deletion work = {}".format(protocol_work))
+            self.delete_works.append(protocol_work)
             # Calculate acceptance probability based on protocol work
             acc_prob = self.N * math.exp(-self.B) * math.exp(-protocol_work/self.kT)  # N is the old value
 
         self.acceptance_probabilities.append(acc_prob)
+        self.delete_acceptance_probabilities.append(acc_prob)
 
         # Update or reset the system, depending on whether the move is accepted or rejected
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
@@ -2318,6 +2343,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             self.velocities = -self.velocities
         else:
             # Update some variables if move is accepted
+            self.accepted_delete_works.append(protocol_work)
             self.setMolStatus(delete_mol, 0)
             self.N -= 1
             self.n_accepted += 1
@@ -2337,6 +2363,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         self.n_moves = 0
         self.Ns = []
         self.acceptance_probabilities = []
+        self.insert_acceptance_probabilities = []
+        self.delete_acceptance_probabilities = []
         self.n_inserts = 0
         self.n_deletes = 0
         self.n_accepted_inserts = 0
@@ -2345,6 +2373,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         # NCMC-specific variables
         self.insert_works = []
         self.delete_works = []
+        self.accepted_insert_works = []
+        self.accepted_delete_works = []
         self.n_explosions = 0
 
         return None
