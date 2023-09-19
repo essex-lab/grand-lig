@@ -762,8 +762,8 @@ def get_lambda_values(lambda_in):
         lambda_ele = 0.0
     else:
         # Evaluate the LinearAlchemicalFunction
-        lambda_vdw = LinearAlchemicalFunction(0, 0.75)
-        lambda_ele = LinearAlchemicalFunction(0.75, 1)
+        lambda_vdw = LinearAlchemicalFunction(0, 0.75, lambda_in)
+        lambda_ele = LinearAlchemicalFunction(0.75, 1, lambda_in)
     return lambda_vdw, lambda_ele
 
 def random_rotation_matrix():
