@@ -1237,6 +1237,54 @@ def recentre_traj(topology=None, trajectory=None, t=None, name='CA', resname='AL
         return None
 
 
+def recentre_traj_new(topology=None, trajectory=None, t=None, name='CA', resname='ALA', resid=1, output=None):
+    """
+    Recentre a trajectory based on a specific protein residue. Assumes that the
+    protein has not been broken by periodic boundaries.
+    Would be best to do this step before aligning a trajectory
+
+    Parameters
+    ----------
+    topology : str
+        Name of the topology/connectivity file (e.g. PDB, GRO, etc.)
+    trajectory : str
+        Name of the trajectory file (e.g. DCD, XTC, etc.)
+    t : mdtraj.Trajectory
+        Trajectory object, if already loaded
+    resname : str
+        Name of the atom to centre the trajectorname.lower(
+    resname : str
+        Name of the protein residue to centre the trajectory on. Should be a
+        binding site residue
+    resid : int
+        ID of the protein residue to centre the trajectory. Should be a binding
+        site residue
+    output : str
+        Name of the file to which the new trajectory is written. If None, then a
+        Trajectory will be returned
+
+    Returns
+    -------
+    t : mdtraj.Trajectory
+        Will return a trajectory object, if no output file name is given
+    """
+    # Load trajectory
+    if t is None:
+        t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
+    n_frames, n_atoms, n_dims = t.xyz.shape
+
+    # Get IDs of protein atoms
+    protein_ids = [atom.index for atom in t.topology.atoms if atom.residue.is_protein]
+    atomset = [set(protein_ids)]
+    t.image_molecules(inplace=True, anchor_molecules=atomset)
+
+    # Either return or save the trajectory
+    if output is None:
+        return t
+    else:
+        t.save(output)
+        return None
+
 def write_sphere_traj(radius, ref_atoms=None, topology=None, trajectory=None, t=None, sphere_centre=None,
                       output='gcmc_sphere.pdb', initial_frame=False):
     """
