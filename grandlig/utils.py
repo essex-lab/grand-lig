@@ -121,6 +121,11 @@ def add_ghosts(topology, positions, molfile='tip3p.pdb', n=10, pdb='gcmc-extra-w
     """
     # Create a Modeller instance of the system
     modeller = app.Modeller(topology=topology, positions=positions)
+    # Align coordinate of simulation box
+    xmin = min([v[0] for v in modeller.positions._value])/10.0
+    ymin = min([v[1] for v in modeller.positions._value])/10.0
+    zmin = min([v[2] for v in modeller.positions._value])/10.0
+
 
     # Read chain IDs
     chain_ids = []
@@ -133,6 +138,12 @@ def add_ghosts(topology, positions, molfile='tip3p.pdb', n=10, pdb='gcmc-extra-w
     box_size = np.array([box_vectors[0][0]._value,
                          box_vectors[1][1]._value,
                          box_vectors[2][2]._value]) * unit.nanometer
+
+    print(box_vectors)
+
+    print(box_size)
+
+    print(xmin, ymin, zmin)
 
     # Make sure that this molecule file exists
     if not os.path.isfile(molfile):
@@ -154,13 +165,14 @@ def add_ghosts(topology, positions, molfile='tip3p.pdb', n=10, pdb='gcmc-extra-w
 
     # Add multiple copies of the same molecule, then write out a pdb (for visualisation)
     ghosts = []
+    translation = np.array([xmin, ymin, zmin]) * unit.nanometer
     for i in range(n):
         # Need a slightly more elegant way than this as each molecule is written to a different chain...
         # Read in template molecule positions
         positions = molecule.positions
 
         # Need to translate the molecule to a random point in the simulation box
-        new_centre = np.random.rand(3) * box_size
+        new_centre = (np.random.rand(3)) * box_size + translation
         new_positions = deepcopy(molecule.positions)
         for i in range(len(positions)):
             new_positions[i] = positions[i] + new_centre - cog
@@ -1237,7 +1249,7 @@ def recentre_traj(topology=None, trajectory=None, t=None, name='CA', resname='AL
         return None
 
 
-def recentre_traj_new(topology=None, trajectory=None, t=None, name='CA', resname='ALA', resid=1, output=None):
+def recentre_traj_new(topology=None, trajectory=None, t=None, output=None):
     """
     Recentre a trajectory based on a specific protein residue. Assumes that the
     protein has not been broken by periodic boundaries.
@@ -1273,9 +1285,11 @@ def recentre_traj_new(topology=None, trajectory=None, t=None, name='CA', resname
         t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
     n_frames, n_atoms, n_dims = t.xyz.shape
 
+    topology = t.topology
     # Get IDs of protein atoms
-    protein_ids = [atom.index for atom in t.topology.atoms if atom.residue.is_protein]
-    atomset = [set(protein_ids)]
+    protein_atom_ids = topology.select("protein")
+    atomset = [topology.atom(i) for i in protein_atom_ids]
+    atomset = [set(atomset)]
     t.image_molecules(inplace=True, anchor_molecules=atomset)
 
     # Either return or save the trajectory
