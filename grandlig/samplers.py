@@ -1935,6 +1935,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
 
         # Select a point to insert the molecule (based on centre of heavy atoms)
         insert_point = np.random.rand(3) * self.simulation_box
+        print(insert_point)
 
         # Randomly rotate the molecule, and shift to the insertion point
         new_positions = self.randomMolecularRotation(insert_mol, insert_point)
@@ -2151,7 +2152,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
                  standardVolume=30.345 * unit.angstroms ** 3,
                  adamsShift=0.0, nPertSteps=1, nPropStepsPerPert=1, timeStep=2 * unit.femtoseconds, boxVectors=None,
                  ghostFile="gcmc-ghost-wats.txt", log='gcmc.log', createCustomForces=True, dcd=None, rst=None,
-                 overwrite=False, lambdas=None):
+                 overwrite=False, lambdas=None, recordTraj=False):
         """
         Initialise the object to be used for sampling NCMC-enhanced molecule insertion/deletion moves
 
@@ -2237,6 +2238,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         self.tracked_variables["n_explosions"] = 0
 
         self.integrator = integrator
+        self.record = recordTraj
 
         self.logger.info("NonequilibriumGCMCSystemSampler object initialised")
 
@@ -2268,6 +2270,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
                 if self.rng.integers(2) == 1:
                     # Attempt to insert a molecule
                     self.move_lambdas = (0.0, 0.0)
+                    if self.record:
+                        self.moveDCD, self.dcd_name = utils.setupmoveTraj(self.tracked_variables["n_moves"])
                     self.insertionMove()
                     self.tracked_variables["n_inserts"] += 1
                 else:
@@ -2283,6 +2287,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             print(
                 "You are forcing an insertion or a deletion. This breaks detailed balance and there should be a good reason for doing so.")
             if force == 'insertion':
+                if self.record:
+                    self.moveDCD, self.dcd_name = utils.setupmoveTraj(self.tracked_variables["n_moves"])
                 self.move_lambdas = (0.0, 0.0)
                 self.insertionMove()
                 self.tracked_variables["n_inserts"] += 1
@@ -2309,7 +2315,10 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         # Start running perturbation and propagation kernels
         protocol_work = 0.0 * unit.kilocalories_per_mole
         explosion = False
-
+        if self.record:
+            with open(f"{insert_mol}.pdb", 'w') as f:
+                openmm.app.PDBFile.writeFile(self.topology,
+                                             self.simulation.context.getState(getPositions=True).getPositions(), f, keepIds=True)
         self.integrator.step(self.n_prop_steps_per_pert)
         for i in range(self.n_pert_steps):
             state = self.context.getState(getEnergy=True)
@@ -2343,6 +2352,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
 
         # Update or reset the system, depending on whether the move is accepted or rejected
         if acc_prob < np.random.rand() or np.isnan(acc_prob):
+            # if self.record:
+            #     os.rename(self.dcd_name, '{}_resi{}_rejected_insertion.dcd'.format(self.dcd_name, insert_mol))
             # Need to revert the changes made if the move is to be rejected
             self.adjustSpecificMolecule(insert_mol, 0.0)
             self.context.setPositions(self.positions)
@@ -2353,6 +2364,8 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
         else:
             # Update some variables if move is accepted
             self.tracked_variables["accepted_insert_works"].append(protocol_work)
+            # if self.record:
+            #     os.rename(self.dcd_name, '{}__resi{}_accepted_insertion.dcd'.format(self.dcd_name, insert_mol))
             self.N += 1
             self.tracked_variables["n_accepted"] += 1
             self.tracked_variables["n_accepted_inserts"] += 1

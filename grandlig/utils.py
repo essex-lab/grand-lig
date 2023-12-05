@@ -121,11 +121,6 @@ def add_ghosts(topology, positions, molfile='tip3p.pdb', n=10, pdb='gcmc-extra-w
     """
     # Create a Modeller instance of the system
     modeller = app.Modeller(topology=topology, positions=positions)
-    # Align coordinate of simulation box
-    xmin = min([v[0] for v in modeller.positions._value])/10.0
-    ymin = min([v[1] for v in modeller.positions._value])/10.0
-    zmin = min([v[2] for v in modeller.positions._value])/10.0
-
 
     # Read chain IDs
     chain_ids = []
@@ -143,7 +138,6 @@ def add_ghosts(topology, positions, molfile='tip3p.pdb', n=10, pdb='gcmc-extra-w
 
     print(box_size)
 
-    print(xmin, ymin, zmin)
 
     # Make sure that this molecule file exists
     if not os.path.isfile(molfile):
@@ -165,14 +159,12 @@ def add_ghosts(topology, positions, molfile='tip3p.pdb', n=10, pdb='gcmc-extra-w
 
     # Add multiple copies of the same molecule, then write out a pdb (for visualisation)
     ghosts = []
-    translation = np.array([xmin, ymin, zmin]) * unit.nanometer
     for i in range(n):
-        # Need a slightly more elegant way than this as each molecule is written to a different chain...
-        # Read in template molecule positions
+        # Read in template molecule positions
         positions = molecule.positions
 
         # Need to translate the molecule to a random point in the simulation box
-        new_centre = (np.random.rand(3)) * box_size + translation
+        new_centre = (np.random.rand(3)) * box_size
         new_positions = deepcopy(molecule.positions)
         for i in range(len(positions)):
             new_positions[i] = positions[i] + new_centre - cog
