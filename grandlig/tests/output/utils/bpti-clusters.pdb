@@ -1,0 +1,8 @@
+REMARK Clustered GCMC water positions written by grandlig
+ATOM      1 O    WAT     1      25.321  19.500  25.332  1.00  1.00
+TER
+ATOM      1 O    WAT     2      26.637  18.013  22.434  0.40  0.40
+TER
+ATOM      1 O    WAT     3      23.671  19.754  27.862  0.20  0.20
+TER
+END

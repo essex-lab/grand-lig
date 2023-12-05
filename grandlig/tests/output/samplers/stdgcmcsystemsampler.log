@@ -1,0 +1,5 @@
+2023-12-05 14:28:06,357 - INFO: kT = 0.5961612775922495 kcal/mol
+2023-12-05 14:28:07,918 - INFO: BaseGrandCanonicalMonteCarloSampler object initialised
+2023-12-05 14:28:07,919 - INFO: Simulating at an Adams (B) value of -2.561049941969956
+2023-12-05 14:28:07,919 - INFO: GCMCSystemSampler object initialised
+2023-12-05 14:28:07,919 - INFO: StandardGCMCSystemSampler object initialised

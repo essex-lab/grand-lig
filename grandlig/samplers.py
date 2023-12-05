@@ -247,10 +247,11 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         """
         self.logger.info('Resetting any tracked variables...')
         for key in self.tracked_variables.keys():
-            if type(self.tracked_variables[key] == list):
+            if type(self.tracked_variables[key]) == list:
                 self.tracked_variables[key] = []
-            elif type(self.tracked_variables[key] == int):
+            elif type(self.tracked_variables[key]) == int:
                 self.tracked_variables[key] = 0
+
 
         # self.n_accepted = 0
         # self.n_moves = 0
@@ -1014,7 +1015,7 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
 
     def deleteMoleculesInGCMCSphere(self):
         """
-        Function to delete all of the molecules currently present in the GCMC region
+        Function to delete all the molecules currently present in the GCMC region
         This may be useful the plan is to generate a distribution for this
         region from scratch. If so, it would be recommended to interleave the GCMC
         sampling with coordinate propagation, as this will converge faster.
@@ -1133,10 +1134,6 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         -------
         delete_mol : int
             Resid of the molecule to delete
-        gcmc_id : int
-            GCMC ID for this molecule
-        mol_id : int
-            Overall ID for this molecule
         """
         # Cannot carry out deletion if there are no GCMC molecules on
         gcmc_mols = self.getMolStatusResids(1)  # Get all the 'on' resids
@@ -1146,11 +1143,11 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         # Select a molecule residue to delete
         delete_mol = np.random.choice(gcmc_mols)  # Position in list of GCMC molecules
 
-        atom_indices = []  # Dont think i Need
-        all_res = list(self.topology.residues())
-
-        for atom in all_res[delete_mol].atoms():
-            atom_indices.append(atom)
+        # atom_indices = []  # Dont think i Need
+        # all_res = list(self.topology.residues())
+        #
+        # for atom in all_res[delete_mol].atoms():
+        #     atom_indices.append(atom)
 
             ## Removed below to save looping over all the residues and doing the if statement
         # for resid, residue in enumerate(self.topology.residues()):
@@ -1464,6 +1461,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         self.logger.info("Each NCMC move will be executed over a total of {}".format(self.protocol_time))
 
         # Add NCMC variables to the tracking dictionary
+
         self.tracked_variables["insert_works"] = []  # Store work values of moves
         self.tracked_variables["delete_works"] = []
         self.tracked_variables["accepted_insert_works"] = []
@@ -2040,7 +2038,7 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
         """
         # Read in positions
         self.context = context
-        state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getEnergy=True)
+        state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getEnergy=True, getVelocities=True)
         self.positions = deepcopy(state.getPositions(asNumpy=True))
         self.velocities = deepcopy(state.getVelocities(asNumpy=True))
         self.energy = state.getPotentialEnergy()

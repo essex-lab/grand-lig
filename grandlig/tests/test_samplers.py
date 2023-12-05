@@ -1,7 +1,7 @@
 """
 Description
 -----------
-This file contains functions written to test the functions in the grandlig.samplers sub-module
+This file contains functions written to test the functions in the grandlig.samplers submodule
 
 Marley Samways
 """
@@ -15,7 +15,7 @@ from openmm import *
 from openmm.unit import *
 from grandlig import samplers
 from grandlig import utils
-
+from openmmtools.integrators import BAOABIntegrator
 
 outdir = os.path.join(os.path.dirname(__file__), 'output', 'samplers')
 
@@ -34,12 +34,13 @@ def setup_BaseGrandCanonicalMonteCarloSampler():
                              constraints=HBonds)
 
     base_gcmc_sampler = samplers.BaseGrandCanonicalMonteCarloSampler(system=system, topology=pdb.topology,
-                                                            temperature=300*kelvin,
-                                                            ghostFile=os.path.join(outdir, 'bpti-ghost-wats.txt'),
-                                                            log=os.path.join(outdir, 'basegcmcsampler.log'))
+                                                                     temperature=300 * kelvin,
+                                                                     ghostFile=os.path.join(outdir,
+                                                                                            'bpti-ghost-wats.txt'),
+                                                                     log=os.path.join(outdir, 'basegcmcsampler.log'))
 
     # Define a simulation
-    integrator = LangevinIntegrator(300 * kelvin, 1.0/picosecond, 0.002*picoseconds)
+    integrator = BAOABIntegrator(300 * kelvin, 1.0 / picosecond, 0.002 * picoseconds)
 
     try:
         platform = Platform.getPlatformByName('CUDA')
@@ -51,7 +52,7 @@ def setup_BaseGrandCanonicalMonteCarloSampler():
 
     base_gcmc_simulation = Simulation(pdb.topology, system, integrator, platform)
     base_gcmc_simulation.context.setPositions(pdb.positions)
-    base_gcmc_simulation.context.setVelocitiesToTemperature(300*kelvin)
+    base_gcmc_simulation.context.setVelocitiesToTemperature(300 * kelvin)
     base_gcmc_simulation.context.setPeriodicBoxVectors(*pdb.topology.getPeriodicBoxVectors())
 
     # Set up the sampler
@@ -71,18 +72,18 @@ def setup_GCMCSphereSampler():
     pdb = PDBFile(utils.get_data_file(os.path.join('tests', 'bpti-ghosts.pdb')))
     ff = ForceField('amber14-all.xml', 'amber14/tip3p.xml')
     system = ff.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=12 * angstroms,
-                              constraints=HBonds)
+                             constraints=HBonds)
 
     ref_atoms = [{'name': 'CA', 'resname': 'TYR', 'resid': '10'},
                  {'name': 'CA', 'resname': 'ASN', 'resid': '43'}]
 
-    gcmc_sphere_sampler = samplers.GCMCSphereSampler(system=system, topology=pdb.topology, temperature=300*kelvin,
-                                          referenceAtoms=ref_atoms, sphereRadius=4*angstroms,
-                                          ghostFile=os.path.join(outdir, 'bpti-ghost-wats.txt'),
-                                          log=os.path.join(outdir, 'gcmcspheresampler.log'))
+    gcmc_sphere_sampler = samplers.GCMCSphereSampler(system=system, topology=pdb.topology, temperature=300 * kelvin,
+                                                     referenceAtoms=ref_atoms, sphereRadius=4 * angstroms,
+                                                     ghostFile=os.path.join(outdir, 'bpti-ghost-wats.txt'),
+                                                     log=os.path.join(outdir, 'gcmcspheresampler.log'))
 
     # Define a simulation
-    integrator = LangevinIntegrator(300 * kelvin, 1.0/picosecond, 0.002*picoseconds)
+    integrator = BAOABIntegrator(300 * kelvin, 1.0 / picosecond, 0.002 * picoseconds)
 
     try:
         platform = Platform.getPlatformByName('CUDA')
@@ -94,11 +95,12 @@ def setup_GCMCSphereSampler():
 
     gcmc_sphere_simulation = Simulation(pdb.topology, system, integrator, platform)
     gcmc_sphere_simulation.context.setPositions(pdb.positions)
-    gcmc_sphere_simulation.context.setVelocitiesToTemperature(300*kelvin)
+    gcmc_sphere_simulation.context.setVelocitiesToTemperature(300 * kelvin)
     gcmc_sphere_simulation.context.setPeriodicBoxVectors(*pdb.topology.getPeriodicBoxVectors())
 
     # Set up the sampler
-    gcmc_sphere_sampler.initialise(gcmc_sphere_simulation.context, [3054, 3055, 3056, 3057, 3058])
+    gcmc_sphere_sampler.initialise(gcmc_sphere_simulation.context, gcmc_sphere_simulation,
+                                   [3054, 3055, 3056, 3057, 3058])
 
     return None
 
@@ -114,19 +116,19 @@ def setup_StandardGCMCSphereSampler():
     pdb = PDBFile(utils.get_data_file(os.path.join('tests', 'bpti-ghosts.pdb')))
     ff = ForceField('amber14-all.xml', 'amber14/tip3p.xml')
     system = ff.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=12 * angstroms,
-                              constraints=HBonds)
+                             constraints=HBonds)
 
     ref_atoms = [{'name': 'CA', 'resname': 'TYR', 'resid': '10'},
                  {'name': 'CA', 'resname': 'ASN', 'resid': '43'}]
 
     std_gcmc_sphere_sampler = samplers.StandardGCMCSphereSampler(system=system, topology=pdb.topology,
-                                                                 temperature=300*kelvin, referenceAtoms=ref_atoms,
-                                                                 sphereRadius=4*angstroms,
+                                                                 temperature=300 * kelvin, referenceAtoms=ref_atoms,
+                                                                 sphereRadius=4 * angstroms,
                                                                  ghostFile=os.path.join(outdir, 'bpti-ghost-wats.txt'),
                                                                  log=os.path.join(outdir, 'stdgcmcspheresampler.log'))
 
     # Define a simulation
-    integrator = LangevinIntegrator(300 * kelvin, 1.0/picosecond, 0.002*picoseconds)
+    integrator = BAOABIntegrator(300 * kelvin, 1.0 / picosecond, 0.002 * picoseconds)
 
     try:
         platform = Platform.getPlatformByName('CUDA')
@@ -138,11 +140,12 @@ def setup_StandardGCMCSphereSampler():
 
     std_gcmc_sphere_simulation = Simulation(pdb.topology, system, integrator, platform)
     std_gcmc_sphere_simulation.context.setPositions(pdb.positions)
-    std_gcmc_sphere_simulation.context.setVelocitiesToTemperature(300*kelvin)
+    std_gcmc_sphere_simulation.context.setVelocitiesToTemperature(300 * kelvin)
     std_gcmc_sphere_simulation.context.setPeriodicBoxVectors(*pdb.topology.getPeriodicBoxVectors())
 
     # Set up the sampler
-    std_gcmc_sphere_sampler.initialise(std_gcmc_sphere_simulation.context, [3054, 3055, 3056, 3057, 3058])
+    std_gcmc_sphere_sampler.initialise(std_gcmc_sphere_simulation.context, std_gcmc_sphere_simulation,
+                                       [3054, 3055, 3056, 3057, 3058])
 
     return None
 
@@ -158,20 +161,23 @@ def setup_NonequilibriumGCMCSphereSampler():
     pdb = PDBFile(utils.get_data_file(os.path.join('tests', 'bpti-ghosts.pdb')))
     ff = ForceField('amber14-all.xml', 'amber14/tip3p.xml')
     system = ff.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=12 * angstroms,
-                              constraints=HBonds)
+                             constraints=HBonds)
 
     ref_atoms = [{'name': 'CA', 'resname': 'TYR', 'resid': '10'},
                  {'name': 'CA', 'resname': 'ASN', 'resid': '43'}]
 
-    integrator = LangevinIntegrator(300 * kelvin, 1.0 / picosecond, 0.002 * picoseconds)
+    integrator = BAOABIntegrator(300 * kelvin, 1.0 / picosecond, 0.002 * picoseconds)
 
     neq_gcmc_sphere_sampler = samplers.NonequilibriumGCMCSphereSampler(system=system, topology=pdb.topology,
-                                                                       temperature=300*kelvin, referenceAtoms=ref_atoms,
-                                                                       sphereRadius=4*angstroms,
+                                                                       temperature=300 * kelvin,
+                                                                       referenceAtoms=ref_atoms,
+                                                                       sphereRadius=4 * angstroms,
                                                                        integrator=integrator,
                                                                        nPropStepsPerPert=10, nPertSteps=1,
-                                                                       ghostFile=os.path.join(outdir, 'bpti-ghost-wats.txt'),
-                                                                       log=os.path.join(outdir, 'neqgcmcspheresampler.log'))
+                                                                       ghostFile=os.path.join(outdir,
+                                                                                              'bpti-ghost-wats.txt'),
+                                                                       log=os.path.join(outdir,
+                                                                                        'neqgcmcspheresampler.log'))
 
     # Define a simulation
     try:
@@ -182,13 +188,14 @@ def setup_NonequilibriumGCMCSphereSampler():
         except:
             platform = Platform.getPlatformByName('CPU')
 
-    neq_gcmc_sphere_simulation = Simulation(pdb.topology, system, neq_gcmc_sphere_sampler.compound_integrator, platform)
+    neq_gcmc_sphere_simulation = Simulation(pdb.topology, system, neq_gcmc_sphere_sampler.integrator, platform)
     neq_gcmc_sphere_simulation.context.setPositions(pdb.positions)
-    neq_gcmc_sphere_simulation.context.setVelocitiesToTemperature(300*kelvin)
+    neq_gcmc_sphere_simulation.context.setVelocitiesToTemperature(300 * kelvin)
     neq_gcmc_sphere_simulation.context.setPeriodicBoxVectors(*pdb.topology.getPeriodicBoxVectors())
 
     # Set up the sampler
-    neq_gcmc_sphere_sampler.initialise(neq_gcmc_sphere_simulation.context, [3054, 3055, 3056, 3057, 3058])
+    neq_gcmc_sphere_sampler.initialise(neq_gcmc_sphere_simulation.context, neq_gcmc_sphere_simulation,
+                                       [3054, 3055, 3056, 3057, 3058])
 
     return None
 
@@ -204,15 +211,15 @@ def setup_GCMCSystemSampler():
     pdb = PDBFile(utils.get_data_file(os.path.join('tests', 'water-ghosts.pdb')))
     ff = ForceField('tip3p.xml')
     system = ff.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=12 * angstroms,
-                              constraints=HBonds)
+                             constraints=HBonds)
 
-    gcmc_system_sampler = samplers.GCMCSystemSampler(system=system, topology=pdb.topology, temperature=300*kelvin,
+    gcmc_system_sampler = samplers.GCMCSystemSampler(system=system, topology=pdb.topology, temperature=300 * kelvin,
                                                      boxVectors=np.array(pdb.topology.getPeriodicBoxVectors()),
                                                      ghostFile=os.path.join(outdir, 'water-ghost-wats.txt'),
                                                      log=os.path.join(outdir, 'gcmcsystemsampler.log'))
 
     # Define a simulation
-    integrator = LangevinIntegrator(300 * kelvin, 1.0/picosecond, 0.002*picoseconds)
+    integrator = BAOABIntegrator(300 * kelvin, 1.0 / picosecond, 0.002 * picoseconds)
 
     try:
         platform = Platform.getPlatformByName('CUDA')
@@ -224,11 +231,12 @@ def setup_GCMCSystemSampler():
 
     gcmc_system_simulation = Simulation(pdb.topology, system, integrator, platform)
     gcmc_system_simulation.context.setPositions(pdb.positions)
-    gcmc_system_simulation.context.setVelocitiesToTemperature(300*kelvin)
+    gcmc_system_simulation.context.setVelocitiesToTemperature(300 * kelvin)
     gcmc_system_simulation.context.setPeriodicBoxVectors(*pdb.topology.getPeriodicBoxVectors())
 
     # Set up the sampler
-    gcmc_system_sampler.initialise(gcmc_system_simulation.context, [2094, 2095, 2096, 2097, 2098])
+    gcmc_system_sampler.initialise(gcmc_system_simulation.context, gcmc_system_simulation,
+                                   [2094, 2095, 2096, 2097, 2098])
 
     return None
 
@@ -244,16 +252,17 @@ def setup_StandardGCMCSystemSampler():
     pdb = PDBFile(utils.get_data_file(os.path.join('tests', 'water-ghosts.pdb')))
     ff = ForceField('tip3p.xml')
     system = ff.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=12 * angstroms,
-                              constraints=HBonds)
+                             constraints=HBonds)
 
     std_gcmc_system_sampler = samplers.StandardGCMCSystemSampler(system=system, topology=pdb.topology,
-                                                                 temperature=300*kelvin,
-                                                                 boxVectors=np.array(pdb.topology.getPeriodicBoxVectors()),
+                                                                 temperature=300 * kelvin,
+                                                                 boxVectors=np.array(
+                                                                     pdb.topology.getPeriodicBoxVectors()),
                                                                  ghostFile=os.path.join(outdir, 'water-ghost-wats.txt'),
                                                                  log=os.path.join(outdir, 'stdgcmcsystemsampler.log'))
 
     # Define a simulation
-    integrator = LangevinIntegrator(300 * kelvin, 1.0/picosecond, 0.002*picoseconds)
+    integrator = BAOABIntegrator(300 * kelvin, 1.0 / picosecond, 0.002 * picoseconds)
 
     try:
         platform = Platform.getPlatformByName('CUDA')
@@ -265,11 +274,12 @@ def setup_StandardGCMCSystemSampler():
 
     std_gcmc_system_simulation = Simulation(pdb.topology, system, integrator, platform)
     std_gcmc_system_simulation.context.setPositions(pdb.positions)
-    std_gcmc_system_simulation.context.setVelocitiesToTemperature(300*kelvin)
+    std_gcmc_system_simulation.context.setVelocitiesToTemperature(300 * kelvin)
     std_gcmc_system_simulation.context.setPeriodicBoxVectors(*pdb.topology.getPeriodicBoxVectors())
 
     # Set up the sampler
-    std_gcmc_system_sampler.initialise(std_gcmc_system_simulation.context, [2094, 2095, 2096, 2097, 2098])
+    std_gcmc_system_sampler.initialise(std_gcmc_system_simulation.context, std_gcmc_system_simulation,
+                                       [2094, 2095, 2096, 2097, 2098])
 
     return None
 
@@ -285,13 +295,14 @@ def setup_NonequilibriumGCMCSystemSampler():
     pdb = PDBFile(utils.get_data_file(os.path.join('tests', 'water-ghosts.pdb')))
     ff = ForceField('tip3p.xml')
     system = ff.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=12 * angstroms,
-                              constraints=HBonds)
+                             constraints=HBonds)
 
-    integrator = LangevinIntegrator(300 * kelvin, 1.0 / picosecond, 0.002 * picoseconds)
+    integrator = BAOABIntegrator(300 * kelvin, 1.0 / picosecond, 0.002 * picoseconds)
 
     neq_gcmc_system_sampler = samplers.NonequilibriumGCMCSystemSampler(system=system, topology=pdb.topology,
-                                                                       temperature=300*kelvin, integrator=integrator,
-                                                                       boxVectors=np.array(pdb.topology.getPeriodicBoxVectors()),
+                                                                       temperature=300 * kelvin, integrator=integrator,
+                                                                       boxVectors=np.array(
+                                                                           pdb.topology.getPeriodicBoxVectors()),
                                                                        ghostFile=os.path.join(outdir,
                                                                                               'water-ghost-wats.txt'),
                                                                        log=os.path.join(outdir,
@@ -307,13 +318,14 @@ def setup_NonequilibriumGCMCSystemSampler():
         except:
             platform = Platform.getPlatformByName('CPU')
 
-    neq_gcmc_system_simulation = Simulation(pdb.topology, system, neq_gcmc_system_sampler.compound_integrator, platform)
+    neq_gcmc_system_simulation = Simulation(pdb.topology, system, neq_gcmc_system_sampler.integrator, platform)
     neq_gcmc_system_simulation.context.setPositions(pdb.positions)
-    neq_gcmc_system_simulation.context.setVelocitiesToTemperature(300*kelvin)
+    neq_gcmc_system_simulation.context.setVelocitiesToTemperature(300 * kelvin)
     neq_gcmc_system_simulation.context.setPeriodicBoxVectors(*pdb.topology.getPeriodicBoxVectors())
 
     # Set up the sampler
-    neq_gcmc_system_sampler.initialise(neq_gcmc_system_simulation.context, [2094, 2095, 2096, 2097, 2098])
+    neq_gcmc_system_sampler.initialise(neq_gcmc_system_simulation.context, neq_gcmc_system_simulation,
+                                       [2094, 2095, 2096, 2097, 2098])
 
     return None
 
@@ -322,6 +334,7 @@ class TestBaseGrandCanonicalMonteCarloSampler(unittest.TestCase):
     """
     Class to store the tests for the GrandCanonicalMonteCarloSampler class
     """
+
     @classmethod
     def setUpClass(cls):
         """
@@ -358,7 +371,7 @@ class TestBaseGrandCanonicalMonteCarloSampler(unittest.TestCase):
         """
         # Delete some ghost waters so they can be written out
         ghosts = [3054, 3055, 3056, 3057, 3058]
-        base_gcmc_sampler.deleteGhostWaters(ghostResids=ghosts)
+        base_gcmc_sampler.deleteGhostMolecules(ghostResids=ghosts)
 
         # Report
         base_gcmc_sampler.report(base_gcmc_simulation)
@@ -383,17 +396,20 @@ class TestBaseGrandCanonicalMonteCarloSampler(unittest.TestCase):
         Make sure the BaseGrandCanonicalMonteCarloSampler.reset() method works correctly
         """
         # Set tracked variables to some non-zero values
-        base_gcmc_sampler.n_accepted = 1
-        base_gcmc_sampler.n_moves = 1
-        base_gcmc_sampler.Ns = [1]
+        base_gcmc_sampler.tracked_variables["n_accepted"] = 1
+        base_gcmc_sampler.tracked_variables["n_moves"] = 1
+        base_gcmc_sampler.tracked_variables["Ns"] = [1]
+
+        print("HERE: ", type(base_gcmc_sampler.tracked_variables["n_accepted"]))
 
         # Reset base_gcmc_sampler
         base_gcmc_sampler.reset()
+        print(base_gcmc_sampler.tracked_variables["n_accepted"])
 
         # Check that the values have been reset
-        assert base_gcmc_sampler.n_accepted == 0
-        assert base_gcmc_sampler.n_moves == 0
-        assert len(base_gcmc_sampler.Ns) == 0
+        assert base_gcmc_sampler.tracked_variables["n_accepted"] == 0
+        assert base_gcmc_sampler.tracked_variables["n_moves"] == 0
+        assert len(base_gcmc_sampler.tracked_variables["Ns"]) == 0
 
         return None
 
@@ -402,6 +418,7 @@ class TestGCMCSphereSampler(unittest.TestCase):
     """
     Class to store the tests for the GCMCSphereSampler class
     """
+
     @classmethod
     def setUpClass(cls):
         """
@@ -435,18 +452,25 @@ class TestGCMCSphereSampler(unittest.TestCase):
 
         return None
 
-    def test_deleteWatersInGCMCSphere(self):
+    def test_deleteMoleculesInGCMCSphere(self):
         """
         Make sure the GCMCSphereSampler.deleteWatersInGCMCSphere() method works correctly
         """
         # Now delete the waters in the sphere
-        gcmc_sphere_sampler.deleteWatersInGCMCSphere()
-        new_ghosts = [gcmc_sphere_sampler.gcmc_resids[id] for id in np.where(gcmc_sphere_sampler.gcmc_status == 0)[0]]
+        gcmc_sphere_sampler.deleteMoleculesInGCMCSphere()
+        new_ghosts = gcmc_sphere_sampler.getMolStatusResids(0)
         # Check that the list of ghosts is correct
         assert new_ghosts == [70, 71, 3054, 3055, 3056, 3057, 3058]
         # Check that the variables match there being no waters in the GCMC region
         assert gcmc_sphere_sampler.N == 0
-        assert all(gcmc_sphere_sampler.gcmc_status == 0)
+        assert all([x in [0, 2] for x in gcmc_sphere_sampler.mol_status.values()])
+
+        # turn then back on so we have something to delete later on
+        gcmc_sphere_sampler.setMolStatus(70, 1)
+        gcmc_sphere_sampler.setMolStatus(71, 1)
+
+        state = gcmc_sphere_simulation.context.getState(getPositions=True, getVelocities=True)
+        gcmc_sphere_sampler.updateGCMCSphere(state)
 
         return None
 
@@ -455,8 +479,7 @@ class TestGCMCSphereSampler(unittest.TestCase):
         Make sure the GCMCSphereSampler.updateGCMCSphere() method works correctly
         """
         # Get initial gcmc_resids and status
-        gcmc_resids = deepcopy(gcmc_sphere_sampler.gcmc_resids)
-        gcmc_status = deepcopy(gcmc_sphere_sampler.gcmc_status)
+        gcmc_resids = deepcopy(gcmc_sphere_sampler.getMolStatusResids(1))
         sphere_centre = deepcopy(gcmc_sphere_sampler.sphere_centre)
         N = gcmc_sphere_sampler.N
 
@@ -465,8 +488,7 @@ class TestGCMCSphereSampler(unittest.TestCase):
         gcmc_sphere_sampler.updateGCMCSphere(state)
 
         # Make sure that these values are all still the same
-        assert all(np.isclose(gcmc_resids, gcmc_sphere_sampler.gcmc_resids))
-        assert all(np.isclose(gcmc_status, gcmc_sphere_sampler.gcmc_status))
+        assert all(np.isclose(gcmc_resids, gcmc_sphere_sampler.getMolStatusResids(1)))
         assert all(np.isclose(sphere_centre._value, gcmc_sphere_sampler.sphere_centre._value))
         assert N == gcmc_sphere_sampler.N
 
@@ -481,18 +503,17 @@ class TestGCMCSphereSampler(unittest.TestCase):
 
         return None
 
-    def test_insertRandomWater(self):
+    def test_insertRandomMolecule(self):
         """
         Make sure the GCMCSphereSampler.insertRandomWater() method works correctly
         """
         # Insert a random water
-        new_positions, gcmc_id, wat_id, atom_ids = gcmc_sphere_sampler.insertRandomWater()
+        new_positions, gcmc_id = gcmc_sphere_sampler.insertRandomMolecule()
 
         # Check that the indices returned are integers - may not be type int
         assert gcmc_id == int(gcmc_id)
-        assert wat_id == int(wat_id)
-        assert all([i == int(i) for i in atom_ids])
 
+        atom_ids = gcmc_sphere_sampler.mol_atom_ids[gcmc_id]
         # Check that the new positions are different to the old positions
         assert all([any([new_positions[i][j] != gcmc_sphere_sampler.positions[i][j] for j in range(3)])
                     for i in atom_ids])
@@ -501,17 +522,15 @@ class TestGCMCSphereSampler(unittest.TestCase):
 
         return None
 
-    def test_deleteRandomWater(self):
+    def test_deleteRandomMolecule(self):
         """
         Make sure the GCMCSphereSampler.deleteRandomWater() method works correctly
         """
-        # Insert a random water
-        gcmc_id, wat_id, atom_ids = gcmc_sphere_sampler.deleteRandomWater()
+        # Delete a random water
+        gcmc_id = gcmc_sphere_sampler.deleteRandomMolecule()
 
         # Check that the indices returned are integers
         assert gcmc_id == int(gcmc_id)
-        assert wat_id == int(wat_id)
-        assert all([i == int(i) for i in atom_ids])
 
         return None
 
@@ -520,6 +539,7 @@ class TestStandardGCMCSphereSampler(unittest.TestCase):
     """
     Class to store the tests for the StandardGCMCSphereSampler class
     """
+
     @classmethod
     def setUpClass(cls):
         """
@@ -551,10 +571,10 @@ class TestStandardGCMCSphereSampler(unittest.TestCase):
 
         # Check that all of the appropriate variables seem to have been updated
         # Hard to test individual moves as they are rarely accepted - just need to check the overall behaviour
-        assert std_gcmc_sphere_sampler.n_moves == n_moves
-        assert 0 <= std_gcmc_sphere_sampler.n_accepted <= n_moves
-        assert len(std_gcmc_sphere_sampler.Ns) == n_moves
-        assert len(std_gcmc_sphere_sampler.acceptance_probabilities) == n_moves
+        assert std_gcmc_sphere_sampler.tracked_variables["n_moves"] == n_moves
+        assert 0 <= std_gcmc_sphere_sampler.tracked_variables["n_accepted"] <= n_moves
+        assert len(std_gcmc_sphere_sampler.tracked_variables["Ns"]) == n_moves
+        assert len(std_gcmc_sphere_sampler.tracked_variables["acceptance_probabilities"]) == n_moves
         assert isinstance(std_gcmc_sphere_sampler.energy, Quantity)
         assert std_gcmc_sphere_sampler.energy.unit.is_compatible(kilocalories_per_mole)
 
@@ -565,6 +585,7 @@ class TestNonequilibriumGCMCSphereSampler(unittest.TestCase):
     """
     Class to store the tests for the NonequilibriumGCMCSphereSampler class
     """
+
     @classmethod
     def setUpClass(cls):
         """
@@ -596,17 +617,18 @@ class TestNonequilibriumGCMCSphereSampler(unittest.TestCase):
         neq_gcmc_sphere_sampler.move(neq_gcmc_sphere_simulation.context, 1)
 
         # Check some of the variables have been updated as appropriate
-        assert neq_gcmc_sphere_sampler.n_moves == 1
-        assert 0 <= neq_gcmc_sphere_sampler.n_accepted <= 1
-        assert len(neq_gcmc_sphere_sampler.Ns) == 1
-        assert len(neq_gcmc_sphere_sampler.acceptance_probabilities) == 1
+        assert neq_gcmc_sphere_sampler.tracked_variables["n_moves"] == 1
+        assert 0 <= neq_gcmc_sphere_sampler.tracked_variables["n_accepted"] <= 1
+        assert len(neq_gcmc_sphere_sampler.tracked_variables["Ns"]) == 1
+        assert len(neq_gcmc_sphere_sampler.tracked_variables["acceptance_probabilities"]) == 1
 
         # Check the NCMC-specific variables
         assert isinstance(neq_gcmc_sphere_sampler.velocities, Quantity)
-        assert neq_gcmc_sphere_sampler.velocities.unit.is_compatible(nanometers/picosecond)
-        assert len(neq_gcmc_sphere_sampler.works) == 1
-        assert 0 <= neq_gcmc_sphere_sampler.n_left_sphere <= 1
-        assert 0 <= neq_gcmc_sphere_sampler.n_explosions <= 1
+        assert neq_gcmc_sphere_sampler.velocities.unit.is_compatible(nanometers / picosecond)
+        assert len(neq_gcmc_sphere_sampler.tracked_variables["insert_works"]) == 1 or len(
+            neq_gcmc_sphere_sampler.tracked_variables["delete_works"]) == 1
+        assert 0 <= neq_gcmc_sphere_sampler.tracked_variables["n_left_sphere"] <= 1
+        assert 0 <= neq_gcmc_sphere_sampler.tracked_variables["n_explosions"] <= 1
 
         return None
 
@@ -624,14 +646,14 @@ class TestNonequilibriumGCMCSphereSampler(unittest.TestCase):
         # Update GCMC region based on current state
         neq_gcmc_sphere_sampler.updateGCMCSphere(state)
 
-        # Set to NCMC integrator
-        neq_gcmc_sphere_sampler.compound_integrator.setCurrentIntegrator(1)
+        # # Set to NCMC integrator
+        # neq_gcmc_sphere_sampler.compound_integrator.setCurrentIntegrator(1)
 
         # Just run one move to make sure it doesn't crash
         neq_gcmc_sphere_sampler.insertionMove()
 
-        # Reset the compound integrator
-        neq_gcmc_sphere_sampler.compound_integrator.setCurrentIntegrator(0)
+        # # Reset the compound integrator
+        # neq_gcmc_sphere_sampler.compound_integrator.setCurrentIntegrator(0)
 
         return None
 
@@ -649,14 +671,14 @@ class TestNonequilibriumGCMCSphereSampler(unittest.TestCase):
         # Update GCMC region based on current state
         neq_gcmc_sphere_sampler.updateGCMCSphere(state)
 
-        # Set to NCMC integrator
-        neq_gcmc_sphere_sampler.compound_integrator.setCurrentIntegrator(1)
+        # # Set to NCMC integrator
+        # neq_gcmc_sphere_sampler.integrator.setCurrentIntegrator(1)
 
         # Just run one move to make sure it doesn't crash
         neq_gcmc_sphere_sampler.deletionMove()
 
-        # Reset the compound integrator
-        neq_gcmc_sphere_sampler.compound_integrator.setCurrentIntegrator(0)
+        # # Reset the compound integrator
+        # neq_gcmc_sphere_sampler.integrator.setCurrentIntegrator(0)
 
         return None
 
@@ -665,6 +687,7 @@ class TestGCMCSystemSampler(unittest.TestCase):
     """
     Class to store the tests for the GCMCSystemSampler class
     """
+
     @classmethod
     def setUpClass(cls):
         """
@@ -706,18 +729,17 @@ class TestGCMCSystemSampler(unittest.TestCase):
 
         return None
 
-    def test_insertRandomWater(self):
+    def test_insertRandomMolecule(self):
         """
         Make sure the GCMCSystemSampler.insertRandomWater() method works correctly
         """
         # Insert a random water
-        new_positions, gcmc_id, wat_id, atom_ids = gcmc_system_sampler.insertRandomWater()
+        new_positions, gcmc_id = gcmc_system_sampler.insertRandomMolecule()
 
         # Check that the indices returned are integers - may not be type int
         assert gcmc_id == int(gcmc_id)
-        assert wat_id == int(wat_id)
-        assert all([i == int(i) for i in atom_ids])
 
+        atom_ids = gcmc_system_sampler.mol_atom_ids[gcmc_id]
         # Check that the new positions are different to the old positions
         assert all([any([new_positions[i][j] != gcmc_system_sampler.positions[i][j] for j in range(3)])
                     for i in atom_ids])
@@ -726,17 +748,15 @@ class TestGCMCSystemSampler(unittest.TestCase):
 
         return None
 
-    def test_deleteRandomWater(self):
+    def test_deleteRandomMolecule(self):
         """
         Make sure the GCMCSystemSampler.deleteRandomWater() method works correctly
         """
-        # Insert a random water
-        gcmc_id, wat_id, atom_ids = gcmc_system_sampler.deleteRandomWater()
+        # Delte a random water
+        gcmc_id = gcmc_system_sampler.deleteRandomMolecule()
 
         # Check that the indices returned are integers
         assert gcmc_id == int(gcmc_id)
-        assert wat_id == int(wat_id)
-        assert all([i == int(i) for i in atom_ids])
 
         return None
 
@@ -745,6 +765,7 @@ class TestStandardGCMCSystemSampler(unittest.TestCase):
     """
     Class to store the tests for the StandardGCMCSystemSampler class
     """
+
     @classmethod
     def setUpClass(cls):
         """
@@ -776,10 +797,10 @@ class TestStandardGCMCSystemSampler(unittest.TestCase):
 
         # Check that all of the appropriate variables seem to have been updated
         # Hard to test individual moves as they are rarely accepted - just need to check the overall behaviour
-        assert std_gcmc_system_sampler.n_moves == n_moves
-        assert 0 <= std_gcmc_system_sampler.n_accepted <= n_moves
-        assert len(std_gcmc_system_sampler.Ns) == n_moves
-        assert len(std_gcmc_system_sampler.acceptance_probabilities) == n_moves
+        assert std_gcmc_system_sampler.tracked_variables["n_moves"] == n_moves
+        assert 0 <= std_gcmc_system_sampler.tracked_variables["n_accepted"] <= n_moves
+        assert len(std_gcmc_system_sampler.tracked_variables["Ns"]) == n_moves
+        assert len(std_gcmc_system_sampler.tracked_variables["acceptance_probabilities"]) == n_moves
         assert isinstance(std_gcmc_system_sampler.energy, Quantity)
         assert std_gcmc_system_sampler.energy.unit.is_compatible(kilocalories_per_mole)
 
@@ -790,6 +811,7 @@ class TestNonequilibriumGCMCSystemSampler(unittest.TestCase):
     """
     Class to store the tests for the NonequilibriumGCMCSystemSampler class
     """
+
     @classmethod
     def setUpClass(cls):
         """
@@ -821,16 +843,17 @@ class TestNonequilibriumGCMCSystemSampler(unittest.TestCase):
         neq_gcmc_system_sampler.move(neq_gcmc_system_simulation.context, 1)
 
         # Check some of the variables have been updated as appropriate
-        assert neq_gcmc_system_sampler.n_moves == 1
-        assert 0 <= neq_gcmc_system_sampler.n_accepted <= 1
-        assert len(neq_gcmc_system_sampler.Ns) == 1
-        assert len(neq_gcmc_system_sampler.acceptance_probabilities) == 1
+        assert neq_gcmc_system_sampler.tracked_variables["n_moves"] == 1
+        assert 0 <= neq_gcmc_system_sampler.tracked_variables["n_accepted"] <= 1
+        assert len(neq_gcmc_system_sampler.tracked_variables["Ns"]) == 1
+        assert len(neq_gcmc_system_sampler.tracked_variables["acceptance_probabilities"]) == 1
 
         # Check the NCMC-specific variables
         assert isinstance(neq_gcmc_system_sampler.velocities, Quantity)
-        assert neq_gcmc_system_sampler.velocities.unit.is_compatible(nanometers/picosecond)
-        assert len(neq_gcmc_system_sampler.works) == 1
-        assert 0 <= neq_gcmc_system_sampler.n_explosions <= 1
+        assert neq_gcmc_system_sampler.velocities.unit.is_compatible(nanometers / picosecond)
+        assert len(neq_gcmc_system_sampler.tracked_variables["insert_works"]) == 1 or len(
+            neq_gcmc_system_sampler.tracked_variables["delete_works"]) == 1
+        assert 0 <= neq_gcmc_system_sampler.tracked_variables["n_explosions"] <= 1
 
         return None
 
@@ -845,14 +868,14 @@ class TestNonequilibriumGCMCSystemSampler(unittest.TestCase):
         neq_gcmc_system_sampler.positions = deepcopy(state.getPositions(asNumpy=True))
         neq_gcmc_system_sampler.velocities = deepcopy(state.getVelocities(asNumpy=True))
 
-        # Set to NCMC integrator
-        neq_gcmc_system_sampler.compound_integrator.setCurrentIntegrator(1)
+        # # Set to NCMC integrator
+        # neq_gcmc_system_sampler.compound_integrator.setCurrentIntegrator(1)
 
         # Just run one move to make sure it doesn't crash
         neq_gcmc_system_sampler.insertionMove()
 
-        # Reset the compound integrator
-        neq_gcmc_sphere_sampler.compound_integrator.setCurrentIntegrator(0)
+        # # Reset the compound integrator
+        # neq_gcmc_sphere_sampler.compound_integrator.setCurrentIntegrator(0)
 
         return None
 
@@ -867,13 +890,13 @@ class TestNonequilibriumGCMCSystemSampler(unittest.TestCase):
         neq_gcmc_system_sampler.positions = deepcopy(state.getPositions(asNumpy=True))
         neq_gcmc_system_sampler.velocities = deepcopy(state.getVelocities(asNumpy=True))
 
-        # Set to NCMC integrator
-        neq_gcmc_system_sampler.compound_integrator.setCurrentIntegrator(1)
+        # # Set to NCMC integrator
+        # neq_gcmc_system_sampler.compound_integrator.setCurrentIntegrator(1)
 
         # Just run one move to make sure it doesn't crash
         neq_gcmc_system_sampler.deletionMove()
 
-        # Reset the compound integrator
-        neq_gcmc_sphere_sampler.compound_integrator.setCurrentIntegrator(0)
+        # # Reset the compound integrator
+        # neq_gcmc_sphere_sampler.compound_integrator.setCurrentIntegrator(0)
 
         return None
