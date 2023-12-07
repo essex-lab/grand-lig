@@ -2443,7 +2443,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             state = self.context.getState(getPositions=True, enforcePeriodicBox=True, getVelocities=True)
             self.positions = deepcopy(state.getPositions(asNumpy=True))
             self.velocities = deepcopy(state.getVelocities(asNumpy=True))
-            self.tracked_variables["outcome"].append("accepted_insertion")
+            self.tracked_variables["outcome"].append("accepted_deletion")
 
         return None
 
