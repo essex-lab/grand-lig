@@ -1366,7 +1366,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                  resname='HOH', ghostFile="gcmc-ghost-wats.txt", referenceAtoms=None, sphereRadius=None,
                  sphereCentre=None,
                  log='gcmc.log', createCustomForces=True, dcd=None, rst=None, overwrite=False, maxN=999,
-                 recordTraj=False):
+                 recordTraj=False, spaceWorks=False):
         """
         Initialise the object to be used for sampling NCMC-enhanced molecule insertion/deletion moves
 
@@ -1474,6 +1474,16 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         self.integrator = integrator
 
         self.logger.info("NonequilibriumGCMCSphereSampler object initialised")
+
+        if spaceWorks:
+            self.spaceWorks = True
+            print("Recording 3D positions of works")
+            self.spaceWorks_data = [[], [], []]  # [protein CAs, COG_from_move, work]
+            self.CA_ids = []
+            for atom_id, atom in enumerate(self.topology.atoms()):
+                if atom.name == "CA":
+                    self.CA_ids.append(atom_id)
+
 
     def move(self, context, n=1, force=None):
         """
@@ -1596,6 +1606,15 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         self.positions = state.getPositions(asNumpy=True)
         self.updateGCMCSphere(state)
 
+        if self.spaceWorks:
+            if explosion == False:
+                self.spaceWorks_data[0].append(self.positions[self.CA_ids])
+                # Get insert mol final COG
+                self.spaceWorks_data[1].append(self.calculateCOG(insert_mol))
+                self.spaceWorks_data[2].append(protocol_work)
+
+
+
         # Check which molecules are still in the GCMC sphere
         gcmc_mols_new = self.getMolStatusResids(1)
 
@@ -1664,6 +1683,10 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             self.tracked_variables["outcome"].append("no_mol2del")
             return None
 
+        if self.spaceWorks:
+            pro_ca_posis = self.positions[self.CA_ids]
+            delete_mol_cog = self.calculateCOG(delete_mol)
+
         # Start running perturbation and propagation kernels
         protocol_work = 0.0 * unit.kilocalories_per_mole
         explosion = False
@@ -1697,6 +1720,12 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                 self.tracked_variables["n_explosions"] += 1
                 self.tracked_variables["outcome"].append("explosion")
                 break
+
+        if not explosion:
+            if self.spaceWorks:
+                self.spaceWorks_data[0].append(pro_ca_posis)
+                self.spaceWorks_data[1].append(delete_mol_cog)
+                self.spaceWorks_data[2].append(protocol_work)
 
         # Update variables and GCMC sphere
         # Leaving the molecule as 'on' here to check that the deleted molecule doesn't leave

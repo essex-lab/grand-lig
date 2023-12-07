@@ -395,18 +395,33 @@ class TestBaseGrandCanonicalMonteCarloSampler(unittest.TestCase):
         """
         Make sure the BaseGrandCanonicalMonteCarloSampler.reset() method works correctly
         """
-        # Set tracked variables to some non-zero values
-        base_gcmc_sampler.tracked_variables["n_accepted"] = 1
-        base_gcmc_sampler.tracked_variables["n_moves"] = 1
-        base_gcmc_sampler.tracked_variables["Ns"] = [1]
+        keys = []
+        types = []
+        for key in base_gcmc_sampler.tracked_variables.keys():
+            keys.append(key)
+            types.append(type(base_gcmc_sampler.tracked_variables[key]))
 
-        print("HERE: ", type(base_gcmc_sampler.tracked_variables["n_accepted"]))
+        for i in range(len(keys)):
+            if types[i] == list:
+                base_gcmc_sampler.tracked_variables[keys[i]] = [1, 2, 3, 4]
+            elif types[i] == int:
+                base_gcmc_sampler.tracked_variables[keys[i]] = 99
+            elif types[i] != list or types[i] != int:
+                raise Exception("Found a tracked variable that is not a list or an integer.")
+
 
         # Reset base_gcmc_sampler
         base_gcmc_sampler.reset()
-        print(base_gcmc_sampler.tracked_variables["n_accepted"])
+        for i in range(len(keys)):
+            if types[i] == list:
+                assert base_gcmc_sampler.tracked_variables[keys[i]] == []
+            elif types[i] == int:
+                assert base_gcmc_sampler.tracked_variables[keys[i]] == 0
+            elif types[i] != list or types[i] != int:
+                raise Exception("Found a tracked variable that is not a list or an integer.")
 
-        # Check that the values have been reset
+
+        # Check that some specific values have been reset
         assert base_gcmc_sampler.tracked_variables["n_accepted"] == 0
         assert base_gcmc_sampler.tracked_variables["n_moves"] == 0
         assert len(base_gcmc_sampler.tracked_variables["Ns"]) == 0
