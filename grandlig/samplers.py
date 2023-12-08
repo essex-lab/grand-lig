@@ -1475,6 +1475,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
         self.logger.info("NonequilibriumGCMCSphereSampler object initialised")
 
+        self.spaceWorks = False
         if spaceWorks:
             self.spaceWorks = True
             print("Recording 3D positions of works")
