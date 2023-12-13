@@ -2390,7 +2390,7 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             self.context.setVelocities(-self.velocities)  # Reverse velocities on rejection
             self.positions = deepcopy(self.positions)
             self.velocities = -self.velocities
-            self.tracked_variables["outcome"].append("rejected_deletion")
+            self.tracked_variables["outcome"].append("rejected_insertion")
         else:
             # Update some variables if move is accepted
             self.tracked_variables["accepted_insert_works"].append(protocol_work)
