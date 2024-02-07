@@ -1556,6 +1556,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             self.tracked_variables["acceptance_probabilities"].append(-1)
             self.tracked_variables["insert_acceptance_probabilities"].append(-1)
             self.tracked_variables["outcome"].append("site_full")
+            self.tracked_variables["insert_works"].append(np.nan)
             return None
 
         # Choose a random site in the sphere to insert a molecule
@@ -1599,6 +1600,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                 explosion = True
                 self.tracked_variables["n_explosions"] += 1
                 self.tracked_variables["outcome"].append("explosion")
+                self.tracked_variables["insert_works"].append(np.nan)
                 break
 
         # Update variables and GCMC sphere
@@ -1625,6 +1627,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             acc_prob = -1
             self.tracked_variables["n_left_sphere"] += 1
             self.tracked_variables["outcome"].append("left_sphere")
+            self.tracked_variables["insert_works"].append(np.nan)
             self.logger.info("Move rejected due to molecule leaving the GCMC sphere")
         elif explosion:
             acc_prob = -1
@@ -1681,7 +1684,10 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         self.tracked_variables["move_resi"].append(delete_mol)
         # Deletion may not be possible
         if delete_mol is None:
+            self.tracked_variables["acceptance_probabilities"].append(0)
+            self.tracked_variables["delete_acceptance_probabilities"].append(0)
             self.tracked_variables["outcome"].append("no_mol2del")
+            self.tracked_variables["delete_works"].append(np.nan)
             return None
 
         if self.spaceWorks:
@@ -1719,6 +1725,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
                 explosion = True
                 self.tracked_variables["n_explosions"] += 1
+                self.tracked_variables["delete_works"].append(np.nan)
                 self.tracked_variables["outcome"].append("explosion")
                 break
 
@@ -1744,6 +1751,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             acc_prob = 0
             self.tracked_variables["n_left_sphere"] += 1
             self.tracked_variables["outcome"].append("left_sphere")
+            self.tracked_variables["delete_works"].append(np.nan)
             self.logger.info("Move rejected due to molecule leaving the GCMC sphere")
         elif explosion:
             acc_prob = 0
