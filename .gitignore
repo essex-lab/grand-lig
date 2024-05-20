@@ -10,3 +10,4 @@ grand/tests/output/*
 .DS_Store
 docs/Makefile
 docs/make.bat
+grandlig.egg-info/PKG-INFO
