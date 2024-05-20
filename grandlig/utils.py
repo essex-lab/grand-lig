@@ -29,10 +29,12 @@ from rdkit.Chem import AllChem
 import itertools
 from tqdm import tqdm
 
+
 class PDBRestartReporter(object):
     """
     *Very* basic class to write PDB files as a basic form of restarter
     """
+
     def __init__(self, filename, topology):
         """
         Load in the name of the file and the topology of the system
@@ -61,8 +63,10 @@ class PDBRestartReporter(object):
         # Read the positions from the state
         positions = state.getPositions()
         # Write the PDB out
-        with open(self.filename, 'w') as f:
-            app.PDBFile.writeFile(topology=self.topology, positions=positions, file=f)
+        with open(self.filename, "w") as f:
+            app.PDBFile.writeFile(
+                topology=self.topology, positions=positions, file=f
+            )
 
         return None
 
@@ -88,7 +92,9 @@ def get_data_file(filename):
         raise Exception("{} does not exist!".format(filepath))
 
 
-def add_ghosts(topology, positions, molfile='tip3p.pdb', n=10, pdb='gcmc-extra-wats.pdb'):
+def add_ghosts(
+    topology, positions, molfile="tip3p.pdb", n=10, pdb="gcmc-extra-wats.pdb"
+):
     """
     Function to add molecules to a topology, as extras for GCMC
     This is to avoid changing the number of particles throughout a simulation
@@ -126,17 +132,20 @@ def add_ghosts(topology, positions, molfile='tip3p.pdb', n=10, pdb='gcmc-extra-w
     chain_ids = []
     for chain in modeller.topology.chains():
         chain_ids.append(chain.id)
-    #print(chain_ids)
+    # print(chain_ids)
 
     # Read in simulation box size
     box_vectors = topology.getPeriodicBoxVectors()
-    box_size = np.array([box_vectors[0][0]._value,
-                         box_vectors[1][1]._value,
-                         box_vectors[2][2]._value]) * unit.nanometer
-
-    print(box_vectors)
-
-    print(box_size)
+    box_size = (
+        np.array(
+            [
+                box_vectors[0][0]._value,
+                box_vectors[1][1]._value,
+                box_vectors[2][2]._value,
+            ]
+        )
+        * unit.nanometer
+    )
 
 
     # Make sure that this molecule file exists
@@ -169,7 +178,7 @@ def add_ghosts(topology, positions, molfile='tip3p.pdb', n=10, pdb='gcmc-extra-w
         for i in range(len(positions)):
             new_positions[i] = positions[i] + new_centre - cog
 
-        # Add the molecule to the model and include the resid in a list
+        # Add the molecule to the model and include the resid in a list
         modeller.add(addTopology=molecule.topology, addPositions=new_positions)
         ghosts.append(modeller.topology._numResidues - 1)
 
@@ -183,11 +192,21 @@ def add_ghosts(topology, positions, molfile='tip3p.pdb', n=10, pdb='gcmc-extra-w
 
     # Write the new topology and positions to a PDB file
     if pdb is not None:
-        with open(pdb, 'w') as f:
-            app.PDBFile.writeFile(topology=modeller.topology, positions=modeller.positions, file=f, keepIds=True)
+        with open(pdb, "w") as f:
+            app.PDBFile.writeFile(
+                topology=modeller.topology,
+                positions=modeller.positions,
+                file=f,
+                keepIds=True,
+            )
 
-        with open(pdb.split('.pdb')[0]+'.cif', 'w') as f:
-            app.PDBxFile.writeFile(topology=modeller.topology, positions=modeller.positions, file=f, keepIds=True)
+        with open(pdb.split(".pdb")[0] + ".cif", "w") as f:
+            app.PDBxFile.writeFile(
+                topology=modeller.topology,
+                positions=modeller.positions,
+                file=f,
+                keepIds=True,
+            )
 
         # # Want to correct the residue IDs of the added molecules as this can sometimes cause issues
         # with open(pdb, 'r') as f:
@@ -215,7 +234,9 @@ def add_ghosts(topology, positions, molfile='tip3p.pdb', n=10, pdb='gcmc-extra-w
     return modeller.topology, modeller.positions, ghosts
 
 
-def remove_ghosts(topology, positions, ghosts=None, pdb='gcmc-removed-ghosts.pdb'):
+def remove_ghosts(
+    topology, positions, ghosts=None, pdb="gcmc-removed-ghosts.pdb"
+):
     """
     Function to remove ghost molecules from a topology, after a simulation.
     This is so that a structure can then be used to run further analysis without ghosts
@@ -256,8 +277,12 @@ def remove_ghosts(topology, positions, ghosts=None, pdb='gcmc-removed-ghosts.pdb
 
     # Save PDB file
     if pdb is not None:
-        with open(pdb, 'w') as f:
-            app.PDBFile.writeFile(topology=modeller.topology, positions=modeller.positions, file=f)
+        with open(pdb, "w") as f:
+            app.PDBFile.writeFile(
+                topology=modeller.topology,
+                positions=modeller.positions,
+                file=f,
+            )
 
     return modeller.topology, modeller.positions
 
@@ -278,7 +303,7 @@ def read_ghosts_from_file(ghost_file):
     """
     # Read in residue IDs for the ghost molecules in each frame
     ghost_resids = []
-    with open(ghost_file, 'r') as f:
+    with open(ghost_file, "r") as f:
         for line in f.readlines():
             ghost_resids.append([int(resid) for resid in line.split(",")])
 
@@ -304,7 +329,9 @@ def convert_conc_to_volume(conc):
     conc = conc.in_units_of(unit.molar)
 
     # Convert to volume per molecule
-    v_per_mol = (1 / (conc * unit.AVOGADRO_CONSTANT_NA)).in_units_of(unit.angstroms ** 3)
+    v_per_mol = (1 / (conc * unit.AVOGADRO_CONSTANT_NA)).in_units_of(
+        unit.angstroms**3
+    )
 
     return v_per_mol
 
@@ -324,12 +351,15 @@ def convert_vol_to_conc(v_per_mol):
     conc : openmm.unit.Quantity
         Concentration of interest
     """
-    v_per_mol = v_per_mol.in_units_of(unit.angstroms ** 3)
+    v_per_mol = v_per_mol.in_units_of(unit.angstroms**3)
 
     # Make sure that the concentration has units of M - this should raise an error otherwise
-    conc = (1 / (v_per_mol * unit.AVOGADRO_CONSTANT_NA)).in_units_of(unit.molar)
+    conc = (1 / (v_per_mol * unit.AVOGADRO_CONSTANT_NA)).in_units_of(
+        unit.molar
+    )
 
     return conc
+
 
 def read_prepi(filename):
     """
@@ -347,7 +377,7 @@ def read_prepi(filename):
     bonds : list
         A list containing one list per bond, of the form [name1, name2]
     """
-    with open(filename, 'r') as f:
+    with open(filename, "r") as f:
         lines = f.readlines()
 
     atom_dict = {}  #  Indicates the ID number of each atom name
@@ -364,7 +394,7 @@ def read_prepi(filename):
             atom_charge = line_data[10]
 
             # Ignore dummies
-            if atom_type == 'DU':
+            if atom_type == "DU":
                 continue
 
             atom_dict[atom_id] = atom_name
@@ -374,8 +404,8 @@ def read_prepi(filename):
                 bond_name = atom_dict[bond_id]
                 bonds.append([atom_name, bond_name])
         # Now read in the data from the loop-completion lines
-        elif line_i.startswith('LOOP'):
-            for line_j in lines[i + 1:]:
+        elif line_i.startswith("LOOP"):
+            for line_j in lines[i + 1 :]:
                 if len(line_j.split()) == 2:
                     bonds.append(line_j.split())
                 else:
@@ -404,15 +434,15 @@ def write_conect(pdb, resname, prepi, output):
     # Read in bonds from prepi file
     _, bond_list = read_prepi(prepi)
 
-    resids_done = []  # List of completed residues
+    resids_done = []  # List of completed residues
 
     conect_lines = []  # List of CONECT lines to add
 
-    with open(pdb, 'r') as f:
+    with open(pdb, "r") as f:
         pdb_lines = f.readlines()
 
     for i, line_i in enumerate(pdb_lines):
-        if not any([line_i.startswith(x) for x in ['ATOM', 'HETATM']]):
+        if not any([line_i.startswith(x) for x in ["ATOM", "HETATM"]]):
             continue
 
         if line_i[17:21].strip() == resname:
@@ -422,7 +452,7 @@ def write_conect(pdb, resname, prepi, output):
             residue_atoms = {}  # List of atom names & IDs for this residue
             for line_j in pdb_lines[i:]:
                 # Make sure this is an atom line
-                if not any([line_j.startswith(x) for x in ['ATOM', 'HETATM']]):
+                if not any([line_j.startswith(x) for x in ["ATOM", "HETATM"]]):
                     break
                 # Make sure the following lines correspond to this resname and resid
                 resid_j = int(line_j[22:26])
@@ -434,13 +464,17 @@ def write_conect(pdb, resname, prepi, output):
                 residue_atoms[atom_name] = atom_id
             # Add CONECT lines
             for bond in bond_list:
-                conect_lines.append("CONECT{:>5d}{:>5d}\n".format(residue_atoms[bond[0]], residue_atoms[bond[1]]))
+                conect_lines.append(
+                    "CONECT{:>5d}{:>5d}\n".format(
+                        residue_atoms[bond[0]], residue_atoms[bond[1]]
+                    )
+                )
             resids_done.append(resid_i)
 
     # Write out the new PDB file, including CONECT lines
-    with open(output, 'w') as f:
+    with open(output, "w") as f:
         for line in pdb_lines:
-            if not line.startswith('END'):
+            if not line.startswith("END"):
                 f.write(line)
             else:
                 for line_c in conect_lines:
@@ -450,7 +484,7 @@ def write_conect(pdb, resname, prepi, output):
     return None
 
 
-def create_ligand_xml(prmtop, prepi, resname='LIG', output='lig.xml'):
+def create_ligand_xml(prmtop, prepi, resname="LIG", output="lig.xml"):
     """
     Takes two AMBER parameter files (.prmtop and .prepi) for a small molecule and uses them to create an XML file
     which can be used to load the force field parameters for the ligand into OpenMM
@@ -469,65 +503,76 @@ def create_ligand_xml(prmtop, prepi, resname='LIG', output='lig.xml'):
     """
     prmtop = parmed.load_file(prmtop)
     openmm_params = parmed.openmm.OpenMMParameterSet.from_structure(prmtop)
-    tmp_xml = os.path.splitext(output)[0] + '-tmp.xml'
+    tmp_xml = os.path.splitext(output)[0] + "-tmp.xml"
     openmm_params.write(tmp_xml)
 
     # Need to add some more changes here though, as the XML is incomplete
     atom_data, bond_list = read_prepi(prepi)
 
     # Read the temporary XML data back in
-    with open(tmp_xml, 'r') as f:
+    with open(tmp_xml, "r") as f:
         tmp_xml_lines = f.readlines()
 
-    with open(output, 'w') as f:
+    with open(output, "w") as f:
         # First few lines get written out automatically
         for line in tmp_xml_lines[:4]:
             f.write(line)
 
         # First, we worry about the <AtomTypes> section
-        f.write('  <AtomTypes>\n')
+        f.write("  <AtomTypes>\n")
         for line in tmp_xml_lines:
             # Loop over the lines for each atom class
-            if '<Type ' in line:
+            if "<Type " in line:
                 # Read in the data for this XML line
                 type_data = {}
                 for x in line.split():
-                    if '=' in x:
-                        key = x.split('=')[0]
-                        item = x.split('=')[1].strip('/>').strip('"')
+                    if "=" in x:
+                        key = x.split("=")[0]
+                        item = x.split("=")[1].strip("/>").strip('"')
                         type_data[key] = item
 
                 # For each atom with this type, we write out a new line - can probably avoid doing this...
                 for atom in atom_data:
-                    if atom[1] != type_data['class']:
+                    if atom[1] != type_data["class"]:
                         continue
-                    new_line = '    <Type name="{}-{}" class="{}" element="{}" mass="{}"/>\n'.format(resname, atom[0],
-                                                                                                     type_data['class'],
-                                                                                                     type_data['element'],
-                                                                                                     type_data['mass'])
+                    new_line = '    <Type name="{}-{}" class="{}" element="{}" mass="{}"/>\n'.format(
+                        resname,
+                        atom[0],
+                        type_data["class"],
+                        type_data["element"],
+                        type_data["mass"],
+                    )
                     f.write(new_line)
-            elif '</AtomTypes>' in line:
-                f.write('  </AtomTypes>\n')
+            elif "</AtomTypes>" in line:
+                f.write("  </AtomTypes>\n")
                 break
 
         # Now need to generate the actual residue template
-        f.write(' <Residues>\n')
+        f.write(" <Residues>\n")
         f.write('  <Residue name="{}">\n'.format(resname))
         # First, write the atoms
         for atom in atom_data:
-            f.write('   <Atom name="{0}" type="{1}-{0}" charge="{2}"/>\n'.format(atom[0], resname, atom[2]))
+            f.write(
+                '   <Atom name="{0}" type="{1}-{0}" charge="{2}"/>\n'.format(
+                    atom[0], resname, atom[2]
+                )
+            )
         # Then the bonds
         for bond in bond_list:
-            f.write('   <Bond atomName1="{}" atomName2="{}"/>\n'.format(bond[0], bond[1]))
-        f.write('  </Residue>\n')
-        f.write(' </Residues>\n')
+            f.write(
+                '   <Bond atomName1="{}" atomName2="{}"/>\n'.format(
+                    bond[0], bond[1]
+                )
+            )
+        f.write("  </Residue>\n")
+        f.write(" </Residues>\n")
 
         # Now we can write out the rest, from the <HarmonicBondForce> section onwards
         for i, line_i in enumerate(tmp_xml_lines):
-            if '<HarmonicBondForce>' in line_i:
+            if "<HarmonicBondForce>" in line_i:
                 for line_j in tmp_xml_lines[i:]:
                     # Some lines need the typeX swapped for classX
-                    f.write(line_j.replace('type', 'class'))
+                    f.write(line_j.replace("type", "class"))
                 break
 
     # Remove temporary file
@@ -577,16 +622,24 @@ def create_custom_forces(system, topology, resnames):
             if residue.name == resname:
                 for atom in residue.atoms():
                     # Read the parameters of this atom and add to the list of this residue
-                    atom_params = nonbonded_force.getParticleParameters(atom.index)
-                    param_dict[resname].append({'charge': atom_params[0],
-                                                'sigma': atom_params[1],
-                                                'epsilon': atom_params[2]})
+                    atom_params = nonbonded_force.getParticleParameters(
+                        atom.index
+                    )
+                    param_dict[resname].append(
+                        {
+                            "charge": atom_params[0],
+                            "sigma": atom_params[1],
+                            "epsilon": atom_params[2],
+                        }
+                    )
                 # Break this loop, as we only need to read one instance
                 break
 
     #  Need to make sure that the electrostatics are handled using PME (for now)
     if nonbonded_force.getNonbondedMethod() != openmm.NonbondedForce.PME:
-        raise Exception("Currently only supporting PME for long range electrostatics")
+        raise Exception(
+            "Currently only supporting PME for long range electrostatics"
+        )
 
     # Define the energy expression for the softcore sterics
     # lj_energy = ("U;"
@@ -595,12 +648,13 @@ def create_custom_forces(system, topology, resnames):
     #              # Calculate effective distance
     #              "reff = sigma*((soft_alpha*(1.0-lambda)^soft_b + (r/sigma)^soft_c))^(1/soft_c)")
 
-
-    lj_energy = ("U;"
-                 "U = (lambda) * 4 * epsilon * x * (x-1.0);"  # Softcore energy
-                 "x = (sigma/reff)^6;"  # Define x as sigma/r(effective)
-                 # Calculate effective distance
-                 "reff = sigma*((0.5*(1.0-lambda) + (r/sigma)^6))^(1/6)")
+    lj_energy = (
+        "U;"
+        "U = (lambda) * 4 * epsilon * x * (x-1.0);"  # Softcore energy
+        "x = (sigma/reff)^6;"  # Define x as sigma/r(effective)
+        # Calculate effective distance
+        "reff = sigma*((0.5*(1.0-lambda) + (r/sigma)^6))^(1/6)"
+    )
     # Define combining rules
     lj_combining = "; sigma = 0.5*(sigma1+sigma2); epsilon = sqrt(epsilon1*epsilon2); lambda = lambda1*lambda2"
 
@@ -611,13 +665,19 @@ def create_custom_forces(system, topology, resnames):
     custom_sterics.addPerParticleParameter("epsilon")
     custom_sterics.addPerParticleParameter("lambda")
     # Assume that the system is periodic (for now)
-    custom_sterics.setNonbondedMethod(openmm.CustomNonbondedForce.CutoffPeriodic)
+    custom_sterics.setNonbondedMethod(
+        openmm.CustomNonbondedForce.CutoffPeriodic
+    )
     # Transfer properties from the original force
-    custom_sterics.setUseSwitchingFunction(nonbonded_force.getUseSwitchingFunction())
+    custom_sterics.setUseSwitchingFunction(
+        nonbonded_force.getUseSwitchingFunction()
+    )
     custom_sterics.setCutoffDistance(nonbonded_force.getCutoffDistance())
     custom_sterics.setSwitchingDistance(nonbonded_force.getSwitchingDistance())
     nonbonded_force.setUseDispersionCorrection(False)
-    custom_sterics.setUseLongRangeCorrection(nonbonded_force.getUseDispersionCorrection())
+    custom_sterics.setUseLongRangeCorrection(
+        nonbonded_force.getUseDispersionCorrection()
+    )
     # Set softcore parameters  Dont need them if hard coded into energy function. Speeds things up a it.
     # custom_sterics.addGlobalParameter('soft_alpha', 0.5)
     # custom_sterics.addGlobalParameter('soft_a', 1)
@@ -634,7 +694,9 @@ def create_custom_forces(system, topology, resnames):
     # Copy all steric interactions into the custom force, and remove them from the original force
     for atom_idx in range(nonbonded_force.getNumParticles()):
         # Get atom parameters
-        [charge, sigma, epsilon] = nonbonded_force.getParticleParameters(atom_idx)
+        [charge, sigma, epsilon] = nonbonded_force.getParticleParameters(
+            atom_idx
+        )
 
         # Make sure that sigma is not equal to zero (sometimes an issue with the reference force, this fixes it.)
         if np.isclose(sigma._value, 0.0):
@@ -648,7 +710,9 @@ def create_custom_forces(system, topology, resnames):
     exception_dict = {}
     num_excepts = nonbonded_force.getNumExceptions()
     for exception_idx in range(num_excepts):
-        [i, j, chargeprod, sigma, epsilon] = nonbonded_force.getExceptionParameters(exception_idx)
+        [i, j, chargeprod, sigma, epsilon] = (
+            nonbonded_force.getExceptionParameters(exception_idx)
+        )
         exception_dict[exception_idx] = [i, j]
 
     # Make sure all intramolecular interactions for the molecules of interest are set to exceptions, so they aren't switched off
@@ -658,34 +722,45 @@ def create_custom_forces(system, topology, resnames):
             atom_ids = [atom.index for atom in residue.atoms()]
             # Loop over all possible interactions between atoms in this molecule
             for x, atom_x in enumerate(atom_ids):
-                for atom_y in atom_ids[x+1:]:
+                for atom_y in atom_ids[x + 1 :]:
                     # Check if there is an exception already for this interaction
                     except_id = None
-                    '''
+                    """
                     for exception_idx in range(nonbonded_force.getNumExceptions()):
                         [i, j, chargeprod, sigma, epsilon] = nonbonded_force.getExceptionParameters(exception_idx)
                         if atom_x in [i, j] and atom_y in [i, j]:
                             except_id = exception_idx
                             break
-                    '''
+                    """
                     for exception_idx in range(num_excepts):
-                        if atom_x in exception_dict[exception_idx] and atom_y in exception_dict[exception_idx]:
+                        if (
+                            atom_x in exception_dict[exception_idx]
+                            and atom_y in exception_dict[exception_idx]
+                        ):
                             except_id = exception_idx
                             break
                     # Add an exception if there is not one already
                     if except_id is None:
-                        [charge_x, sigma_x, epsilon_x] = nonbonded_force.getParticleParameters(atom_x)
-                        [charge_y, sigma_y, epsilon_y] = nonbonded_force.getParticleParameters(atom_y)
+                        [charge_x, sigma_x, epsilon_x] = (
+                            nonbonded_force.getParticleParameters(atom_x)
+                        )
+                        [charge_y, sigma_y, epsilon_y] = (
+                            nonbonded_force.getParticleParameters(atom_y)
+                        )
                         # Combine parameters (Lorentz-Berthelot)
                         chargeprod = charge_x * charge_y
                         sigma = 0.5 * (sigma_x + sigma_y)
                         epsilon = (epsilon_x * epsilon_y).sqrt()
                         # Create the exception
-                        nonbonded_force.addException(atom_x, atom_y, chargeprod, sigma, epsilon)
+                        nonbonded_force.addException(
+                            atom_x, atom_y, chargeprod, sigma, epsilon
+                        )
 
     # Copy over all exceptions into the new force as exclusions and add to the exception forces, where necessary
     for exception_idx in range(nonbonded_force.getNumExceptions()):
-        [i, j, chargeprod, sigma, epsilon] = nonbonded_force.getExceptionParameters(exception_idx)
+        [i, j, chargeprod, sigma, epsilon] = (
+            nonbonded_force.getExceptionParameters(exception_idx)
+        )
 
         # Make sure that sigma is not equal to zero
         if np.isclose(sigma._value, 0.0):
@@ -697,7 +772,9 @@ def create_custom_forces(system, topology, resnames):
     # Turn off everything in the nonbonded force to avoid double counting with the custom nonbonded force
     for atom_idx in range(nonbonded_force.getNumParticles()):
         # Get atom parameters
-        [charge, sigma, epsilon] = nonbonded_force.getParticleParameters(atom_idx)
+        [charge, sigma, epsilon] = nonbonded_force.getParticleParameters(
+            atom_idx
+        )
 
         # Make sure that sigma is not equal to zero
         if np.isclose(sigma._value, 0.0):
@@ -709,8 +786,9 @@ def create_custom_forces(system, topology, resnames):
     # Add the custom force to the system
     system.addForce(custom_sterics)
 
-    #return param_dict, custom_sterics, electrostatic_exceptions, steric_exceptions
+    # return param_dict, custom_sterics, electrostatic_exceptions, steric_exceptions
     return param_dict, custom_sterics, None, None
+
 
 def LinearAlchemicalFunction(start, end, lambda_in):
     """
@@ -731,11 +809,12 @@ def LinearAlchemicalFunction(start, end, lambda_in):
         The evaluated LinearAlchemicalFunction.
     """
     if lambda_in <= start:
-        return 0.
+        return 0.0
     elif lambda_in >= end:
-        return 1.
+        return 1.0
     else:
         return (lambda_in - start) / (end - start)
+
 
 def get_lambda_values(lambda_in):
     """
@@ -770,6 +849,7 @@ def get_lambda_values(lambda_in):
         lambda_ele = LinearAlchemicalFunction(0.75, 1, lambda_in)
     return lambda_vdw, lambda_ele
 
+
 def random_rotation_matrix():
     """
     Generate a random axis and angle for rotation of the molecules coordinates (using the
@@ -788,20 +868,38 @@ def random_rotation_matrix():
         rand1 = np.random.rand()
         rand2 = np.random.rand()
     rand_h = 2 * np.sqrt(1.0 - (rand1**2 + rand2**2))
-    axis = np.array([rand1 * rand_h, rand2 * rand_h, 1 - 2*(rand1**2 + rand2**2)])
+    axis = np.array(
+        [rand1 * rand_h, rand2 * rand_h, 1 - 2 * (rand1**2 + rand2**2)]
+    )
     axis /= np.linalg.norm(axis)
 
     # Get a random angle
-    theta = np.pi * (2*np.random.rand() - 1.0)
+    theta = np.pi * (2 * np.random.rand() - 1.0)
 
     # Simplify products & generate matrix
     x, y, z = axis[0], axis[1], axis[2]
-    x2, y2, z2 = axis[0]*axis[0], axis[1]*axis[1], axis[2]*axis[2]
-    xy, xz, yz = axis[0]*axis[1], axis[0]*axis[2], axis[1]*axis[2]
+    x2, y2, z2 = axis[0] * axis[0], axis[1] * axis[1], axis[2] * axis[2]
+    xy, xz, yz = axis[0] * axis[1], axis[0] * axis[2], axis[1] * axis[2]
     cos_theta, sin_theta = np.cos(theta), np.sin(theta)
-    rot_matrix = np.array([[cos_theta + x2*(1-cos_theta),   xy*(1-cos_theta) - z*sin_theta, xz*(1-cos_theta) + y*sin_theta],
-                           [xy*(1-cos_theta) + z*sin_theta, cos_theta + y2*(1-cos_theta),   yz*(1-cos_theta) - x*sin_theta],
-                           [xz*(1-cos_theta) - y*sin_theta, yz*(1-cos_theta) + x*sin_theta, cos_theta + z2*(1-cos_theta)  ]])
+    rot_matrix = np.array(
+        [
+            [
+                cos_theta + x2 * (1 - cos_theta),
+                xy * (1 - cos_theta) - z * sin_theta,
+                xz * (1 - cos_theta) + y * sin_theta,
+            ],
+            [
+                xy * (1 - cos_theta) + z * sin_theta,
+                cos_theta + y2 * (1 - cos_theta),
+                yz * (1 - cos_theta) - x * sin_theta,
+            ],
+            [
+                xz * (1 - cos_theta) - y * sin_theta,
+                yz * (1 - cos_theta) + x * sin_theta,
+                cos_theta + z2 * (1 - cos_theta),
+            ],
+        ]
+    )
 
     return rot_matrix
 
@@ -827,8 +925,12 @@ def get_dihedral_distribution(ghost_file, ghost_smile, dihedrals):
         Dictionary containing the different conformations of the molecule of interest (keys)
         and their populations (values)
     """
-    template = Chem.MolFromSmiles(ghost_smile)  # Create template mol from SMILE string
-    mol = Chem.MolFromPDBFile(ghost_file, proximityBonding=True, removeHs=False, sanitize=False)  # RDKit mol from PDB file
+    template = Chem.MolFromSmiles(
+        ghost_smile
+    )  # Create template mol from SMILE string
+    mol = Chem.MolFromPDBFile(
+        ghost_file, proximityBonding=True, removeHs=False, sanitize=False
+    )  # RDKit mol from PDB file
     # Assign bond order from SMILE string since rdkit cant find it from PDB
     mol = AllChem.AssignBondOrdersFromTemplate(template, mol)
     Chem.SanitizeMol(mol)
@@ -841,11 +943,17 @@ def get_dihedral_distribution(ghost_file, ghost_smile, dihedrals):
     conf = molecule.GetConformer(confId)
     counter = 0
     n_dihedrals = len(dihedrals)
-    conformers = list(itertools.product(*[np.linspace(0, 360, 10) for i in range(n_dihedrals)]))
+    conformers = list(
+        itertools.product(
+            *[np.linspace(0, 360, 10) for i in range(n_dihedrals)]
+        )
+    )
     for j, conformer in enumerate(conformers):
         for i, dihedral in enumerate(dihedrals):
             Chem.rdMolTransforms.GetDihedralDeg(conf, *dihedral)
-            Chem.rdMolTransforms.SetDihedralDeg(conf, *dihedral, float(conformer[i]))
+            Chem.rdMolTransforms.SetDihedralDeg(
+                conf, *dihedral, float(conformer[i])
+            )
         mp = AllChem.MMFFGetMoleculeProperties(molecule)
         ff2 = AllChem.MMFFGetMoleculeForceField(molecule, mp)
         ff2.Minimize(maxIts=1000, forceTol=0.000001, energyTol=1e-08)
@@ -854,9 +962,13 @@ def get_dihedral_distribution(ghost_file, ghost_smile, dihedrals):
         energys.append([E])
         for dihedral in dihedrals:
             if Chem.rdMolTransforms.GetDihedralDeg(conf, *dihedral) <= 0:
-                energys[j].append(Chem.rdMolTransforms.GetDihedralDeg(conf, *dihedral) + 360)
+                energys[j].append(
+                    Chem.rdMolTransforms.GetDihedralDeg(conf, *dihedral) + 360
+                )
             else:
-                energys[j].append(Chem.rdMolTransforms.GetDihedralDeg(conf, *dihedral))
+                energys[j].append(
+                    Chem.rdMolTransforms.GetDihedralDeg(conf, *dihedral)
+                )
         counter += 1
     # Pull out unique E's to dp
     conformation_dict = {}
@@ -865,7 +977,7 @@ def get_dihedral_distribution(ghost_file, ghost_smile, dihedrals):
         round_to_2 = tuple(np.round(xyz, 2))
         if round_to_2 not in conformation_dict.keys():
             conformation_dict[round_to_2] = round(e[0], 4)
-    Es = np.asarray(list(conformation_dict.values())) * 4184 # kcal to J
+    Es = np.asarray(list(conformation_dict.values())) * 4184  # kcal to J
     E_rels = Es - min(Es)
     probs = np.exp((-E_rels) / (8.314 * 298))
     probs = (probs / sum(probs)) * 100
@@ -874,30 +986,45 @@ def get_dihedral_distribution(ghost_file, ghost_smile, dihedrals):
             conformation_dict[key] = 0.0
             del conformation_dict[key]
         else:
-            conformation_dict[key] = (round(probs[i], 2))  # Change the dictionary to have population instead of energy
+            conformation_dict[key] = round(
+                probs[i], 2
+            )  # Change the dictionary to have population instead of energy
 
     return conf, conformation_dict
 
 
-def get_dihedral_dist_for_FF(ghost_file, ghost_xml, rd_conf, dihedrals, RD_conformation_dict):
+def get_dihedral_dist_for_FF(
+    ghost_file, ghost_xml, rd_conf, dihedrals, RD_conformation_dict
+):
     pdb = openmm.app.PDBFile(ghost_file)
     # Create system
     forcefield = openmm.app.ForceField(ghost_xml)
-    system = forcefield.createSystem(pdb.topology, nonbondedMethod=openmm.app.PME, nonbondedCutoff=12 * unit.angstrom,
-                                     switchDistance=10 * unit.angstrom, constraints=openmm.app.HBonds)
+    system = forcefield.createSystem(
+        pdb.topology,
+        nonbondedMethod=openmm.app.PME,
+        nonbondedCutoff=12 * unit.angstrom,
+        switchDistance=10 * unit.angstrom,
+        constraints=openmm.app.HBonds,
+    )
 
     # Define platform and set precision
-    platform = openmm.Platform.getPlatformByName('CUDA')
-    platform.setPropertyDefaultValue('Precision', 'mixed')
+    platform = openmm.Platform.getPlatformByName("CUDA")
+    platform.setPropertyDefaultValue("Precision", "mixed")
 
-    integrator = openmm.LangevinIntegrator(298*unit.kelvin, 1/unit.picosecond, 0.002*unit.picoseconds)
+    integrator = openmm.LangevinIntegrator(
+        298 * unit.kelvin, 1 / unit.picosecond, 0.002 * unit.picoseconds
+    )
     # Create simulation object
-    simulation = openmm.app.Simulation(pdb.topology, system, integrator, platform)
+    simulation = openmm.app.Simulation(
+        pdb.topology, system, integrator, platform
+    )
 
     # Set positions, velocities and box vectors
     simulation.context.setPositions(pdb.positions)
     simulation.context.setVelocitiesToTemperature(298 * unit.kelvin)
-    simulation.context.setPeriodicBoxVectors(*pdb.topology.getPeriodicBoxVectors())
+    simulation.context.setPeriodicBoxVectors(
+        *pdb.topology.getPeriodicBoxVectors()
+    )
 
     state = simulation.context.getState(getPositions=True)
     original_positions = state.getPositions(asNumpy=True)
@@ -906,40 +1033,68 @@ def get_dihedral_dist_for_FF(ghost_file, ghost_xml, rd_conf, dihedrals, RD_confo
     for res in simulation.topology.residues():
         if res.index == 0:
             for atom in res.atoms():
-                rd_conf.SetAtomPosition(atom.index, original_positions[atom.index]._value * 10)
+                rd_conf.SetAtomPosition(
+                    atom.index, original_positions[atom.index]._value * 10
+                )
     # Save the rd_conf as the original
     initial_rd_conf = rd_conf
 
     OMM_energy = []
     new_conformations = []
-    for conformation in list(RD_conformation_dict.keys()): # Want to loop over all our new conformers
-        new_positions = copy.deepcopy(original_positions)  # Copy of the OG positions
-        for i, dihedral in enumerate(dihedrals): # Set the dihedrals
-            Chem.rdMolTransforms.SetDihedralDeg(rd_conf, *dihedral, conformation[i])
+    for conformation in list(
+        RD_conformation_dict.keys()
+    ):  # Want to loop over all our new conformers
+        new_positions = copy.deepcopy(
+            original_positions
+        )  # Copy of the OG positions
+        for i, dihedral in enumerate(dihedrals):  # Set the dihedrals
+            Chem.rdMolTransforms.SetDihedralDeg(
+                rd_conf, *dihedral, conformation[i]
+            )
 
         for res in simulation.topology.residues():  # Update positions in OMM
             if res.index == 0:
                 for atom in res.atoms():
                     new_rd_positions = rd_conf.GetAtomPosition(atom.index)
-                    new_rd_xyz = np.asarray(
-                        [float(new_rd_positions.x), float(new_rd_positions.y), float(new_rd_positions.z)]) * unit.nanometer
+                    new_rd_xyz = (
+                        np.asarray(
+                            [
+                                float(new_rd_positions.x),
+                                float(new_rd_positions.y),
+                                float(new_rd_positions.z),
+                            ]
+                        )
+                        * unit.nanometer
+                    )
                     new_positions[atom.index] = new_rd_xyz / 10
 
         simulation.context.setPositions(new_positions)
         simulation.minimizeEnergy()
-        energy = simulation.context.getState(getEnergy=True).getPotentialEnergy()
+        energy = simulation.context.getState(
+            getEnergy=True
+        ).getPotentialEnergy()
         # Send positions back to RDkit to get the new conformations
-        after_omm_min_positions = simulation.context.getState(getPositions=True).getPositions()
+        after_omm_min_positions = simulation.context.getState(
+            getPositions=True
+        ).getPositions()
         for res in simulation.topology.residues():
             if res.index == 0:
                 for atom in res.atoms():
-                    rd_conf.SetAtomPosition(atom.index, after_omm_min_positions[atom.index]._value * 10)
+                    rd_conf.SetAtomPosition(
+                        atom.index,
+                        after_omm_min_positions[atom.index]._value * 10,
+                    )
         new_dihedrals = []  # Get new dihedrals
         for i, dihedral in enumerate(dihedrals):
             if Chem.rdMolTransforms.GetDihedralDeg(rd_conf, *dihedral) <= 0:
-                new_dihedrals.append(Chem.rdMolTransforms.GetDihedralDeg(rd_conf, *dihedral) + 360)
+                new_dihedrals.append(
+                    Chem.rdMolTransforms.GetDihedralDeg(rd_conf, *dihedral)
+                    + 360
+                )
             else:
-                new_dihedrals.append(Chem.rdMolTransforms.GetDihedralDeg(rd_conf, *dihedral))
+                new_dihedrals.append(
+                    Chem.rdMolTransforms.GetDihedralDeg(rd_conf, *dihedral)
+                )
         new_conformations.append(new_dihedrals)
         OMM_energy.append(energy._value)  # in kj mol-1
 
@@ -952,16 +1107,20 @@ def get_dihedral_dist_for_FF(ghost_file, ghost_xml, rd_conf, dihedrals, RD_confo
         round_to_2 = tuple(np.round(xyz, 2))
         if round_to_2 not in new_conformation_dict.keys():
             new_conformation_dict[round_to_2] = round(e, 4)
-    Es = np.asarray(OMM_energy) * 1000 # kJ to J
+    Es = np.asarray(OMM_energy) * 1000  # kJ to J
     E_rels = Es - min(Es)
     probs = np.exp((-E_rels) / (8.314 * 298))
     probs = (probs / sum(probs)) * 100
     for i, key in enumerate(list(new_conformation_dict.keys())):
-        new_conformation_dict[key] = (round(probs[i], 2))  # Change the dictionary to have population instead of energy
+        new_conformation_dict[key] = round(
+            probs[i], 2
+        )  # Change the dictionary to have population instead of energy
     return new_conformation_dict
 
 
-def shift_ghost_waters(ghost_file, topology=None, trajectory=None, t=None, output=None):
+def shift_ghost_waters(
+    ghost_file, topology=None, trajectory=None, t=None, output=None
+):
     """
     Translate all ghost waters in a trajectory out of the simulation box, to make
     visualisation clearer
@@ -990,7 +1149,9 @@ def shift_ghost_waters(ghost_file, topology=None, trajectory=None, t=None, outpu
 
     # Read in trajectory data
     if t is None:
-        t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
+        t = mdtraj.load(
+            trajectory, top=topology, discard_overlapping_frames=False
+        )
 
     # Identify which atoms need to be moved out of sight
     ghost_atom_ids = []
@@ -1038,7 +1199,9 @@ def wrap_waters(topology=None, trajectory=None, t=None, output=None):
     """
     # Load trajectory data, if not already
     if t is None:
-        t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
+        t = mdtraj.load(
+            trajectory, top=topology, discard_overlapping_frames=False
+        )
 
     n_frames, n_atoms, n_dims = t.xyz.shape
 
@@ -1046,12 +1209,12 @@ def wrap_waters(topology=None, trajectory=None, t=None, output=None):
     for f in range(n_frames):
         for residue in t.topology.residues:
             # Skip if this is a protein residue
-            if residue.name not in ['WAT', 'HOH', 'L02']:
+            if residue.name not in ["WAT", "HOH", "L02"]:
                 continue
 
             # Find the maximum and minimum distances between this residue and the reference atom
             for atom in residue.atoms:
-                if 'O' in atom.name:
+                if "O" in atom.name:
                     pos = t.xyz[f, atom.index, :]
 
             # Calculate the correction vector based on the separation
@@ -1078,7 +1241,9 @@ def wrap_waters(topology=None, trajectory=None, t=None, output=None):
         return None
 
 
-def align_traj(topology=None, trajectory=None, t=None, reference=None, output=None):
+def align_traj(
+    topology=None, trajectory=None, t=None, reference=None, output=None
+):
     """
     Align a trajectory to the protein
 
@@ -1103,10 +1268,16 @@ def align_traj(topology=None, trajectory=None, t=None, reference=None, output=No
     """
     # Load trajectory data, if not already
     if t is None:
-        t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
+        t = mdtraj.load(
+            trajectory, top=topology, discard_overlapping_frames=False
+        )
 
     # Align trajectory based on protein C-alpha atoms
-    protein_ids = [atom.index for atom in t.topology.atoms if atom.residue.is_protein and atom.name == 'CA']
+    protein_ids = [
+        atom.index
+        for atom in t.topology.atoms
+        if atom.residue.is_protein and atom.name == "CA"
+    ]
     if reference is None:
         # If there is no reference then align to the first frame in the trajectory
         t.superpose(t, atom_indices=protein_ids)
@@ -1123,7 +1294,15 @@ def align_traj(topology=None, trajectory=None, t=None, reference=None, output=No
         return None
 
 
-def recentre_traj(topology=None, trajectory=None, t=None, name='CA', resname='ALA', resid=1, output=None):
+def recentre_traj(
+    topology=None,
+    trajectory=None,
+    t=None,
+    name="CA",
+    resname="ALA",
+    resid=1,
+    output=None,
+):
     """
     Recentre a trajectory based on a specific protein residue. Assumes that the
     protein has not been broken by periodic boundaries.
@@ -1156,11 +1335,15 @@ def recentre_traj(topology=None, trajectory=None, t=None, name='CA', resname='AL
     """
     # Load trajectory
     if t is None:
-        t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
+        t = mdtraj.load(
+            trajectory, top=topology, discard_overlapping_frames=False
+        )
     n_frames, n_atoms, n_dims = t.xyz.shape
 
     # Get IDs of protein atoms
-    protein_ids = [atom.index for atom in t.topology.atoms if atom.residue.is_protein]
+    protein_ids = [
+        atom.index for atom in t.topology.atoms if atom.residue.is_protein
+    ]
 
     # Find the index of the C-alpha atom of this residue
     ref_idx = None
@@ -1170,7 +1353,11 @@ def recentre_traj(topology=None, trajectory=None, t=None, name='CA', resname='AL
                 if atom.name.lower() == name.lower():
                     ref_idx = atom.index
     if ref_idx is None:
-        raise Exception("Could not find atom {} of residue {}{}!".format(name, resname.capitalize(), resid))
+        raise Exception(
+            "Could not find atom {} of residue {}{}!".format(
+                name, resname.capitalize(), resid
+            )
+        )
 
     # Fix all frames
     for f in range(n_frames):
@@ -1274,7 +1461,9 @@ def recentre_traj_new(topology=None, trajectory=None, t=None, output=None):
     """
     # Load trajectory
     if t is None:
-        t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
+        t = mdtraj.load(
+            trajectory, top=topology, discard_overlapping_frames=False
+        )
     n_frames, n_atoms, n_dims = t.xyz.shape
 
     topology = t.topology
@@ -1291,8 +1480,17 @@ def recentre_traj_new(topology=None, trajectory=None, t=None, output=None):
         t.save(output)
         return None
 
-def write_sphere_traj(radius, ref_atoms=None, topology=None, trajectory=None, t=None, sphere_centre=None,
-                      output='gcmc_sphere.pdb', initial_frame=False):
+
+def write_sphere_traj(
+    radius,
+    ref_atoms=None,
+    topology=None,
+    trajectory=None,
+    t=None,
+    sphere_centre=None,
+    output="gcmc_sphere.pdb",
+    initial_frame=False,
+):
     """
     Write out a multi-frame PDB file containing the centre of the GCMC sphere
 
@@ -1318,7 +1516,9 @@ def write_sphere_traj(radius, ref_atoms=None, topology=None, trajectory=None, t=
     """
     # Load trajectory
     if t is None:
-        t = mdtraj.load(trajectory, top=topology, discard_overlapping_frames=False)
+        t = mdtraj.load(
+            trajectory, top=topology, discard_overlapping_frames=False
+        )
     n_frames, n_atoms, n_dims = t.xyz.shape
 
     # Get reference atom IDs
@@ -1327,18 +1527,25 @@ def write_sphere_traj(radius, ref_atoms=None, topology=None, trajectory=None, t=
         for ref_atom in ref_atoms:
             found = False
             for residue in t.topology.residues:
-                if residue.name == ref_atom['resname'] and str(residue.resSeq) == ref_atom['resid']:
+                if (
+                    residue.name == ref_atom["resname"]
+                    and str(residue.resSeq) == ref_atom["resid"]
+                ):
                     for atom in residue.atoms:
-                        if atom.name == ref_atom['name']:
+                        if atom.name == ref_atom["name"]:
                             ref_indices.append(atom.index)
                             found = True
             if not found:
-                raise Exception("Atom {} of residue {}{} not found!".format(ref_atom['name'],
-                                                                            ref_atom['resname'].capitalize(),
-                                                                            ref_atom['resid']))
+                raise Exception(
+                    "Atom {} of residue {}{} not found!".format(
+                        ref_atom["name"],
+                        ref_atom["resname"].capitalize(),
+                        ref_atom["resid"],
+                    )
+                )
 
     # Loop over all frames and write to PDB file
-    with open(output, 'w') as f:
+    with open(output, "w") as f:
         f.write("HEADER GCMC SPHERE\n")
         f.write("REMARK RADIUS = {} ANGSTROMS\n".format(radius))
 
@@ -1355,9 +1562,11 @@ def write_sphere_traj(radius, ref_atoms=None, topology=None, trajectory=None, t=
                 centre = sphere_centre.in_units_of(unit.angstroms)._value
             # Write to PDB file
             f.write("MODEL\n")
-            f.write("HETATM{:>5d} {:<4s} {:<4s} {:>4d}    {:>8.3f}{:>8.3f}{:>8.3f}\n".format(1, 'CTR', 'SPH', 1,
-                                                                                             centre[0], centre[1],
-                                                                                             centre[2]))
+            f.write(
+                "HETATM{:>5d} {:<4s} {:<4s} {:>4d}    {:>8.3f}{:>8.3f}{:>8.3f}\n".format(
+                    1, "CTR", "SPH", 1, centre[0], centre[1], centre[2]
+                )
+            )
             f.write("ENDMDL\n")
 
         # Loop over all frames
@@ -1371,17 +1580,26 @@ def write_sphere_traj(radius, ref_atoms=None, topology=None, trajectory=None, t=
             else:
                 centre = sphere_centre.in_units_of(unit.angstroms)._value
             # Write to PDB file
-            f.write("MODEL {}\n".format(frame+1))
-            f.write("HETATM{:>5d} {:<4s} {:<4s} {:>4d}    {:>8.3f}{:>8.3f}{:>8.3f}\n".format(1, 'CTR', 'SPH', 1,
-                                                                                             centre[0], centre[1],
-                                                                                             centre[2]))
+            f.write("MODEL {}\n".format(frame + 1))
+            f.write(
+                "HETATM{:>5d} {:<4s} {:<4s} {:>4d}    {:>8.3f}{:>8.3f}{:>8.3f}\n".format(
+                    1, "CTR", "SPH", 1, centre[0], centre[1], centre[2]
+                )
+            )
             f.write("ENDMDL\n")
 
     return None
 
 
-def cluster_waters(topology, trajectory, sphere_radius, ref_atoms=None, sphere_centre=None, cutoff=2.4,
-                   output='gcmc_clusts.pdb'):
+def cluster_waters(
+    topology,
+    trajectory,
+    sphere_radius,
+    ref_atoms=None,
+    sphere_centre=None,
+    cutoff=2.4,
+    output="gcmc_clusts.pdb",
+):
     """
     Carry out a clustering analysis on GCMC water molecules with the sphere. Based on the clustering
     code in the ProtoMS software package.
@@ -1415,34 +1633,40 @@ def cluster_waters(topology, trajectory, sphere_radius, ref_atoms=None, sphere_c
         for ref_atom in ref_atoms:
             found = False
             for residue in t.topology.residues:
-                if residue.name == ref_atom['resname'] and str(residue.resSeq) == ref_atom['resid']:
+                if (
+                    residue.name == ref_atom["resname"]
+                    and str(residue.resSeq) == ref_atom["resid"]
+                ):
                     for atom in residue.atoms:
-                        if atom.name == ref_atom['name']:
+                        if atom.name == ref_atom["name"]:
                             ref_indices.append(atom.index)
                             found = True
             if not found:
-                raise Exception("Atom {} of residue {}{} not found!".format(ref_atom['name'],
-                                                                            ref_atom['resname'].capitalize(),
-                                                                            ref_atom['resid']))
+                raise Exception(
+                    "Atom {} of residue {}{} not found!".format(
+                        ref_atom["name"],
+                        ref_atom["resname"].capitalize(),
+                        ref_atom["resid"],
+                    )
+                )
 
-    #wat_coords = []  # Store a list of water coordinates
-    #wat_frames = []  # Store a list of the frame that each water is in
+    # wat_coords = []  # Store a list of water coordinates
+    # wat_frames = []  # Store a list of the frame that each water is in
 
     # Get list of water oxygen atom IDs
     wat_ox_ids = []
     for residue in t.topology.residues:
-        if residue.name.lower() in ['wat', 'hoh', 'sol']:
+        if residue.name.lower() in ["wat", "hoh", "sol"]:
             for atom in residue.atoms:
-                if atom.name.lower() == 'o':
+                if atom.name.lower() == "o":
                     wat_ox_ids.append(atom.index)
 
     try:
-        wat_coords = np.load('wat_coords.npy')
-        wat_frames = np.load('wat_frames.npy')
+        wat_coords = np.load("wat_coords.npy")
+        wat_frames = np.load("wat_frames.npy")
     except:
         wat_coords = []  # Store a list of water coordinates
         wat_frames = []  # Store a list of the frame that each water is in
-
 
         # Get the coordinates of all GCMC water oxygen atoms
         for f in tqdm(range(n_frames)):
@@ -1462,35 +1686,39 @@ def cluster_waters(topology, trajectory, sphere_radius, ref_atoms=None, sphere_c
                 vector = t.xyz[f, o, :] - centre
 
                 # Check length and add to list if within sphere
-                if 10*np.linalg.norm(vector) <= sphere_radius:  # *10 to give Angstroms
-                    wat_coords.append(10 * t.xyz[f, o, :])  # Convert to Angstroms
+                if (
+                    10 * np.linalg.norm(vector) <= sphere_radius
+                ):  # *10 to give Angstroms
+                    wat_coords.append(
+                        10 * t.xyz[f, o, :]
+                    )  # Convert to Angstroms
                     wat_frames.append(f)
 
-        np.save('wat_coords.npy', wat_coords)
-        np.save('wat_frames.npy', wat_frames)
+        np.save("wat_coords.npy", wat_coords)
+        np.save("wat_frames.npy", wat_frames)
 
     # Calculate water-water distances - if the waters are in the same frame are assigned a very large distance
     try:
-        dist_list = np.load('dist_list.npy')
+        dist_list = np.load("dist_list.npy")
     except:
         dist_list = []
         for i in tqdm(range(len(wat_coords))):
-            for j in range(i+1, len(wat_coords)):
+            for j in range(i + 1, len(wat_coords)):
                 if wat_frames[i] == wat_frames[j]:
                     dist = 1e8
                 else:
                     dist = np.linalg.norm(wat_coords[i] - wat_coords[j])
                 dist_list.append(dist)
 
-        np.save('dist_list.npy', dist_list)
+        np.save("dist_list.npy", dist_list)
     # Cluster the waters hierarchically
-    tree = hierarchy.linkage(dist_list, method='average')
-    wat_clust_ids = hierarchy.fcluster(tree, t=cutoff, criterion='distance')
+    tree = hierarchy.linkage(dist_list, method="average")
+    wat_clust_ids = hierarchy.fcluster(tree, t=cutoff, criterion="distance")
     n_clusts = max(wat_clust_ids)
 
     # Sort the clusters by occupancy
     clusts = []
-    for i in tqdm(range(1, n_clusts+1)):
+    for i in tqdm(range(1, n_clusts + 1)):
         occ = len([wat for wat in wat_clust_ids if wat == i])
         clusts.append([i, occ])
     clusts = sorted(clusts, key=lambda x: -x[1])
@@ -1520,26 +1748,40 @@ def cluster_waters(topology, trajectory, sphere_radius, ref_atoms=None, sphere_c
         rep_coords.append(wat_coords[rep_wat])
 
     # Write the cluster coordinates to a PDB file
-    with open(output, 'w') as f:
+    with open(output, "w") as f:
         f.write("REMARK Clustered GCMC water positions written by grandlig\n")
         for i in range(n_clusts):
             coords = rep_coords[i]
             occ1 = clust_occs_sorted[i]
             occ2 = occ1 / float(n_frames)
-            f.write("ATOM  {:>5d} {:<4s} {:<4s} {:>4d}    {:>8.3f}{:>8.3f}{:>8.3f}{:>6.2f}{:>6.2f}\n".format(1, 'O',
-                                                                                                             'WAT', i+1,
-                                                                                                             coords[0],
-                                                                                                             coords[1],
-                                                                                                             coords[2],
-                                                                                                             occ2, occ2))
+            f.write(
+                "ATOM  {:>5d} {:<4s} {:<4s} {:>4d}    {:>8.3f}{:>8.3f}{:>8.3f}{:>6.2f}{:>6.2f}\n".format(
+                    1,
+                    "O",
+                    "WAT",
+                    i + 1,
+                    coords[0],
+                    coords[1],
+                    coords[2],
+                    occ2,
+                    occ2,
+                )
+            )
             f.write("TER\n")
         f.write("END")
 
     return None
 
 
-def cluster_molecules(topology, trajectory, sphere_radius, resname='L02', ref_atoms=None, cutoff=2.4,
-                   output='gcmc_clusts.pdb'):
+def cluster_molecules(
+    topology,
+    trajectory,
+    sphere_radius,
+    resname="L02",
+    ref_atoms=None,
+    cutoff=2.4,
+    output="gcmc_clusts.pdb",
+):
     """
     Carry out a clustering analysis on GCMC molecules with the sphere. Based on the clustering
     code in the ProtoMS software package.
@@ -1575,15 +1817,22 @@ def cluster_molecules(topology, trajectory, sphere_radius, resname='L02', ref_at
         for ref_atom in ref_atoms:
             found = False
             for residue in t.topology.residues:
-                if residue.name == ref_atom['resname'] and str(residue.resSeq) == ref_atom['resid']:
+                if (
+                    residue.name == ref_atom["resname"]
+                    and str(residue.resSeq) == ref_atom["resid"]
+                ):
                     for atom in residue.atoms:
-                        if atom.name == ref_atom['name']:
+                        if atom.name == ref_atom["name"]:
                             ref_indices.append(atom.index)
                             found = True
             if not found:
-                raise Exception("Atom {} of residue {}{} not found!".format(ref_atom['name'],
-                                                                            ref_atom['resname'].capitalize(),
-                                                                            ref_atom['resid']))
+                raise Exception(
+                    "Atom {} of residue {}{} not found!".format(
+                        ref_atom["name"],
+                        ref_atom["resname"].capitalize(),
+                        ref_atom["resid"],
+                    )
+                )
 
     # Get the COG's of all the GCMC molcules since were only going to do centroid clustering for now
     mols = {}
@@ -1591,7 +1840,7 @@ def cluster_molecules(topology, trajectory, sphere_radius, resname='L02', ref_at
         if residue.name == resname:
             mols[residue.index] = []
             for atom in residue.atoms:
-                if atom.element.name != 'hydrogen':
+                if atom.element.name != "hydrogen":
                     mols[residue.index].append(atom.index)
                 else:
                     continue
@@ -1602,9 +1851,8 @@ def cluster_molecules(topology, trajectory, sphere_radius, resname='L02', ref_at
         for i, resid in enumerate(mols.keys()):
             coords = np.zeros(3)
             for atom_id in mols[resid]:
-                coords += (t.xyz[frame, atom_id, :])
-            frag_coords[frame, i, :] = coords/len(mols[resid])
-
+                coords += t.xyz[frame, atom_id, :]
+            frag_coords[frame, i, :] = coords / len(mols[resid])
 
     mol_coords = []  # Store a list of water coordinates
     mol_frames = []  # Store a list of the frame that each water is in
@@ -1627,7 +1875,7 @@ def cluster_molecules(topology, trajectory, sphere_radius, resname='L02', ref_at
     # Calculate water-water distances - if the waters are in the same frame are assigned a very large distance
     dist_list = []
     for i in range(len(mol_coords)):
-        for j in range(i+1, len(mol_coords)):
+        for j in range(i + 1, len(mol_coords)):
             if mol_frames[i] == mol_frames[j]:
                 dist = 1e8
             else:
@@ -1635,13 +1883,13 @@ def cluster_molecules(topology, trajectory, sphere_radius, resname='L02', ref_at
             dist_list.append(dist)
 
     # Cluster the waters hierarchically
-    tree = hierarchy.linkage(dist_list, method='average')
-    mol_clust_ids = hierarchy.fcluster(tree, t=cutoff, criterion='distance')
+    tree = hierarchy.linkage(dist_list, method="average")
+    mol_clust_ids = hierarchy.fcluster(tree, t=cutoff, criterion="distance")
     n_clusts = max(mol_clust_ids)
 
     # Sort the clusters by occupancy
     clusts = []
-    for i in range(1, n_clusts+1):
+    for i in range(1, n_clusts + 1):
         occ = len([wat for wat in mol_clust_ids if wat == i])
         clusts.append([i, occ])
     clusts = sorted(clusts, key=lambda x: -x[1])
@@ -1671,18 +1919,25 @@ def cluster_molecules(topology, trajectory, sphere_radius, resname='L02', ref_at
         rep_coords.append(mol_coords[rep_wat])
 
     # Write the cluster coordinates to a PDB file
-    with open(output, 'w') as f:
+    with open(output, "w") as f:
         f.write("REMARK Clustered GCMC water positions written by grandlig\n")
         for i in range(n_clusts):
             coords = rep_coords[i]
             occ1 = clust_occs_sorted[i]
             occ2 = occ1 / float(n_frames)
-            f.write("ATOM  {:>5d} {:<4s} {:<4s} {:>4d}    {:>8.3f}{:>8.3f}{:>8.3f}{:>6.2f}{:>6.2f}\n".format(1, 'C',
-                                                                                                             'CLU', i+1,
-                                                                                                             coords[0],
-                                                                                                             coords[1],
-                                                                                                             coords[2],
-                                                                                                             occ2, occ2))
+            f.write(
+                "ATOM  {:>5d} {:<4s} {:<4s} {:>4d}    {:>8.3f}{:>8.3f}{:>8.3f}{:>6.2f}{:>6.2f}\n".format(
+                    1,
+                    "C",
+                    "CLU",
+                    i + 1,
+                    coords[0],
+                    coords[1],
+                    coords[2],
+                    occ2,
+                    occ2,
+                )
+            )
             f.write("TER\n")
         f.write("END")
 
@@ -1693,6 +1948,7 @@ def setupmoveTraj(n_moves):
     name = f"move-{n_moves+1}.dcd"
     moveDCD = mdtraj.reporters.DCDReporter(f"move-{n_moves+1}.dcd", 0)
     return moveDCD, name
+
 
 def calculateBFromConc(mu, r, V_L, T):
     """
@@ -1712,6 +1968,7 @@ def calculateBFromConc(mu, r, V_L, T):
     B = (beta * mu) + np.log(calcSphereVol(r) / V_L)
     return B
 
+
 def calcSphereVol(radius):
     """
 
@@ -1723,5 +1980,5 @@ def calcSphereVol(radius):
     -------
 
     """
-    V = 4/3 * np.pi * radius**3
+    V = 4 / 3 * np.pi * radius**3
     return V
