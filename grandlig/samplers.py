@@ -831,30 +831,6 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         return new_positions
 
-    # def randomiseMoleculeConformer(self, resid):
-    #     dihedral_list = list(self.dihedral_distribution.keys())
-    #     #  Normalise probabilities distribution
-    #     probs = np.asarray(list(self.dihedral_distribution.values())) / 100
-    #     probs = probs / sum(probs)
-    #     rand_conf_id = self.rng.choice(np.arange(len(self.dihedral_distribution.keys())),
-    #                                    p=probs)  # Get the position in the conformation keys list of th
-    #     rand_conf = dihedral_list[rand_conf_id]  # Got the actual dihedrals to insert
-    #     # print(self.n_moves, rand_conf_id, rand_conf)
-    #     new_positions = copy.deepcopy(self.positions)
-    #     # Now need to set the positions of the RDKit molecule to be the same as the inserted molecule
-    #     for i, index in enumerate(self.mol_atom_ids[resid]):
-    #         self.rdkit_conf.SetAtomPosition(i, self.positions[index]._value * 10)
-    #     for i, dihedral in enumerate(self.dihedrals):  # Set the dihedrals
-    #         Chem.rdMolTransforms.SetDihedralDeg(self.rdkit_conf, *dihedral, float(rand_conf[i]))
-    #
-    #     # Get the new positions back out of RDKit
-    #     for i, index in enumerate(self.mol_atom_ids[resid]):
-    #         new_rd_positions = self.rdkit_conf.GetAtomPosition(i)
-    #         new_rd_xyz = np.asarray(
-    #             [float(new_rd_positions.x), float(new_rd_positions.y), float(new_rd_positions.z)]) / 10
-    #         new_positions[index] = new_rd_xyz * unit.nanometers
-    #
-    #     return new_positions
 
     def randomiseAtomVelocities(self, atom_ids):
         """
@@ -1770,7 +1746,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
         self.logger.info("NonequilibriumGCMCSphereSampler object initialised")
 
-        self.spaceWorks = False
+        self.spaceWorks = False  # Dont record works in a spatially resolute manner
         if spaceWorks:
             self.spaceWorks = True
             print("Recording 3D positions of works")
@@ -1780,9 +1756,7 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                 [],
             ]  # [protein CAs, COG_from_move, work]
             self.CA_ids = []
-            for atom_id, atom in enumerate(self.topology.atoms()):
-                if atom.name == "CA":
-                    self.CA_ids.append(atom_id)
+            self.CA_ids.extend(atom_id for atom_id, atom in enumerate(self.topology.atoms()) if atom.name == "CA")
 
     def move(self, context, n=1, force=None):
         """
