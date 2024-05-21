@@ -3,7 +3,7 @@
 """
 Description
 -----------
-This module is written to execute GCMC moves with molecules in OpenMM, via 
+This module is written to execute GCNCMC moves with molecules in OpenMM, via 
 a series of Sampler objects.
 
 Will Poole
@@ -27,7 +27,7 @@ import pickle
 class BaseGrandCanonicalMonteCarloSampler(object):
     """
     Base class for carrying out GCMC moves in OpenMM.
-    All other Sampler objects are derived from this
+    All other Sampler objects are derived from this and handles generic bookkeeping
     """
 
     def __init__(
@@ -57,10 +57,10 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         resname : str
             Resname of the molecule of interest. Default = "HOH"
         ghostFile : str
-            Name of a file to write out the residue IDs of ghost molecules. 
-            This is useful if you want to visualise the sampling, 
+            Name of a file to write out the residue IDs of ghost molecules.
+            This is useful if you want to visualise the sampling,
             as you can then remove these molecules
-            from view, as they are non-interacting. 
+            from view, as they are non-interacting.
             Default is 'gcmc-ghost-wats.txt'
         log : str
             Log file to write out
@@ -147,28 +147,21 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         # Set GCMC-specific variables
         self.N = 0  # Initialise N as zero
-        # self.Ns = []  # Store all observed values of N
-        # self.n_moves = 0
-        # self.n_accepted = 0
-        # self.acceptance_probabilities = []  # Store acceptance probabilities
-        # self.insert_acceptance_probabilities = []
-        # self.delete_acceptance_probabilities = []
-        # self.n_inserts = 0
-        # self.n_deletes = 0
-        # self.n_accepted_inserts = 0
-        # self.n_accepted_deletes = 0
 
         # Get residue IDs & assign statuses to each
         self.mol_resids = self.getMoleculeResids(resname)  # All molecules
-        # Assign each molecule a status: 0: ghost molecule, 1: GCMC molecule, 2: molecule not under GCMC tracking (
-        # out of sphere)
+
+        # Assign each molecule a status: 0: ghost molecule, 1: GCMC molecule, 2: molecule not under GCMC tracking (out of sphere)
         self.mol_status = {
             x: 1 for x in self.mol_resids
-        }  # Initially assign all to 1
+        }  # Initially assign all to 1 (GCMC Molecules)
+
         self.gcmc_resids = []  # GCMC molecules
 
-        # Need to customised forces to handle softcore steric interactions and exceptions
-        self.mol_params = []  # Stores nonbonded parameters for each atom
+        # Need to customise forces to handle softcore steric interactions and exceptions
+        self.mol_params = (
+            []
+        )  # List to store nonbonded parameters for each atom in the GCNCMC molecules
         self.custom_nb_force = None
         self.vdw_except_force = None
         self.ele_except_force = None
@@ -178,15 +171,15 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.mol_ele_excepts = (
             {}
         )  # Store the electrostatic exception IDs for each molecule
+
         self.move_lambdas = (
             None,
             None,
         )  # Empty list to track the move lambdas
-        # Check get atom IDs for each molecule
-        self.mol_atom_ids = {}  # Store atom IDs for each molecule
-        self.mol_heavy_ids = {}  # Store heavy atom IDs for each molecule
-        self.getMoleculeAtoms()
 
+        # Check get atom IDs for each molecule
+        self.mol_atom_ids, self.mol_heavy_ids = self.getMoleculeAtoms()
+        
         # Create the custom forces, if requested (default)
         if createCustomForces:
             # Get molecule parameters
@@ -262,14 +255,6 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         else:
             self.restart = None
 
-        # # print(f'Dihedrals in the BaseSampler : {dihedrals}')
-        # self.dihedrals = dihedrals
-        # # Define dihedral sampling stuff - Maybe expand this across all samplers in future but only need it here for now
-        # if len(dihedrals) > 0:  # If some dihedrals have actually been defined
-        #     # print(self.dihedrals)
-        #     self.dihedral_distribution = distribution
-        #     self.rdkit_conf = conf
-
         self.logger.info(
             "BaseGrandCanonicalMonteCarloSampler object initialised"
         )
@@ -279,7 +264,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
     ):
         """
         Set the custom force objects to forces created elsewhere - if createCustomForces was set to False, this function
-        must be run before the Simulation object is created
+        must be run before the Simulation object is created. This is more aimed for use in specialised cases such as running mixtures or lig and water moves.
 
         Parameters
         ----------
@@ -335,17 +320,6 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             elif type(self.tracked_variables[key]) == int:
                 self.tracked_variables[key] = 0
 
-        # self.n_accepted = 0
-        # self.n_moves = 0
-        # self.Ns = []
-        # self.acceptance_probabilities = []
-        # self.insert_acceptance_probabilities = []
-        # self.delete_acceptance_probabilities = []
-        # self.n_inserts = 0
-        # self.n_deletes = 0
-        # self.n_accepted_inserts = 0
-        # self.n_accepted_deletes = 0
-
         return None
 
     def getMoleculeParameters(self, resname):
@@ -382,7 +356,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
     def getMoleculeResids(self, resname):
         """
-        Get the residue IDs of all molecules in the system
+        Get the residue IDs of all molecules with a given resname in the system
 
         Parameters
         ----------
@@ -519,6 +493,8 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         # Get the elements for all atoms in the system
         elements = [atom.element.name for atom in self.topology.atoms()]
 
+        mol_atom_ids = {}
+        mol_heavy_ids = {}
         # For each residue, get the IDs of all atoms, and also separately those of heavy atoms
         for resid, residue in enumerate(self.topology.residues()):
             all_atoms = []
@@ -536,10 +512,10 @@ class BaseGrandCanonicalMonteCarloSampler(object):
                     heavy_atoms.append(atom.index)
 
             # Update the dictionaries for this residue
-            self.mol_atom_ids[resid] = all_atoms
-            self.mol_heavy_ids[resid] = heavy_atoms
+            mol_atom_ids[resid] = all_atoms
+            mol_heavy_ids[resid] = heavy_atoms
 
-        return None
+        return mol_atom_ids, mol_heavy_ids
 
     def deleteGhostMolecules(self, ghostResids=None, ghostFile=None):
         """

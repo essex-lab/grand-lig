@@ -1,8 +1,8 @@
 *pyc
 build
 dist
-grand.egg-info
-grand/tests/output/*
+grandlig.egg-info
+grandlig/tests/output/
 .cache
 .coverage
 .eggs
@@ -10,4 +10,4 @@ grand/tests/output/*
 .DS_Store
 docs/Makefile
 docs/make.bat
-grandlig.egg-info/PKG-INFO
+settings.json

@@ -11,9 +11,14 @@ Ollie Melling
 __version__ = "1.0.0.dev2"
 
 from grandlig import samplers, utils, potential, tests
-print("Hi. This is the current implementation of GCMC/GCNCMC for small \
+
+print(
+    "Hi. This is the current implementation of GCMC/GCNCMC for small \
        molecule ligands. While this will work"
-      "with water molecules as well, the original implementation can be \
-              found at: https://github.com/essex-lab/grand")
+    "with water molecules as well, the original implementation can be \
+              found at: https://github.com/essex-lab/grand"
+)
+
+print("If you are only interested in water simulations, we recommend using the original implementation while this module ungoes more extensive testing.")
 
 print("Astex Branch!!!")
