@@ -2,7 +2,7 @@
 build
 dist
 grandlig.egg-info
-grandlig/tests/output/
+grandlig/tests/output/*
 .cache
 .coverage
 .eggs

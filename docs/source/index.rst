@@ -1,4 +1,4 @@
-Welcome to grand's documentation!
+Welcome to grandlig's documentation!
 =================================
 
 .. toctree::
@@ -6,7 +6,7 @@ Welcome to grand's documentation!
    :caption: Contents:
 
    intro
-   grand
+   grandlig
    changelog
    examples
 

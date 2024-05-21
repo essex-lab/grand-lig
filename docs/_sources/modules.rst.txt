@@ -1,7 +1,7 @@
-grand
+grandlig
 =====
 
 .. toctree::
    :maxdepth: 4
 
-   grand
+   grandlig

@@ -1,7 +1,7 @@
-grand\.utils module
+grandlig\.utils module
 ===================
 
-.. automodule:: grand.utils
+.. automodule:: grandlig.utils
     :members:
     :undoc-members:
     :show-inheritance:

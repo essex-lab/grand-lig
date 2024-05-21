@@ -499,3 +499,6 @@ class TestUtils(unittest.TestCase):
         assert all([0.0 <= occ <= 1.0 for occ in occupancies])
 
         return None
+
+if __name__ == '__main__':
+    unittest.main()

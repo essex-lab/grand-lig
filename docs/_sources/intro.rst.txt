@@ -1,4 +1,4 @@
-grand : Grand Canonical Sampling of Waters in OpenMM
+grandlig : Grand Canonical Sampling of Small Molecules in OpenMM
 ====================================================
 
 Background

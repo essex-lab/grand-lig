@@ -1,7 +1,7 @@
-grand\.potential module
+grandlig\.potential module
 =======================
 
-.. automodule:: grand.potential
+.. automodule:: grandlig.potential
     :members:
     :undoc-members:
     :show-inheritance:

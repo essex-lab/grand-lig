@@ -1,21 +1,24 @@
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
+<html class="writer-html5" lang="en" data-content_root="./">
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>grand &mdash; grand 1.0.2-dev-lig documentation</title>
-      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+  <title>grandlig &mdash; grandlig 1.0.2-dev-lig documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=fd3f3429" />
+
+  
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/doctools.js"></script>
-        <script src="_static/sphinx_highlight.js"></script>
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=f283550b"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" /> 
@@ -30,7 +33,7 @@
           
           
           <a href="index.html" class="icon icon-home">
-            grand
+            grandlig
           </a>
               <div class="version">
                 1.0.2
@@ -45,8 +48,7 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="intro.html">grand : Grand Canonical Sampling of Waters in OpenMM</a></li>
-<li class="toctree-l1"><a class="reference internal" href="grand.html">grand package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html">grandlig : Grand Canonical Sampling of Small Molecules in OpenMM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">Change Log</a></li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
 </ul>
@@ -57,7 +59,7 @@
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">grand</a>
+          <a href="index.html">grandlig</a>
       </nav>
 
       <div class="wy-nav-content">
@@ -65,7 +67,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">grand</li>
+      <li class="breadcrumb-item active">grandlig</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/modules.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -75,67 +77,9 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="grand">
-<h1>grand<a class="headerlink" href="#grand" title="Permalink to this heading"></a></h1>
+  <section id="grandlig">
+<h1>grandlig<a class="headerlink" href="#grandlig" title="Link to this heading"></a></h1>
 <div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="grand.html">grand package</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="grand.html#submodules">Submodules</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="grand.potential.html">grand.potential module</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="grand.potential.html#description">Description</a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.potential.html#grand.potential.calc_avg_volume"><code class="docutils literal notranslate"><span class="pre">calc_avg_volume()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.potential.html#grand.potential.calc_mu_ex"><code class="docutils literal notranslate"><span class="pre">calc_mu_ex()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.potential.html#grand.potential.calc_mu_ex_independant"><code class="docutils literal notranslate"><span class="pre">calc_mu_ex_independant()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.potential.html#grand.potential.get_lambda_values"><code class="docutils literal notranslate"><span class="pre">get_lambda_values()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="grand.samplers.html">grand.samplers module</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="grand.samplers.html#description">Description</a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.samplers.html#grand.samplers.BaseGrandCanonicalMonteCarloSampler"><code class="docutils literal notranslate"><span class="pre">BaseGrandCanonicalMonteCarloSampler</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.samplers.html#grand.samplers.GCMCCylinderSampler"><code class="docutils literal notranslate"><span class="pre">GCMCCylinderSampler</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.samplers.html#grand.samplers.GCMCSphereSampler"><code class="docutils literal notranslate"><span class="pre">GCMCSphereSampler</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.samplers.html#grand.samplers.GCMCSystemSampler"><code class="docutils literal notranslate"><span class="pre">GCMCSystemSampler</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.samplers.html#grand.samplers.NonequilibriumGCMCCylinderSampler"><code class="docutils literal notranslate"><span class="pre">NonequilibriumGCMCCylinderSampler</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.samplers.html#grand.samplers.NonequilibriumGCMCSphereSampler"><code class="docutils literal notranslate"><span class="pre">NonequilibriumGCMCSphereSampler</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.samplers.html#grand.samplers.NonequilibriumGCMCSystemSampler"><code class="docutils literal notranslate"><span class="pre">NonequilibriumGCMCSystemSampler</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.samplers.html#grand.samplers.StandardGCMCCylinderSampler"><code class="docutils literal notranslate"><span class="pre">StandardGCMCCylinderSampler</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.samplers.html#grand.samplers.StandardGCMCSphereSampler"><code class="docutils literal notranslate"><span class="pre">StandardGCMCSphereSampler</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.samplers.html#grand.samplers.StandardGCMCSystemSampler"><code class="docutils literal notranslate"><span class="pre">StandardGCMCSystemSampler</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="grand.utils.html">grand.utils module</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#description">Description</a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.PDBRestartReporter"><code class="docutils literal notranslate"><span class="pre">PDBRestartReporter</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.add_ghosts"><code class="docutils literal notranslate"><span class="pre">add_ghosts()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.align_traj"><code class="docutils literal notranslate"><span class="pre">align_traj()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.calcSphereVol"><code class="docutils literal notranslate"><span class="pre">calcSphereVol()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.calculateBFromConc"><code class="docutils literal notranslate"><span class="pre">calculateBFromConc()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.cluster_molecules"><code class="docutils literal notranslate"><span class="pre">cluster_molecules()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.cluster_waters"><code class="docutils literal notranslate"><span class="pre">cluster_waters()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.convert_conc_to_volume"><code class="docutils literal notranslate"><span class="pre">convert_conc_to_volume()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.create_custom_forces"><code class="docutils literal notranslate"><span class="pre">create_custom_forces()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.create_ligand_xml"><code class="docutils literal notranslate"><span class="pre">create_ligand_xml()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.get_data_file"><code class="docutils literal notranslate"><span class="pre">get_data_file()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.get_dihedral_dist_for_FF"><code class="docutils literal notranslate"><span class="pre">get_dihedral_dist_for_FF()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.get_dihedral_distribution"><code class="docutils literal notranslate"><span class="pre">get_dihedral_distribution()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.get_lambda_values"><code class="docutils literal notranslate"><span class="pre">get_lambda_values()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.random_rotation_matrix"><code class="docutils literal notranslate"><span class="pre">random_rotation_matrix()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.read_ghosts_from_file"><code class="docutils literal notranslate"><span class="pre">read_ghosts_from_file()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.read_prepi"><code class="docutils literal notranslate"><span class="pre">read_prepi()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.recentre_traj"><code class="docutils literal notranslate"><span class="pre">recentre_traj()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.remove_ghosts"><code class="docutils literal notranslate"><span class="pre">remove_ghosts()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.setupmoveTraj"><code class="docutils literal notranslate"><span class="pre">setupmoveTraj()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.shift_ghost_waters"><code class="docutils literal notranslate"><span class="pre">shift_ghost_waters()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.wrap_waters"><code class="docutils literal notranslate"><span class="pre">wrap_waters()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.write_conect"><code class="docutils literal notranslate"><span class="pre">write_conect()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="grand.utils.html#grand.utils.write_sphere_traj"><code class="docutils literal notranslate"><span class="pre">write_sphere_traj()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
 </div>
 </section>
 

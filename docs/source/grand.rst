@@ -1,4 +1,4 @@
-grand package
+grandlig package
 =============
 
 Submodules
@@ -6,7 +6,7 @@ Submodules
 
 .. toctree::
 
-   grand.potential
-   grand.samplers
-   grand.utils
+   grandlig.potential
+   grandlig.samplers
+   grandlig.utils
 

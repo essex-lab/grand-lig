@@ -1,26 +1,27 @@
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
+<html class="writer-html5" lang="en" data-content_root="./">
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>grand.utils module &mdash; grand 1.0.2-dev-lig documentation</title>
-      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+  <title>grandlig.utils module &mdash; grandlig 1.0.2-dev-lig documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=fd3f3429" />
+
+  
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/doctools.js"></script>
-        <script src="_static/sphinx_highlight.js"></script>
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=f283550b"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Change Log" href="changelog.html" />
-    <link rel="prev" title="grand.samplers module" href="grand.samplers.html" /> 
+    <link rel="search" title="Search" href="search.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -32,7 +33,7 @@
           
           
           <a href="index.html" class="icon icon-home">
-            grand
+            grandlig
           </a>
               <div class="version">
                 1.0.2
@@ -46,44 +47,8 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
-<ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="intro.html">grand : Grand Canonical Sampling of Waters in OpenMM</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="grand.html">grand package</a><ul class="current">
-<li class="toctree-l2 current"><a class="reference internal" href="grand.html#submodules">Submodules</a><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="grand.potential.html">grand.potential module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="grand.samplers.html">grand.samplers module</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">grand.utils module</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#description">Description</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.PDBRestartReporter"><code class="docutils literal notranslate"><span class="pre">PDBRestartReporter</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.add_ghosts"><code class="docutils literal notranslate"><span class="pre">add_ghosts()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.align_traj"><code class="docutils literal notranslate"><span class="pre">align_traj()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.calcSphereVol"><code class="docutils literal notranslate"><span class="pre">calcSphereVol()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.calculateBFromConc"><code class="docutils literal notranslate"><span class="pre">calculateBFromConc()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.cluster_molecules"><code class="docutils literal notranslate"><span class="pre">cluster_molecules()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.cluster_waters"><code class="docutils literal notranslate"><span class="pre">cluster_waters()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.convert_conc_to_volume"><code class="docutils literal notranslate"><span class="pre">convert_conc_to_volume()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.create_custom_forces"><code class="docutils literal notranslate"><span class="pre">create_custom_forces()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.create_ligand_xml"><code class="docutils literal notranslate"><span class="pre">create_ligand_xml()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.get_data_file"><code class="docutils literal notranslate"><span class="pre">get_data_file()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.get_dihedral_dist_for_FF"><code class="docutils literal notranslate"><span class="pre">get_dihedral_dist_for_FF()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.get_dihedral_distribution"><code class="docutils literal notranslate"><span class="pre">get_dihedral_distribution()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.get_lambda_values"><code class="docutils literal notranslate"><span class="pre">get_lambda_values()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.random_rotation_matrix"><code class="docutils literal notranslate"><span class="pre">random_rotation_matrix()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.read_ghosts_from_file"><code class="docutils literal notranslate"><span class="pre">read_ghosts_from_file()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.read_prepi"><code class="docutils literal notranslate"><span class="pre">read_prepi()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.recentre_traj"><code class="docutils literal notranslate"><span class="pre">recentre_traj()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.remove_ghosts"><code class="docutils literal notranslate"><span class="pre">remove_ghosts()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.setupmoveTraj"><code class="docutils literal notranslate"><span class="pre">setupmoveTraj()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.shift_ghost_waters"><code class="docutils literal notranslate"><span class="pre">shift_ghost_waters()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.wrap_waters"><code class="docutils literal notranslate"><span class="pre">wrap_waters()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.write_conect"><code class="docutils literal notranslate"><span class="pre">write_conect()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#grand.utils.write_sphere_traj"><code class="docutils literal notranslate"><span class="pre">write_sphere_traj()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-</li>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="intro.html">grandlig : Grand Canonical Sampling of Small Molecules in OpenMM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">Change Log</a></li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
 </ul>
@@ -94,7 +59,7 @@
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">grand</a>
+          <a href="index.html">grandlig</a>
       </nav>
 
       <div class="wy-nav-content">
@@ -102,8 +67,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
-          <li class="breadcrumb-item"><a href="grand.html">grand package</a></li>
-      <li class="breadcrumb-item active">grand.utils module</li>
+      <li class="breadcrumb-item active">grandlig.utils module</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/grand.utils.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -113,25 +77,46 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="module-grand.utils">
-<span id="grand-utils-module"></span><h1>grand.utils module<a class="headerlink" href="#module-grand.utils" title="Permalink to this heading"></a></h1>
+  <section id="grandlig-utils-module">
+<h1>grandlig.utils module<a class="headerlink" href="#grandlig-utils-module" title="Link to this heading"></a></h1>
 <section id="description">
-<h2>Description<a class="headerlink" href="#description" title="Permalink to this heading"></a></h2>
-<p>Functions to provide support for grand canonical sampling in OpenMM.
+<span id="module-grandlig.utils"></span><h2>Description<a class="headerlink" href="#description" title="Link to this heading"></a></h2>
+<p>Functions to provide support for grandlig canonical sampling in OpenMM.
 These functions are not used during the simulation, but will be relevant in setting up
 simulations and processing results</p>
 <p>Will Poole
 Marley Samways
 Ollie Melling</p>
 </section>
+<dl class="py function">
+<dt class="sig sig-object py" id="grandlig.utils.LinearAlchemicalFunction">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">LinearAlchemicalFunction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lambda_in</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.LinearAlchemicalFunction" title="Link to this definition"></a></dt>
+<dd><p>Evaluates the alchemical function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>start</strong> (<em>float</em>) – The lambda value at and below which the function will have a value of 0.</p></li>
+<li><p><strong>end</strong> (<em>float</em>) – The lambda value at and above which the function will have a value of 1.</p></li>
+<li><p><strong>lambda_in</strong> (<em>float</em>) – The value at which to evaluate the LinearAlchemicalFunction.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>y</strong> – The evaluated LinearAlchemicalFunction.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py class">
-<dt class="sig sig-object py" id="grand.utils.PDBRestartReporter">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">PDBRestartReporter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.PDBRestartReporter" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.PDBRestartReporter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">PDBRestartReporter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.PDBRestartReporter" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p><em>Very</em> basic class to write PDB files as a basic form of restarter</p>
 <dl class="py method">
-<dt class="sig sig-object py" id="grand.utils.PDBRestartReporter.report">
-<span class="sig-name descname"><span class="pre">report</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">state</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.PDBRestartReporter.report" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.PDBRestartReporter.report">
+<span class="sig-name descname"><span class="pre">report</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">state</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.PDBRestartReporter.report" title="Link to this definition"></a></dt>
 <dd><p>Write out a PDB of the current state</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -146,8 +131,8 @@ Ollie Melling</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.add_ghosts">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">add_ghosts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">molfile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'tip3p.pdb'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pdb</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-extra-wats.pdb'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.add_ghosts" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.add_ghosts">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">add_ghosts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">molfile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'tip3p.pdb'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pdb</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-extra-wats.pdb'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.add_ghosts" title="Link to this definition"></a></dt>
 <dd><p>Function to add molecules to a topology, as extras for GCMC
 This is to avoid changing the number of particles throughout a simulation
 Instead, we can just switch between ‘ghost’ and ‘real’ molecules…</p>
@@ -176,8 +161,8 @@ molecules added to the system.</p></li>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.align_traj">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">align_traj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trajectory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.align_traj" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.align_traj">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">align_traj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trajectory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.align_traj" title="Link to this definition"></a></dt>
 <dd><p>Align a trajectory to the protein</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -200,33 +185,33 @@ Trajectory will be returned</p></li>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.calcSphereVol">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">calcSphereVol</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">radius</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.calcSphereVol" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.calcSphereVol">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">calcSphereVol</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">radius</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.calcSphereVol" title="Link to this definition"></a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>radius</strong> – </p>
+<dd class="field-odd"><p><strong>radius</strong></p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.calculateBFromConc">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">calculateBFromConc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mu</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">V_L</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.calculateBFromConc" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.calculateBFromConc">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">calculateBFromConc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mu</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">V_L</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.calculateBFromConc" title="Link to this definition"></a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>mu</strong> – </p></li>
-<li><p><strong>r</strong> – </p></li>
-<li><p><strong>V_L</strong> – </p></li>
-<li><p><strong>T</strong> – </p></li>
+<li><p><strong>mu</strong></p></li>
+<li><p><strong>r</strong></p></li>
+<li><p><strong>V_L</strong></p></li>
+<li><p><strong>T</strong></p></li>
 </ul>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.cluster_molecules">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">cluster_molecules</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trajectory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sphere_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'L02'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_atoms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2.4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc_clusts.pdb'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.cluster_molecules" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.cluster_molecules">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">cluster_molecules</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trajectory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sphere_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'L02'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_atoms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2.4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc_clusts.pdb'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.cluster_molecules" title="Link to this definition"></a></dt>
 <dd><p>Carry out a clustering analysis on GCMC molecules with the sphere. Based on the clustering
 code in the ProtoMS software package.</p>
 <p>This function only does COM clusterin at the moment and cant distinguish binding modes.</p>
@@ -247,8 +232,8 @@ code in the ProtoMS software package.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.cluster_waters">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">cluster_waters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trajectory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sphere_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_atoms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sphere_centre</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2.4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc_clusts.pdb'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.cluster_waters" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.cluster_waters">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">cluster_waters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trajectory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sphere_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_atoms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sphere_centre</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2.4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc_clusts.pdb'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.cluster_waters" title="Link to this definition"></a></dt>
 <dd><p>Carry out a clustering analysis on GCMC water molecules with the sphere. Based on the clustering
 code in the ProtoMS software package.</p>
 <p>This function currently assumes that the system has been aligned and centred on the GCMC sphere (approximately).</p>
@@ -268,8 +253,8 @@ code in the ProtoMS software package.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.convert_conc_to_volume">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">convert_conc_to_volume</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">conc</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.convert_conc_to_volume" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.convert_conc_to_volume">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">convert_conc_to_volume</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">conc</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.convert_conc_to_volume" title="Link to this definition"></a></dt>
 <dd><p>Calculate the volume per molecule from a given concentration
 (can be calculated exactly by rearrangement)</p>
 <dl class="field-list simple">
@@ -286,8 +271,26 @@ code in the ProtoMS software package.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.create_custom_forces">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">create_custom_forces</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resnames</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.create_custom_forces" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.convert_vol_to_conc">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">convert_vol_to_conc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">v_per_mol</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.convert_vol_to_conc" title="Link to this definition"></a></dt>
+<dd><p>Calculate the volume per molecule from a given concentration
+(can be calculated exactly by rearrangement)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>v_per_mol</strong> (<em>openmm.unit.Quantity</em>) – Volume per molecule</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>conc</strong> – Concentration of interest</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>openmm.unit.Quantity</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grandlig.utils.create_custom_forces">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">create_custom_forces</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resnames</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.create_custom_forces" title="Link to this definition"></a></dt>
 <dd><p>Modify a system’s forces to handle alchemical decoupling of certain residues</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -312,8 +315,8 @@ atom of that residue</p></li>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.create_ligand_xml">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">create_ligand_xml</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prmtop</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prepi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LIG'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'lig.xml'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.create_ligand_xml" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.create_ligand_xml">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">create_ligand_xml</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prmtop</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prepi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LIG'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'lig.xml'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.create_ligand_xml" title="Link to this definition"></a></dt>
 <dd><p>Takes two AMBER parameter files (.prmtop and .prepi) for a small molecule and uses them to create an XML file
 which can be used to load the force field parameters for the ligand into OpenMM
 This function could do with some tidying at some point…</p>
@@ -330,8 +333,8 @@ This function could do with some tidying at some point…</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.get_data_file">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">get_data_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.get_data_file" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.get_data_file">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">get_data_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.get_data_file" title="Link to this definition"></a></dt>
 <dd><p>Get the absolute path of one of the data files included in the package</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -347,13 +350,13 @@ This function could do with some tidying at some point…</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.get_dihedral_dist_for_FF">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">get_dihedral_dist_for_FF</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ghost_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghost_xml</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rd_conf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dihedrals</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">RD_conformation_dict</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.get_dihedral_dist_for_FF" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.get_dihedral_dist_for_FF">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">get_dihedral_dist_for_FF</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ghost_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghost_xml</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rd_conf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dihedrals</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">RD_conformation_dict</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.get_dihedral_dist_for_FF" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.get_dihedral_distribution">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">get_dihedral_distribution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ghost_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghost_smile</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dihedrals</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.get_dihedral_distribution" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.get_dihedral_distribution">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">get_dihedral_distribution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ghost_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghost_smile</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dihedrals</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.get_dihedral_distribution" title="Link to this definition"></a></dt>
 <dd><dl class="simple">
 <dt>Uses RDKit to generates a dihedral distribution for a given ghost molecule so that the insertions can</dt><dd><p>mimic the gas phase distribution. Function auto detects the rotatable bonds and gives the atoms that
 make up the dihedral, the dihedral angle, and the percentage that conformer should be seen.</p>
@@ -378,11 +381,17 @@ and their populations (values)</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.get_lambda_values">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">get_lambda_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lambda_in</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.get_lambda_values" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.get_lambda_values">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">get_lambda_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lambda_in</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.get_lambda_values" title="Link to this definition"></a></dt>
 <dd><p>Calculate the lambda_sterics and lambda_electrostatics values for a given lambda.
-Electrostatics are decoupled from lambda=1 to 0.5, and sterics are decoupled from
-lambda=0.5 to 0.</p>
+For a deletion move:</p>
+<blockquote>
+<div><p>Electrostatics are decoupled from lambda=1 to 0.75, and sterics are decoupled from lambda=0.75 to 0.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>For an Insertion move:</dt><dd><p>Sterics are coupled from lambda=0 to 0.75. Electrostatics are coupled from 0.75 to 1.</p>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>lambda_in</strong> (<em>float</em>) – Input lambda value</p>
@@ -398,8 +407,8 @@ lambda=0.5 to 0.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.random_rotation_matrix">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">random_rotation_matrix</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.random_rotation_matrix" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.random_rotation_matrix">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">random_rotation_matrix</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.random_rotation_matrix" title="Link to this definition"></a></dt>
 <dd><p>Generate a random axis and angle for rotation of the molecules coordinates (using the
 method used for this in the ProtoMS source code (www.protoms.org), and then return
 a rotation matrix produced from these</p>
@@ -414,8 +423,8 @@ a rotation matrix produced from these</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.read_ghosts_from_file">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">read_ghosts_from_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ghost_file</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.read_ghosts_from_file" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.read_ghosts_from_file">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">read_ghosts_from_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ghost_file</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.read_ghosts_from_file" title="Link to this definition"></a></dt>
 <dd><p>Read in the ghost molecules residue IDs from each from in the ghost file</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -431,8 +440,8 @@ a rotation matrix produced from these</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.read_prepi">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">read_prepi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.read_prepi" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.read_prepi">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">read_prepi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.read_prepi" title="Link to this definition"></a></dt>
 <dd><p>Function to read in some atomic data and bonding information from an AMBER prepi file</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -449,8 +458,8 @@ a rotation matrix produced from these</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.recentre_traj">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">recentre_traj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trajectory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'CA'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'ALA'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.recentre_traj" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.recentre_traj">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">recentre_traj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trajectory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'CA'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'ALA'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.recentre_traj" title="Link to this definition"></a></dt>
 <dd><p>Recentre a trajectory based on a specific protein residue. Assumes that the
 protein has not been broken by periodic boundaries.
 Would be best to do this step before aligning a trajectory</p>
@@ -479,8 +488,38 @@ Trajectory will be returned</p></li>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.remove_ghosts">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">remove_ghosts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghosts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pdb</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-removed-ghosts.pdb'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.remove_ghosts" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.recentre_traj_new">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">recentre_traj_new</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trajectory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.recentre_traj_new" title="Link to this definition"></a></dt>
+<dd><p>Recentre a trajectory based on a specific protein residue. Assumes that the
+protein has not been broken by periodic boundaries.
+Would be best to do this step before aligning a trajectory</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>topology</strong> (<em>str</em>) – Name of the topology/connectivity file (e.g. PDB, GRO, etc.)</p></li>
+<li><p><strong>trajectory</strong> (<em>str</em>) – Name of the trajectory file (e.g. DCD, XTC, etc.)</p></li>
+<li><p><strong>t</strong> (<em>mdtraj.Trajectory</em>) – Trajectory object, if already loaded</p></li>
+<li><p><strong>resname</strong> (<em>str</em>) – Name of the atom to centre the trajectorname.lower(</p></li>
+<li><p><strong>resname</strong> – Name of the protein residue to centre the trajectory on. Should be a
+binding site residue</p></li>
+<li><p><strong>resid</strong> (<em>int</em>) – ID of the protein residue to centre the trajectory. Should be a binding
+site residue</p></li>
+<li><p><strong>output</strong> (<em>str</em>) – Name of the file to which the new trajectory is written. If None, then a
+Trajectory will be returned</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>t</strong> – Will return a trajectory object, if no output file name is given</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>mdtraj.Trajectory</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grandlig.utils.remove_ghosts">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">remove_ghosts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ghosts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pdb</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc-removed-ghosts.pdb'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.remove_ghosts" title="Link to this definition"></a></dt>
 <dd><p>Function to remove ghost molecules from a topology, after a simulation.
 This is so that a structure can then be used to run further analysis without ghosts
 disturbing the system.</p>
@@ -505,13 +544,13 @@ This will be useful for visualising the results obtained.</p></li>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.setupmoveTraj">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">setupmoveTraj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_moves</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.setupmoveTraj" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.setupmoveTraj">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">setupmoveTraj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_moves</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.setupmoveTraj" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.shift_ghost_waters">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">shift_ghost_waters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ghost_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trajectory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.shift_ghost_waters" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.shift_ghost_waters">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">shift_ghost_waters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ghost_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trajectory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.shift_ghost_waters" title="Link to this definition"></a></dt>
 <dd><p>Translate all ghost waters in a trajectory out of the simulation box, to make
 visualisation clearer</p>
 <dl class="field-list simple">
@@ -535,8 +574,8 @@ Trajectory will be returned</p></li>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.wrap_waters">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">wrap_waters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trajectory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.wrap_waters" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.wrap_waters">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">wrap_waters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trajectory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.wrap_waters" title="Link to this definition"></a></dt>
 <dd><p>Wrap water molecules if the coordinates haven’t been wrapped by the DCDReporter</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -558,8 +597,8 @@ Trajectory will be returned</p></li>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.write_conect">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">write_conect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pdb</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prepi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.write_conect" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.write_conect">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">write_conect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pdb</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prepi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.write_conect" title="Link to this definition"></a></dt>
 <dd><p>Take in a PDB and write out a new one, including CONECT lines for a specified residue, given a .prepi file
 Should make it easy to run this on more residues at a time - though for now it can just be run separately per residue
 but this isn’t ideal…</p>
@@ -576,8 +615,8 @@ but this isn’t ideal…</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="grand.utils.write_sphere_traj">
-<span class="sig-prename descclassname"><span class="pre">grand.utils.</span></span><span class="sig-name descname"><span class="pre">write_sphere_traj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_atoms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trajectory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sphere_centre</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc_sphere.pdb'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_frame</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grand.utils.write_sphere_traj" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="grandlig.utils.write_sphere_traj">
+<span class="sig-prename descclassname"><span class="pre">grandlig.utils.</span></span><span class="sig-name descname"><span class="pre">write_sphere_traj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_atoms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trajectory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sphere_centre</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gcmc_sphere.pdb'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_frame</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#grandlig.utils.write_sphere_traj" title="Link to this definition"></a></dt>
 <dd><p>Write out a multi-frame PDB file containing the centre of the GCMC sphere</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -601,10 +640,7 @@ Sometimes necessary when visualising a trajectory loaded onto a PDB</p></li>
 
            </div>
           </div>
-          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="grand.samplers.html" class="btn btn-neutral float-left" title="grand.samplers module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="changelog.html" class="btn btn-neutral float-right" title="Change Log" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
-    </div>
+          <footer>
 
   <hr/>
 

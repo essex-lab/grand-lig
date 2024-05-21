@@ -1,7 +1,7 @@
-grand\.samplers module
+grandlig\.samplers module
 =======================
 
-.. automodule:: grand.samplers
+.. automodule:: grandlig.samplers
     :members:
     :special-members: __init__
     :undoc-members:
