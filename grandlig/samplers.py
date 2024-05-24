@@ -138,6 +138,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             "n_accepted_inserts": 0,
             "n_accepted_deletes": 0,
             "Ns": [],
+            "acc_rate": [],
             "acceptance_probabilities": [],
             "insert_acceptance_probabilities": [],
             "delete_acceptance_probabilities": [],
@@ -671,6 +672,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             )
         else:
             acc_rate = np.nan
+        self.tracked_variables["acc_rate"].append(acc_rate)
         mean_N = np.round(np.mean(self.tracked_variables["Ns"]), 4)
         # Print out a line describing the acceptance rate and sampling of N
         msg = (
