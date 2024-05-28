@@ -334,7 +334,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         Returns
         -------
-        wat_params : list
+        mol_params : list
             List of dictionaries containing the charge, sigma and epsilon for each molecule atom
         """
         mol_params = []  # Store parameters in a list
@@ -477,7 +477,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         Parameters
         ----------
         resid : int
-            Residue to update the status for
+            Residue to get the status for
 
         Returns
         -------
@@ -581,6 +581,12 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             Resid of the molecule to be adjusted
         new_lambda : float
             Value to set lambda to for this particle
+        ele : float or None
+            If supplied, set the lambda value for the electrostatics
+        
+        vdw : float or None
+            If supplied, set the lambda value for the vdw interactions
+        
         """
         if ele == None or vdw == None:
             # Get lambda values
@@ -661,6 +667,8 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         ----------
         simulation : openmm.app.Simulation
             Simulation object being used
+        data : bool
+            Write out tracked variabes to a pickle file
         """
         # Calculate rounded acceptance rate and mean N
         if self.tracked_variables["n_moves"] > 0:
@@ -724,7 +732,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.logger.error(error_msg)
         # Raise an Exception
         raise Exception(error_msg)
-        return None
+
 
     def writeGhostMoleculeResids(self):
         """
