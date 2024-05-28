@@ -2,12 +2,6 @@ Metadata-Version: 2.1
 Name: grandlig
 Version: 1.0.0.dev2
 Summary: OpenMM-based implementation of grand canonical Monte Carlo (GCMC) for small molecules.
-Home-page: UNKNOWN
 Author: William G. Poole
 Author-email: wp1g16@soton.ac.uk
-License: UNKNOWN
-Platform: UNKNOWN
 License-File: LICENSE
-
-UNKNOWN
-
