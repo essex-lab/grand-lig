@@ -128,6 +128,12 @@ def add_ghosts(
     # Create a Modeller instance of the system
     modeller = app.Modeller(topology=topology, positions=positions)
 
+    # Get box vectors based on the min positions of whats in the box, not the PDB.
+    # nanometers
+    xmin = min([v[0] for v in modeller.positions])
+    ymin = min([v[1] for v in modeller.positions])
+    zmin = min([v[2] for v in modeller.positions])
+    translation = np.array([xmin, ymin, zmin])
     # Read chain IDs
     chain_ids = []
     for chain in modeller.topology.chains():
@@ -173,7 +179,8 @@ def add_ghosts(
         positions = molecule.positions
 
         # Need to translate the molecule to a random point in the simulation box
-        new_centre = (np.random.rand(3)) * box_size
+        new_centre = np.matmul(np.random.rand(3), box_vectors) + translation
+        
         new_positions = deepcopy(molecule.positions)
         for i in range(len(positions)):
             new_positions[i] = positions[i] + new_centre - cog
@@ -602,10 +609,6 @@ def create_custom_forces(system, topology, resnames):
         atom of that residue
     custom_sterics : openmm.CustomNonbondedForce
         Handles the softcore LJ interactions
-    electrostatc_exceptions : openmm.CustomBondForce
-        Handles the electrostatic exceptions (if relevant, None otherwise)
-    steric_exceptions : openmm.CustomBondForce
-        Handles the steric exceptions (if relevant, None otherwise)
     """
     # Find NonbondedForce - needs to be updated to switch molecules on/off
     for f in range(system.getNumForces()):
@@ -787,8 +790,7 @@ def create_custom_forces(system, topology, resnames):
     system.addForce(custom_sterics)
 
     # return param_dict, custom_sterics, electrostatic_exceptions, steric_exceptions
-    return param_dict, custom_sterics, None, None
-
+    return param_dict, custom_sterics
 
 def LinearAlchemicalFunction(start, end, lambda_in):
     """
@@ -816,7 +818,7 @@ def LinearAlchemicalFunction(start, end, lambda_in):
         return (lambda_in - start) / (end - start)
 
 
-def get_lambda_values(lambda_in):
+def get_lambda_values(lambda_in, vdw_end=0.75):
     """
     Calculate the lambda_sterics and lambda_electrostatics values for a given lambda.
     For a deletion move:
@@ -845,8 +847,8 @@ def get_lambda_values(lambda_in):
         lambda_ele = 0.0
     else:
         # Evaluate the LinearAlchemicalFunction
-        lambda_vdw = LinearAlchemicalFunction(0, 0.75, lambda_in)
-        lambda_ele = LinearAlchemicalFunction(0.75, 1, lambda_in)
+        lambda_vdw = LinearAlchemicalFunction(0, vdw_end, lambda_in)
+        lambda_ele = LinearAlchemicalFunction(vdw_end, 1, lambda_in)
     return lambda_vdw, lambda_ele
 
 
@@ -1442,14 +1444,6 @@ def recentre_traj_new(topology=None, trajectory=None, t=None, output=None):
         Name of the trajectory file (e.g. DCD, XTC, etc.)
     t : mdtraj.Trajectory
         Trajectory object, if already loaded
-    resname : str
-        Name of the atom to centre the trajectorname.lower(
-    resname : str
-        Name of the protein residue to centre the trajectory on. Should be a
-        binding site residue
-    resid : int
-        ID of the protein residue to centre the trajectory. Should be a binding
-        site residue
     output : str
         Name of the file to which the new trajectory is written. If None, then a
         Trajectory will be returned
