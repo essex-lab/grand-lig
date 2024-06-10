@@ -133,7 +133,11 @@ def add_ghosts(
     xmin = min([v[0] for v in modeller.positions])
     ymin = min([v[1] for v in modeller.positions])
     zmin = min([v[2] for v in modeller.positions])
-    translation = np.array([xmin, ymin, zmin])
+    translation = (
+        np.array([xmin._value, ymin._value, zmin._value]) * unit.nanometers
+    )
+
+    # print(translation)
     # Read chain IDs
     chain_ids = []
     for chain in modeller.topology.chains():
@@ -141,18 +145,21 @@ def add_ghosts(
     # print(chain_ids)
 
     # Read in simulation box size
-    box_vectors = topology.getPeriodicBoxVectors()
-    box_size = (
-        np.array(
-            [
-                box_vectors[0][0]._value,
-                box_vectors[1][1]._value,
-                box_vectors[2][2]._value,
-            ]
-        )
-        * unit.nanometer
-    )
+    box_vectors = (
+        np.asarray(topology.getPeriodicBoxVectors()._value) * unit.nanometers
+    )  # nanometers
+    # box_size = (
+    #     np.array(
+    #         [
+    #             box_vectors[0][0]._value,
+    #             box_vectors[1][1]._value,
+    #             box_vectors[2][2]._value,
+    #         ]
+    #     )
+    #     * unit.nanometer
+    # )
 
+    # print(box_vectors)
 
     # Make sure that this molecule file exists
     if not os.path.isfile(molfile):
@@ -179,10 +186,16 @@ def add_ghosts(
         positions = molecule.positions
 
         # Need to translate the molecule to a random point in the simulation box
-        new_centre = np.matmul(np.random.rand(3), box_vectors) + translation
-        
+        new_centre = (
+            np.matmul(np.random.rand(3), box_vectors._value)
+            + translation._value
+        ) * unit.nanometers
+
         new_positions = deepcopy(molecule.positions)
         for i in range(len(positions)):
+            # print(positions[i])
+            # print(new_centre)
+            # print(cog)
             new_positions[i] = positions[i] + new_centre - cog
 
         # Add the molecule to the model and include the resid in a list
@@ -791,6 +804,7 @@ def create_custom_forces(system, topology, resnames):
 
     # return param_dict, custom_sterics, electrostatic_exceptions, steric_exceptions
     return param_dict, custom_sterics
+
 
 def LinearAlchemicalFunction(start, end, lambda_in):
     """
