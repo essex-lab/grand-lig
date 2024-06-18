@@ -19,6 +19,6 @@ print(
               found at: https://github.com/essex-lab/grand"
 )
 
-print("If you are only interested in water simulations, we recommend using the original implementation while this module ungoes more extensive testing.")
+print("If you are only interested in water simulations, we recommend using the original implementation while this module undergoes more extensive testing.")
 
 print("Astex Branch!!!")
