@@ -82,7 +82,7 @@ class BaseGrandCanonicalMonteCarloSampler(object):
                 os.remove(log)
             else:
                 raise Exception(
-                    "File {} already exists, not overwriting...".format(log)
+                    "File {} already exists, not overwriting...\n You can change this behaviour by setting overwrite=True in the sampler object.".format(log)
                 )
 
         self.logger = logging.getLogger(__name__)
@@ -180,16 +180,15 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         # Check get atom IDs for each molecule
         self.mol_atom_ids, self.mol_heavy_ids = self.getMoleculeAtoms()
-        
+
         # Create the custom forces, if requested (default)
         if createCustomForces:
             # Get molecule parameters
             self.mol_params = self.getMoleculeParameters(resname)
             # Create the custom forces
-            (
-                _,
-                self.custom_nb_force
-            ) = utils.create_custom_forces(system, topology, [resname])
+            (_, self.custom_nb_force) = utils.create_custom_forces(
+                system, topology, [resname]
+            )
             # Also need to assign exception IDs to each molecule ID
             self.getMoleculeExceptions()
         else:
@@ -581,14 +580,16 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             Value to set lambda to for this particle
         ele : float or None
             If supplied, set the lambda value for the electrostatics
-        
+
         vdw : float or None
             If supplied, set the lambda value for the vdw interactions
-        
+
         """
         if ele == None or vdw == None:
             # Get lambda values
-            lambda_vdw, lambda_ele = utils.get_lambda_values(new_lambda, vdw_end=0.75)
+            lambda_vdw, lambda_ele = utils.get_lambda_values(
+                new_lambda, vdw_end=0.75
+            )
         else:
             lambda_vdw = vdw
             lambda_ele = ele
@@ -596,7 +597,9 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         # print(lambda_vdw, lambda_ele)
         # # Update per-atom nonbonded parameters first  ELE
         atoms = self.mol_atom_ids[resid]
-        if lambda_ele != self.move_lambdas[1]:  # If the lambda has changed from previous one. 
+        if (
+            lambda_ele != self.move_lambdas[1]
+        ):  # If the lambda has changed from previous one.
             for i, atom_idx in enumerate(atoms):
                 # Obtain original parameters
                 atom_params = self.mol_params[i]
@@ -668,6 +671,11 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         data : bool
             Write out tracked variabes to a pickle file
         """
+        # Get state
+        state = simulation.context.getState(
+            getPositions=True, getVelocities=True
+        )
+
         # Calculate rounded acceptance rate and mean N
         if self.tracked_variables["n_moves"] > 0:
             acc_rate = np.round(
@@ -679,7 +687,28 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         else:
             acc_rate = np.nan
         self.tracked_variables["acc_rate"].append(acc_rate)
+
         mean_N = np.round(np.mean(self.tracked_variables["Ns"]), 4)
+
+        # At the point of reporting lets make sure for certain 100 and 1% that we have the correct N
+
+        n_ghosts = len(self.getMolStatusResids(0))
+        n_tracked = len(self.getMolStatusResids(1))
+        n_untracked = len(self.getMolStatusResids(2))
+
+        # Lets do some testing too
+        total_resis = len(self.mol_resids)
+        if total_resis != (n_ghosts + n_tracked + n_untracked):
+            raise Exception(
+                "Issue!!!! The number of tracked resids is NOT equal to the total number of resids"
+            )
+
+        assert n_untracked + n_tracked == total_resis - n_ghosts
+        assert n_untracked + n_ghosts == total_resis - n_tracked
+        assert n_tracked + n_ghosts == total_resis - n_untracked
+
+        self.N = n_tracked
+
         # Print out a line describing the acceptance rate and sampling of N
         msg = (
             "{} move(s) completed ({} accepted ({:.4f} %)). Current N = {}. Average N = {:.3f}. Inserts = {} ({})."
@@ -730,7 +759,6 @@ class BaseGrandCanonicalMonteCarloSampler(object):
         self.logger.error(error_msg)
         # Raise an Exception
         raise Exception(error_msg)
-
 
     def writeGhostMoleculeResids(self):
         """
@@ -838,7 +866,6 @@ class BaseGrandCanonicalMonteCarloSampler(object):
             new_positions[index] = atom_position + new_centre
 
         return new_positions
-
 
     def randomiseAtomVelocities(self, atom_ids):
         """
@@ -1202,11 +1229,68 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
 
         return None
 
+    def calcDist2Center(self, state, xyz):
+        """
+        Calculate the distance between a point in space and the sphere center
+        Parameters
+        ----------
+        state : openmm.State
+            Current simulation state
+        xyz : openmm.unit.Quantity
+            xyz coordinates to calculate distance to
+        Returns:
+            openmm.unit.Quantity: Distance between the two points
+            bool: is the molecule in the sphere defined by the radius, True of False.
+        """        
+        # Get the sphere centre, if using reference atoms, otherwise this will be fine
+        if self.ref_atoms is not None:
+            self.getSphereCentre()
+
+        box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
+        self.simulation_box = (
+            np.array(
+                [
+                    box_vectors[0, 0]._value,
+                    box_vectors[1, 1]._value,
+                    box_vectors[2, 2]._value,
+                ]
+            )
+            * unit.nanometer
+        )
+
+        # Check if the molecule is within the sphere
+        vector = xyz - self.sphere_centre
+        #  Correct PBCs of this vector - need to make this part cleaner
+        for i in range(3):
+            if vector[i] >= 0.5 * self.simulation_box[i]:
+                vector[i] -= self.simulation_box[i]
+            elif vector[i] <= -0.5 * self.simulation_box[i]:
+                vector[i] += self.simulation_box[i]
+        # Set molecule status as appropriate
+        dist = (
+            np.linalg.norm(vector.in_units_of(unit.angstroms)) * unit.angstrom
+        )
+        if dist <= self.sphere_radius:
+            inSphere = True
+        else:
+            inSphere = False
+
+        return dist, inSphere
+
     def updateGCMCSphere(self, state):
-        """
-        Update the relevant GCMC-sphere related parameters. This also involves monitoring
+        """Update the relevant GCMC-sphere related parameters. This also involves monitoring
         which molecules are in/out of the region
-        """
+
+        Args:
+            state (openmm.State): Current openmm state
+
+        Returns:
+            None: None
+        """        
+
+        # Make sure the positions are definitely updated
+        self.positions = deepcopy(state.getPositions(asNumpy=True))
+
         # Get the sphere centre, if using reference atoms, otherwise this will be fine
         if self.ref_atoms is not None:
             self.getSphereCentre()
@@ -1295,6 +1379,16 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
             * rand_nums
         ) / np.linalg.norm(rand_nums)
 
+        dist_from_center, insphere = self.calcDist2Center(
+            self.simulation.context.getState(
+                getPositions=True, getVelocities=True
+            ),
+            insert_point,
+        )
+        print(
+            f"Inserting Mol: {insert_mol} at: {insert_point}. {dist_from_center} A from the sphere center. In sphere = {insphere}"
+        )
+
         new_positions = self.randomMolecularRotation(insert_mol, insert_point)
 
         # if len(self.dihedrals) > 0:
@@ -1335,6 +1429,95 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
         #             atom_indices.append(atom.index)
 
         return delete_mol
+
+    def report(self, simulation, data=False):
+        """
+        Function to report any useful data
+
+        Parameters
+        ----------
+        simulation : openmm.app.Simulation
+            Simulation object being used
+        data : bool
+            Write out tracked variabes to a pickle file
+        """
+        # Get state
+        state = simulation.context.getState(
+            getPositions=True, getVelocities=True
+        )
+
+        # Update GCMC sphere
+        self.updateGCMCSphere(state)
+
+        # Calculate rounded acceptance rate and mean N
+        if self.tracked_variables["n_moves"] > 0:
+            acc_rate = np.round(
+                self.tracked_variables["n_accepted"]
+                * 100.0
+                / self.tracked_variables["n_moves"],
+                4,
+            )
+        else:
+            acc_rate = np.nan
+        self.tracked_variables["acc_rate"].append(acc_rate)
+
+        mean_N = np.round(np.mean(self.tracked_variables["Ns"]), 4)
+
+        # At the point of reporting lets make sure for certain 100 and 1% that we have the correct N
+
+        n_ghosts = len(self.getMolStatusResids(0))
+        n_tracked = len(self.getMolStatusResids(1))
+        n_untracked = len(self.getMolStatusResids(2))
+
+        # Lets do some testing too
+        total_resis = len(self.mol_resids)
+        if total_resis != (n_ghosts + n_tracked + n_untracked):
+            raise Exception(
+                "Issue!!!! The number of tracked resids is NOT equal to the total number of resids"
+            )
+
+        assert n_untracked + n_tracked == total_resis - n_ghosts
+        assert n_untracked + n_ghosts == total_resis - n_tracked
+        assert n_tracked + n_ghosts == total_resis - n_untracked
+
+        self.N = n_tracked
+
+        # Print out a line describing the acceptance rate and sampling of N
+        msg = (
+            "{} move(s) completed ({} accepted ({:.4f} %)). Current N = {}. Average N = {:.3f}. Inserts = {} ({})."
+            " Deletes = {} ({})".format(
+                self.tracked_variables["n_moves"],
+                self.tracked_variables["n_accepted"],
+                acc_rate,
+                self.N,
+                mean_N,
+                self.tracked_variables["n_inserts"],
+                self.tracked_variables["n_accepted_inserts"],
+                self.tracked_variables["n_deletes"],
+                self.tracked_variables["n_accepted_deletes"],
+            )
+        )
+        print(msg)
+        self.logger.info(msg)
+
+        # Write to the file describing which molecules are ghosts through the trajectory
+        self.writeGhostMoleculeResids()
+
+        # Append to the DCD and update the restart file
+        state = simulation.context.getState(
+            getPositions=True, getVelocities=True, enforcePeriodicBox=True
+        )
+        if self.dcd is not None:
+            self.dcd.report(simulation, state)
+        if self.restart is not None:
+            self.restart.report(simulation, state)
+
+        if data:
+            filehandler = open("ncmc_data.pkl", "wb")
+            pickle.dump(self.tracked_variables, filehandler)
+            filehandler.close()
+
+        return None
 
 
 ########################################################################################################################
@@ -1486,7 +1669,9 @@ class StandardGCMCSphereSampler(GCMCSphereSampler):
                 self.deletionMove()
                 self.tracked_variables["n_deletes"] += 1
             self.tracked_variables["n_moves"] += 1
-            self.tracked_variables["Ns"].append(self.N)  # After the move is fully complete then append
+            self.tracked_variables["Ns"].append(
+                self.N
+            )  # After the move is fully complete then append
 
         return None
 
@@ -1754,7 +1939,9 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
 
         self.logger.info("NonequilibriumGCMCSphereSampler object initialised")
 
-        self.spaceWorks = False  # Dont record works in a spatially resolute manner
+        self.spaceWorks = (
+            False  # Dont record works in a spatially resolute manner
+        )
         if spaceWorks:
             self.spaceWorks = True
             print("Recording 3D positions of works")
@@ -1764,7 +1951,11 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                 [],
             ]  # [protein CAs, COG_from_move, work]
             self.CA_ids = []
-            self.CA_ids.extend(atom_id for atom_id, atom in enumerate(self.topology.atoms()) if atom.name == "CA")
+            self.CA_ids.extend(
+                atom_id
+                for atom_id, atom in enumerate(self.topology.atoms())
+                if atom.name == "CA"
+            )
 
     def move(self, context, n=1, force=None):
         """
@@ -1808,9 +1999,11 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                     self.deletionMove()
                     self.tracked_variables["n_deletes"] += 1
                 self.tracked_variables["n_moves"] += 1
-                
-                self.updateGCMCSphere(state)  # Update GCMC sphere after the move
-                self.tracked_variables["Ns"].append(self.N)  # After the move is fully complete then append
+
+                # self.updateGCMCSphere(state)  # Update GCMC sphere after the move
+                self.tracked_variables["Ns"].append(
+                    self.N
+                )  # After the move is fully complete then append
 
             return None
         else:
@@ -1826,7 +2019,9 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
                 self.deletionMove()
                 self.tracked_variables["n_deletes"] += 1
             self.tracked_variables["n_moves"] += 1
-            self.tracked_variables["Ns"].append(self.N)  # After the move is fully complete then append
+            self.tracked_variables["Ns"].append(
+                self.N
+            )  # After the move is fully complete then append
             return None
 
     def insertionMove(self):
@@ -1902,7 +2097,9 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             getPositions=True, enforcePeriodicBox=True
         )
         self.positions = state.getPositions(asNumpy=True)
-        self.updateGCMCSphere(state)  # Updates the sphere at this point in the move protocol to see if the mol has left the sphere
+        self.updateGCMCSphere(
+            state
+        )  # Updates the sphere at this point in the move protocol to see if the mol has left the sphere
         # It will set it to 2 if its not in the sphere anymore
 
         if self.spaceWorks:
@@ -1964,7 +2161,9 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             state = self.context.getState(
                 getPositions=True, enforcePeriodicBox=True
             )
-            self.setMolStatus(insert_mol, 0)  # rejected so its back to being a ghost
+            self.setMolStatus(
+                insert_mol, 0
+            )  # rejected so its back to being a ghost
             self.updateGCMCSphere(state)
             self.tracked_variables["outcome"].append("rejected_insertion")
         else:
@@ -2061,11 +2260,15 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             getPositions=True, enforcePeriodicBox=True
         )
         self.positions = state.getPositions(asNumpy=True)
-        old_N = self.N  # Should be N before the move
+        old_N = (
+            self.N
+        )  # Should be N before the move because weve not changed anything yet
         self.updateGCMCSphere(state)
 
         # Check which molecules are still in the GCMC sphere
-        gcmc_mols_new = self.getMolStatusResids(1)
+        gcmc_mols_new = self.getMolStatusResids(
+            1
+        )  # Remeber we've left the status of delete mol as 1 so far
 
         # Calculate acceptance probability
         if delete_mol not in gcmc_mols_new:
@@ -2102,7 +2305,10 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
             # if self.record:
             #     os.remove(self.dcd_name)
             # Need to revert the changes made if the move is to be rejected
-            self.adjustSpecificMolecule(delete_mol, 1.0)
+            self.adjustSpecificMolecule(delete_mol, 1.0)  # Turn it back on
+            self.setMolStatus(
+                delete_mol, 1
+            )  # Just make sure that the mol defo set to on
             self.context.setPositions(old_positions)
             self.context.setVelocities(
                 -self.velocities
@@ -2527,7 +2733,9 @@ class StandardGCMCSystemSampler(GCMCSystemSampler):
                 self.deletionMove()
                 self.tracked_variables["n_deletes"] += 1
             self.tracked_variables["n_moves"] += 1
-            self.tracked_variables["Ns"].append(self.N)  # After the move is fully complete then append
+            self.tracked_variables["Ns"].append(
+                self.N
+            )  # After the move is fully complete then append
 
         return None
 
@@ -2815,7 +3023,9 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
                     self.deletionMove()
                     self.tracked_variables["n_deletes"] += 1
                 self.tracked_variables["n_moves"] += 1
-                self.tracked_variables["Ns"].append(self.N)  # After the move is fully complete then append
+                self.tracked_variables["Ns"].append(
+                    self.N
+                )  # After the move is fully complete then append
 
             return None
         else:
@@ -2835,7 +3045,9 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
                 self.deletionMove()
                 self.tracked_variables["n_deletes"] += 1
             self.tracked_variables["n_moves"] += 1
-            self.tracked_variables["Ns"].append(self.N)  # After the move is fully complete then append
+            self.tracked_variables["Ns"].append(
+                self.N
+            )  # After the move is fully complete then append
 
     def insertionMove(self):
         """
@@ -2998,7 +3210,9 @@ class NonequilibriumGCMCSystemSampler(GCMCSystemSampler):
             self.context.setVelocities(
                 -self.velocities
             )  # Reverse velocities on rejection
-            self.setMolStatus(delete_mol, 1)  # Make sure the status of this mol is 1
+            self.setMolStatus(
+                delete_mol, 1
+            )  # Make sure the status of this mol is 1
             self.positions = deepcopy(self.positions)
             self.velocities = -self.velocities
             self.tracked_variables["outcome"].append("rejected_deletion")
