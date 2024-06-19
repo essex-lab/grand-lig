@@ -4,6 +4,11 @@
 [![Documentation Status](https://readthedocs.org/projects/grand/badge/?version=latest)](https://grand.readthedocs.io/en/latest/?badge=latest)
 [![DOI](https://zenodo.org/badge/270705695.svg)](https://zenodo.org/badge/latestdoi/270705695)
 
+# From Molssi
+<!-- [//]: # (Badges)
+[![GitHub Actions Build Status](https://github.com/REPLACE_WITH_OWNER_ACCOUNT/grandlig/workflows/CI/badge.svg)](https://github.com/REPLACE_WITH_OWNER_ACCOUNT/grandlig/actions?query=workflow%3ACI)
+[![codecov](https://codecov.io/gh/REPLACE_WITH_OWNER_ACCOUNT/grandlig/branch/main/graph/badge.svg)](https://codecov.io/gh/REPLACE_WITH_OWNER_ACCOUNT/grandlig/branch/main) -->
+
 # _grandlig_ : Grand Canonical Ligand Sampling in OpenMM
 
 *PRIVATE REPO FOR DEVELOPMENT*
@@ -87,3 +92,15 @@ DOI: https://doi.org/10.1021/acs.jctc.2c00823
 4. G. A. Ross, H. E. Bruce Macdonald, C. Cave-Ayland, A. I. Cabedo
 Martinez, J. W. Essex, _J. Chem. Theory Comput._, 2017, 13, 12, 6373-6381, DOI:
 https://doi.org/10.1021/acs.jctc.7b00738
+
+
+### Copyright
+
+Copyright (c) 2024, Will Poole
+
+
+#### Acknowledgements
+ 
+Project based on the 
+[Computational Molecular Science Python Cookiecutter](https://github.com/molssi/cookiecutter-cms) version 1.1.
+

@@ -10,7 +10,8 @@ Ollie Melling
 
 __version__ = "1.0.0.dev2"
 
-from grandlig import samplers, utils, potential, tests
+from .grandlig import *
+# from ._version import __version__
 
 print(
     "Hi. This is the current implementation of GCMC/GCNCMC for small \
@@ -22,3 +23,8 @@ print(
 print("If you are only interested in water simulations, we recommend using the original implementation while this module undergoes more extensive testing.")
 
 print("Astex Branch!!!")
+
+"""GCMC Sampling"""
+
+# Add imports here
+from .grandlig import *
