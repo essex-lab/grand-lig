@@ -13,6 +13,10 @@ grandlig.egg-info/top_level.txt
 grandlig/data/spce.pdb
 grandlig/data/tip3p.pdb
 grandlig/data/tip4pew.pdb
+grandlig/data/tests/Benzene.pdb
+grandlig/data/tests/Benzene.xml
+grandlig/data/tests/WaterBenzene.pdb
+grandlig/data/tests/WaterBenzeneWithGhosts.pdb
 grandlig/data/tests/benzene.pdb
 grandlig/data/tests/benzene.prepi
 grandlig/data/tests/benzene.prmtop
