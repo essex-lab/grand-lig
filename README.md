@@ -4,16 +4,16 @@
 [![Documentation Status](https://readthedocs.org/projects/grand/badge/?version=latest)](https://grand.readthedocs.io/en/latest/?badge=latest)
 [![DOI](https://zenodo.org/badge/270705695.svg)](https://zenodo.org/badge/latestdoi/270705695)
 
-# _grand_ : Grand Canonical Water Sampling in OpenMM
+# _grandlig_ : Grand Canonical Ligand Sampling in OpenMM
 
 *PRIVATE REPO FOR DEVELOPMENT*
 
 ### Background
 
 This Python module is designed to be run with OpenMM in order to simulate grand
-canonical Monte Carlo (GCMC) insertion and deletion moves of ligand and water molecules.
+canonical Monte Carlo (GCMC) and nonequilibirum candidate Monte Carlo (GCNCMC) insertion and deletion moves of ligand and water molecules.
 This allows the particle number to vary according to a fixed chemical
-potential, and offers enhanced sampling of water molecules in occluded
+potential, and offers enhanced sampling of molecules in occluded
 binding sites.
 The theory behind our work on GCMC sampling can be found in the References
 section below.
@@ -42,7 +42,7 @@ pip install lxml
 Many of grand's dependencies (openmm, mdtraj, pymbar, parmed) are also dependencies of 
 openmmtools, and will be installed alongside openmmtools.
 
-Alternatively, _grand_ and its dependencies can be installed via conda:
+Alternatively, _grandlig_ and its dependencies can be installed via conda:
 ```commandline
 conda install -c omnia -c anaconda -c conda-forge -c essexlab grand
 ```
