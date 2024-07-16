@@ -10,7 +10,7 @@ Ollie Melling
 
 __version__ = "1.0.0.dev2"
 
-from .grandlig import *
+#from .grandlig import *
 # from ._version import __version__
 
 print(
@@ -27,4 +27,4 @@ print("Astex Branch!!!")
 """GCMC Sampling"""
 
 # Add imports here
-from .grandlig import utils, samplers, *
+from . import *
