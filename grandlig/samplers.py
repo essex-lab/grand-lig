@@ -2574,7 +2574,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
 
         # Select a point to insert the molecule (based on centre of heavy atoms)
         insert_point = np.random.rand(3) * self.simulation_box
-        print(insert_point)
+        #print(insert_point)
 
         # Randomly rotate the molecule, and shift to the insertion point
         new_positions = self.randomMolecularRotation(insert_mol, insert_point)
