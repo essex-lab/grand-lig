@@ -1379,15 +1379,15 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
             * rand_nums
         ) / np.linalg.norm(rand_nums)
 
-        dist_from_center, insphere = self.calcDist2Center(
-            self.simulation.context.getState(
-                getPositions=True, getVelocities=True
-            ),
-            insert_point,
-        )
-        print(
-            f"Inserting Mol: {insert_mol} at: {insert_point}. {dist_from_center} A from the sphere center. In sphere = {insphere}"
-        )
+        # dist_from_center, insphere = self.calcDist2Center(
+        #     self.simulation.context.getState(
+        #         getPositions=True, getVelocities=True
+        #     ),
+        #     insert_point,
+        # )
+        # print(
+        #     f"Inserting Mol: {insert_mol} at: {insert_point}. {dist_from_center} A from the sphere center. In sphere = {insphere}"
+        # )
 
         new_positions = self.randomMolecularRotation(insert_mol, insert_point)
 
