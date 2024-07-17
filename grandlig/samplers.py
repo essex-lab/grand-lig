@@ -1379,15 +1379,15 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
             * rand_nums
         ) / np.linalg.norm(rand_nums)
 
-        dist_from_center, insphere = self.calcDist2Center(
-            self.simulation.context.getState(
-                getPositions=True, getVelocities=True
-            ),
-            insert_point,
-        )
-        print(
-            f"Inserting Mol: {insert_mol} at: {insert_point}. {dist_from_center} A from the sphere center. In sphere = {insphere}"
-        )
+        # dist_from_center, insphere = self.calcDist2Center(
+        #     self.simulation.context.getState(
+        #         getPositions=True, getVelocities=True
+        #     ),
+        #     insert_point,
+        # )
+        # print(
+        #     f"Inserting Mol: {insert_mol} at: {insert_point}. {dist_from_center} A from the sphere center. In sphere = {insphere}"
+        # )
 
         new_positions = self.randomMolecularRotation(insert_mol, insert_point)
 
@@ -2574,7 +2574,7 @@ class GCMCSystemSampler(BaseGrandCanonicalMonteCarloSampler):
 
         # Select a point to insert the molecule (based on centre of heavy atoms)
         insert_point = np.random.rand(3) * self.simulation_box
-        print(insert_point)
+        #print(insert_point)
 
         # Randomly rotate the molecule, and shift to the insertion point
         new_positions = self.randomMolecularRotation(insert_mol, insert_point)
