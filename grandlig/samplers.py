@@ -1191,52 +1191,6 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
 
         return None
 
-    def calcDist2Center(self, state, xyz):
-        """
-        Calculate the distance between a point in space and the sphere center
-        Parameters
-        ----------
-        state : openmm.State
-            Current simulation state
-        xyz : openmm.unit.Quantity
-            xyz coordinates to calculate distance to
-        Returns:
-            openmm.unit.Quantity: Distance between the two points
-            bool: is the molecule in the sphere defined by the radius, True of False.
-        """
-        # Get the sphere centre, if using reference atoms, otherwise this will be fine
-        if self.ref_atoms is not None:
-            self.getSphereCentre()
-
-        box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
-        self.simulation_box = (
-            np.array(
-                [
-                    box_vectors[0, 0]._value,
-                    box_vectors[1, 1]._value,
-                    box_vectors[2, 2]._value,
-                ]
-            )
-            * unit.nanometer
-        )
-
-        # Check if the molecule is within the sphere
-        vector = xyz - self.sphere_centre
-        #  Correct PBCs of this vector - need to make this part cleaner
-        for i in range(3):
-            if vector[i] >= 0.5 * self.simulation_box[i]:
-                vector[i] -= self.simulation_box[i]
-            elif vector[i] <= -0.5 * self.simulation_box[i]:
-                vector[i] += self.simulation_box[i]
-        # Set molecule status as appropriate
-        dist = np.linalg.norm(vector.in_units_of(unit.angstroms)) * unit.angstrom
-        if dist <= self.sphere_radius:
-            inSphere = True
-        else:
-            inSphere = False
-
-        return dist, inSphere
-
     def updateGCMCSphere(self, state):
         """Update the relevant GCMC-sphere related parameters. This also involves monitoring
         which molecules are in/out of the region
@@ -1469,6 +1423,53 @@ class GCMCSphereSampler(BaseGrandCanonicalMonteCarloSampler):
             filehandler.close()
 
         return None
+
+    def calcDist2Center(self, state, xyz):
+        """
+        Calculate the distance between a point in space and the sphere center
+
+        Parameters
+        ----------
+        state : openmm.State
+            Current simulation state
+        xyz : openmm.unit.Quantity
+            xyz coordinates to calculate distance to
+        Returns:
+            openmm.unit.Quantity: Distance between the two points
+            bool: is the molecule in the sphere defined by the radius, True of False.
+        """
+        # Get the sphere centre, if using reference atoms, otherwise this will be fine
+        if self.ref_atoms is not None:
+            self.getSphereCentre()
+
+        box_vectors = state.getPeriodicBoxVectors(asNumpy=True)
+        self.simulation_box = (
+            np.array(
+                [
+                    box_vectors[0, 0]._value,
+                    box_vectors[1, 1]._value,
+                    box_vectors[2, 2]._value,
+                ]
+            )
+            * unit.nanometer
+        )
+
+        # Check if the molecule is within the sphere
+        vector = xyz - self.sphere_centre
+        #  Correct PBCs of this vector - need to make this part cleaner
+        for i in range(3):
+            if vector[i] >= 0.5 * self.simulation_box[i]:
+                vector[i] -= self.simulation_box[i]
+            elif vector[i] <= -0.5 * self.simulation_box[i]:
+                vector[i] += self.simulation_box[i]
+        # Set molecule status as appropriate
+        dist = np.linalg.norm(vector.in_units_of(unit.angstroms)) * unit.angstrom
+        if dist <= self.sphere_radius:
+            inSphere = True
+        else:
+            inSphere = False
+
+        return dist, inSphere
 
 
 ########################################################################################################################
