@@ -72,4 +72,3 @@ Welcome to grandlig's documentation!
    user_guide
    api
    developer_guide
-

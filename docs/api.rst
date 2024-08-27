@@ -4,4 +4,6 @@ API Documentation
 .. autosummary::
    :toctree: autosummary
 
-   grandlig.canvas
+   grandlig.samplers
+   grandlig.potential
+   grandlig.utils
