@@ -7,3 +7,6 @@ API Documentation
    grandlig.samplers
    grandlig.potential
    grandlig.utils
+
+.. toctree::
+    :maxdepth: 2

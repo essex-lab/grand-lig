@@ -32,3 +32,5 @@ Contributors
 - Ollie Melling: ojm2g16@soton.ac.uk
 - Hannah Bruce Macdonald
 
+.. toctree::
+    :maxdepth: 2

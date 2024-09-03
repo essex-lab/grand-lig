@@ -6,12 +6,11 @@
 Welcome to grandlig's documentation!
 =========================================================
 
-.. grid:: 1 1 2 2
+.. grid:: 1 1 2 3
 
-    .. grid-item-card:: Getting Started
+    .. grid-item-card:: Background and Installation
       :margin: 0 3 0 0
-      
-      Learn the basics of using grandlig.
+
 
       .. button-link:: ./getting_started.html
          :color: primary
@@ -34,7 +33,17 @@ Welcome to grandlig's documentation!
 
          To the User Guide
       
-      
+    .. grid-item-card:: Examples
+      :margin: 0 3 0 0
+
+      Find examples using grandlig
+
+      .. button-link:: examples/examples.html
+         :color: primary
+         :outline:
+         :expand:
+
+         To the Examples.
 
     .. grid-item-card:: API Reference
       :margin: 0 3 0 0
@@ -66,9 +75,17 @@ Welcome to grandlig's documentation!
 .. toctree::
    :maxdepth: 2
    :hidden:
-   :titlesonly:
 
    getting_started
    user_guide
    api
    developer_guide
+   examples/examples
+
+
+Indices and tables
+------------------
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
