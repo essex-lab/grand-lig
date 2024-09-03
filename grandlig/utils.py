@@ -810,10 +810,9 @@ def LinearAlchemicalFunction(start, end, lambda_in):
 def get_lambda_values(lambda_in, vdw_end=0.75):
     """
     Calculate the lambda_sterics and lambda_electrostatics values for a given lambda.
-    For a deletion move:
-        Electrostatics are decoupled from lambda=1 to 0.75, and sterics are decoupled from lambda=0.75 to 0.
-    For an Insertion move:
-        Sterics are coupled from lambda=0 to 0.75. Electrostatics are coupled from 0.75 to 1.
+    For a deletion move: Electrostatics are decoupled from lambda=1 to 0.75, and sterics are decoupled from lambda=0.75 to 0.
+    For an Insertion move: Sterics are coupled from lambda=0 to 0.75. Electrostatics are coupled from 0.75 to 1.
+
     Parameters
     ----------
     lambda_in : float
