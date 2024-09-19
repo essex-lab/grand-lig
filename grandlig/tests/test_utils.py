@@ -469,12 +469,12 @@ class TestUtils(unittest.TestCase):
 
         return None
 
-    def test_shift_ghost_waters(self):
+    def test_shift_ghost_molecules(self):
         """
         Test that the shift_ghost_waters() function works
         """
         # First check that the function can return Trajectory if required
-        t = utils.shift_ghost_waters(
+        t = utils.shift_ghost_molecules(
             ghost_file=utils.get_data_file(
                 os.path.join("tests", "bpti-ghost-wats.txt")
             ),
@@ -487,7 +487,7 @@ class TestUtils(unittest.TestCase):
         )
         assert isinstance(t, mdtraj.Trajectory)
         # Then make sure that the code can also write a DCD file
-        utils.shift_ghost_waters(
+        utils.shift_ghost_molecules(
             ghost_file=utils.get_data_file(
                 os.path.join("tests", "bpti-ghost-wats.txt")
             ),
@@ -811,7 +811,7 @@ class TestUtils(unittest.TestCase):
 
         return None
 
-    def test_get_lambda_values():
+    def test_get_lambda_values(self):
         """
         Test the get_lambda_values() function, designed to retrieve steric and
         electrostatic lambda values from a single lambda value.

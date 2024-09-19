@@ -53,13 +53,8 @@ def setup_BaseGrandCanonicalMonteCarloSampler(outdir):
         300 * kelvin, 1.0 / picosecond, 0.002 * picoseconds
     )
 
-    try:
-        platform = Platform.getPlatformByName("CUDA")
-    except:
-        try:
-            platform = Platform.getPlatformByName("OpenCL")
-        except:
-            platform = Platform.getPlatformByName("CPU")
+
+    platform = Platform.getPlatformByName("CPU")
 
     base_gcmc_simulation = Simulation(
         pdb.topology, system, integrator, platform
@@ -115,13 +110,8 @@ def setup_GCMCSphereSampler(outdir):
         300 * kelvin, 1.0 / picosecond, 0.002 * picoseconds
     )
 
-    try:
-        platform = Platform.getPlatformByName("CUDA")
-    except:
-        try:
-            platform = Platform.getPlatformByName("OpenCL")
-        except:
-            platform = Platform.getPlatformByName("CPU")
+
+    platform = Platform.getPlatformByName("CPU")
 
     gcmc_sphere_simulation = Simulation(
         pdb.topology, system, integrator, platform
@@ -181,13 +171,7 @@ def setup_StandardGCMCSphereSampler(outdir):
         300 * kelvin, 1.0 / picosecond, 0.002 * picoseconds
     )
 
-    try:
-        platform = Platform.getPlatformByName("CUDA")
-    except:
-        try:
-            platform = Platform.getPlatformByName("OpenCL")
-        except:
-            platform = Platform.getPlatformByName("CPU")
+    platform = Platform.getPlatformByName("CPU")
 
     std_gcmc_sphere_simulation = Simulation(
         pdb.topology, system, integrator, platform
@@ -250,13 +234,8 @@ def setup_NonequilibriumGCMCSphereSampler(outdir):
     )
 
     # Define a simulation
-    try:
-        platform = Platform.getPlatformByName("CUDA")
-    except:
-        try:
-            platform = Platform.getPlatformByName("OpenCL")
-        except:
-            platform = Platform.getPlatformByName("CPU")
+
+    platform = Platform.getPlatformByName("CPU")
 
     neq_gcmc_sphere_simulation = Simulation(
         pdb.topology, system, neq_gcmc_sphere_sampler.integrator, platform
@@ -309,14 +288,8 @@ def setup_GCMCSystemSampler(outdir):
     integrator = BAOABIntegrator(
         300 * kelvin, 1.0 / picosecond, 0.002 * picoseconds
     )
+    platform = Platform.getPlatformByName("CPU")
 
-    try:
-        platform = Platform.getPlatformByName("CUDA")
-    except:
-        try:
-            platform = Platform.getPlatformByName("OpenCL")
-        except:
-            platform = Platform.getPlatformByName("CPU")
 
     gcmc_system_simulation = Simulation(
         pdb.topology, system, integrator, platform
@@ -372,13 +345,7 @@ def setup_StandardGCMCSystemSampler(outdir):
         300 * kelvin, 1.0 / picosecond, 0.002 * picoseconds
     )
 
-    try:
-        platform = Platform.getPlatformByName("CUDA")
-    except:
-        try:
-            platform = Platform.getPlatformByName("OpenCL")
-        except:
-            platform = Platform.getPlatformByName("CPU")
+    platform = Platform.getPlatformByName("CPU")
 
     std_gcmc_system_simulation = Simulation(
         pdb.topology, system, integrator, platform
@@ -437,13 +404,7 @@ def setup_NonequilibriumGCMCSystemSampler(outdir):
 
     # Define a simulation
 
-    try:
-        platform = Platform.getPlatformByName("CUDA")
-    except:
-        try:
-            platform = Platform.getPlatformByName("OpenCL")
-        except:
-            platform = Platform.getPlatformByName("CPU")
+    platform = Platform.getPlatformByName("CPU")
 
     neq_gcmc_system_simulation = Simulation(
         pdb.topology, system, neq_gcmc_system_sampler.integrator, platform
