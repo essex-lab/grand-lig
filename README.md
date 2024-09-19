@@ -1,27 +1,20 @@
-[![Build Status](https://travis-ci.org/essex-lab/grand.svg?branch=master)](https://travis-ci.org/essex-lab/grand)
-[![Anaconda-Server Badge](https://anaconda.org/essexlab/grand/badges/version.svg)](https://anaconda.org/essexlab/grand)
-[![Anaconda-Server Badge](https://anaconda.org/essexlab/grand/badges/downloads.svg)](https://anaconda.org/essexlab/grand)
-[![Documentation Status](https://readthedocs.org/projects/grand/badge/?version=latest)](https://grand.readthedocs.io/en/latest/?badge=latest)
-[![DOI](https://zenodo.org/badge/270705695.svg)](https://zenodo.org/badge/latestdoi/270705695)
+<!-- [![Anaconda-Server Badge](https://anaconda.org/essexlab/grand/badges/version.svg)](https://anaconda.org/essexlab/grand)
+[![Anaconda-Server Badge](https://anaconda.org/essexlab/grand/badges/downloads.svg)](https://anaconda.org/essexlab/grand) -->
 
-# From Molssi
-<!-- [//]: # (Badges)
-[![GitHub Actions Build Status](https://github.com/REPLACE_WITH_OWNER_ACCOUNT/grandlig/workflows/CI/badge.svg)](https://github.com/REPLACE_WITH_OWNER_ACCOUNT/grandlig/actions?query=workflow%3ACI)
-[![codecov](https://codecov.io/gh/REPLACE_WITH_OWNER_ACCOUNT/grandlig/branch/main/graph/badge.svg)](https://codecov.io/gh/REPLACE_WITH_OWNER_ACCOUNT/grandlig/branch/main) -->
+
+
+[![GitHub Actions Build Status](https://github.com/essex-lab/grandlig/workflows/CI/badge.svg)](https://github.com/essex-lab/grandlig/actions?query=workflow%3ACI)
+[![Documentation Status](https://readthedocs.org/projects/grand/badge/?version=latest)](https://grand.readthedocs.io/en/latest/?badge=latest)
+[![codecov](https://codecov.io/gh/REPLACE_WITH_OWNER_ACCOUNT/grandlig/branch/main/graph/badge.svg)](https://codecov.io/gh/REPLACE_WITH_OWNER_ACCOUNT/grandlig/branch/main) [![DOI](https://zenodo.org/badge/270705695.svg)](https://zenodo.org/badge/latestdoi/270705695)
 
 # _grandlig_ : Grand Canonical Ligand Sampling in OpenMM
 
-*PRIVATE REPO FOR DEVELOPMENT*
-
 ### Background
 
-This Python module is designed to be run with OpenMM in order to simulate grand
-canonical Monte Carlo (GCMC) and nonequilibirum candidate Monte Carlo (GCNCMC) insertion and deletion moves of ligand and water molecules.
-This allows the particle number to vary according to a fixed chemical
-potential, and offers enhanced sampling of molecules in occluded
-binding sites.
-The theory behind our work on GCMC sampling can be found in the References
-section below.
+This Python module is designed to be run with OpenMM in order to simulate grand canonical Monte Carlo (GCMC) and nonequilibirum candidate Monte Carlo (GCNCMC) insertion and deletion moves of ligand and water molecules. This allows the particle number to vary according to a fixed chemical
+potential, and offers enhanced sampling of molecules in occluded binding sites.
+
+The theory behind our work on GCMC sampling can be found in the References section below.
 
 ### Installation & Usage
 
@@ -57,24 +50,25 @@ the `examples/` directory.
 Additional [examples](https://github.com/essex-lab/grand-paper) and 
 [documentation](https://grand.readthedocs.io/en/latest/) are also available.
 
-The _grand_ module is released under the MIT licence. If results from this
-module contribute to a publication, we ask that you cite Refs. 1 and 2, below.
-Ref. 1 discusses the initial implemention while ref. 2 discusses the implementation
-and testing of the non-equilibrium moves.
-Additional references describing the theory upon which the GCMC implemention
-in _grand_ is based are also provided below (Refs. 3-4).
+The _grandlig_ module is released under the MIT licence. 
 
-- M. L. Samways, H. E. Bruce Macdonald, J. W. Essex, _J. Chem. Inf. Model._,
-2020, 60, 4436-4441, DOI: https://doi.org/10.1021/acs.jcim.0c00648
+If results from this module contribute to a publication, we ask that you cite the following publications:
 
-Additional references describing the theory of GCMC are provided below.
+- PLACEHOLDER FOR PAPER
+- O. J. Melling, M. L. Samways, Y. Ge, D. L. Mobley, J. W. Essex, _J. Chem. Theory Comput._, 2023,
+DOI: https://doi.org/10.1021/acs.jctc.2c00823
+- M. L. Samways, H. E. Bruce Macdonald, J. W. Essex, _J. Chem. Inf. Model._, 2020, 60, 4436-4441, DOI: https://doi.org/10.1021/acs.jcim.0c00648
+
+
+Ref. 1 discusses the initial implemention of ligand-based GCNCMC. Ref. 2 discusses the implementation and testing of the non-equilibrium moves with water molecules. Ref. 3 describes the original implementation of _grand_ from which this work stems from. 
+
+Additional references describing the theory upon which the GCNCMC implemention in _grandlig_ is based are also provided below.
 
 ### Contributors
 
 - Will Poole `<wp1g16@soton.ac.uk>` 
 - Marley Samways `<mls2g13@soton.ac.uk>`
 - Ollie Melling `<ojm2g16@soton.ac.uk>`
-- Hannah Bruce Macdonald
 
 ### Contact
 

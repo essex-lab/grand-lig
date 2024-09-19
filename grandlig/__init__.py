@@ -8,7 +8,7 @@ Marley L. Samways
 Ollie Melling
 """
 
-__version__ = "1.0.0.dev2"
+__version__ = "1.0.0"
 
 from grandlig import samplers, utils, potential, tests
 # from ._version import __version__
@@ -21,8 +21,6 @@ print(
 )
 
 print("If you are only interested in water simulations, we recommend using the original implementation while this module undergoes more extensive testing.")
-
-print("Astex Branch!!!")
 
 """GCMC Sampling"""
 
