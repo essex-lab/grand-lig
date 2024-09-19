@@ -18,7 +18,7 @@ import collections
 
 outdir = os.path.join(os.path.dirname(__file__), "output", "utils")
 
-def get_ForceContrib(pdb, system):
+def get_ForceContrib(system, pdb):
     positions = pdb.positions
     force_labels = {}
     for i, force in enumerate(system.getForces()):

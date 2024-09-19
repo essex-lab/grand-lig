@@ -11,7 +11,6 @@ Will Poole
 Marley Samways
 Ollie Melling
 """
-import copy
 import os
 import numpy as np
 import mdtraj
@@ -21,12 +20,6 @@ import openmm
 from openmm import app
 from copy import deepcopy
 from scipy.cluster import hierarchy
-from openmmtools.constants import ONE_4PI_EPS0
-from openmmtools.integrators import BAOABIntegrator
-import rdkit
-from rdkit import Chem
-from rdkit.Chem import AllChem
-import itertools
 from tqdm import tqdm
 
 

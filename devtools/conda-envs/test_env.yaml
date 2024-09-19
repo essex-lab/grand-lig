@@ -12,7 +12,6 @@ dependencies:
   - openmm
   - parmed
   - pymbar
-  - rdkit
   - scipy
   - tqdm
   - openmmtools
