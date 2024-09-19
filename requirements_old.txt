@@ -1,0 +1,13 @@
+setuptools~=58.2.0
+grand~=1.0.1-dev-lig
+openmm~=8.0.0
+openmmtools~=0.21.5
+numpy~=1.23.5
+grandlig~=1.0.0.dev2
+mdtraj~=1.9.7
+mdanalysis~=2.4.2
+parmed~=3.4.4
+rdkit~=2022.03.5
+scipy~=1.9.3
+tqdm~=4.62.3
+pymbar~=3.1.1

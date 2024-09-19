@@ -6,6 +6,15 @@ dependencies:
     # Base depends
   - python
   - pip
+  - numpy
+  - MDAnalysis
+  - mdtraj
+  - openmm
+  - parmed
+  - pymbar
+  - rdkit
+  - scipy
+  - tqdm
 
     # Testing
   - pytest
