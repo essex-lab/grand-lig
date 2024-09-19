@@ -1,5 +1,5 @@
 # Manually added
-grandlig/tests/output/
+grandlig/tests/output/*
 .DS_Store
 docs/Makefile
 docs/make.bat
