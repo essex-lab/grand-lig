@@ -15,6 +15,7 @@ dependencies:
   - rdkit
   - scipy
   - tqdm
+  - openmmtools
 
     # Testing
   - pytest
