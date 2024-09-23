@@ -836,12 +836,11 @@ class TestNonequilibriumGCMCSphereSampler(unittest.TestCase):
         )
         
         if neq_gcmc_sphere_sampler.tracked_variables["n_explosions"] != 1:
-
-        assert (
-            len(neq_gcmc_sphere_sampler.tracked_variables["insert_works"]) == 1
-            or len(neq_gcmc_sphere_sampler.tracked_variables["delete_works"])
-            == 1
-        )
+            assert (
+                len(neq_gcmc_sphere_sampler.tracked_variables["insert_works"]) == 1
+                or len(neq_gcmc_sphere_sampler.tracked_variables["delete_works"])
+                == 1
+            )
         assert (
             0
             <= neq_gcmc_sphere_sampler.tracked_variables["n_left_sphere"]
