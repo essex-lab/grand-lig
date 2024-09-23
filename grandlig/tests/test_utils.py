@@ -124,13 +124,7 @@ class TestUtils(unittest.TestCase):
             300 * kelvin, 1.0 / picosecond, 0.002 * picoseconds
         )
 
-        try:
-            platform = Platform.getPlatformByName("CUDA")
-        except:
-            try:
-                platform = Platform.getPlatformByName("OpenCL")
-            except:
-                platform = Platform.getPlatformByName("CPU")
+        platform = Platform.getPlatformByName("CPU")
 
         simulation = Simulation(pdb.topology, system, integrator, platform)
         simulation.context.setPositions(pdb.positions)

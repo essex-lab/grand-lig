@@ -75,6 +75,8 @@ def calc_mu_ex(
         Pressure of the simulation, will default to NVT
     turnOff : bool
         Decouple the molecule rather than couple
+    platform : None or openmm.Platform
+        Specify a platform to the run the simulation on. CUDA, OpenCL, CPU. Will try and use CUDA if None specifeid.
 
     Returns
     -------
@@ -85,7 +87,6 @@ def calc_mu_ex(
     integrator = openmmtools.integrators.BAOABIntegrator(
         temperature, 1.0 / picosecond, 0.002 * picoseconds
     )
-
     # Name the log file, if not already done
     if log_file is None:
         "dG.log"
@@ -99,6 +100,7 @@ def calc_mu_ex(
         log=log_file,
         ghostFile="calc_mu-ghosts.txt",
         overwrite=True,
+        platform=None
     )
     # Remove unneeded ghost file
     os.remove("calc_mu-ghosts.txt")
@@ -108,15 +110,19 @@ def calc_mu_ex(
         system.addForce(MonteCarloBarostat(pressure, temperature, 25))
 
     # Define the platform, first try CUDA, then OpenCL, then CPU
-    try:
+
+    if platform:
         platform = Platform.getPlatformByName("CUDA")
-        platform.setPropertyDefaultValue("Precision", "mixed")
-    except:
+    else:                                              
         try:
-            platform = Platform.getPlatformByName("OpenCL")
-            # platform.setPropertyDefaultValue('Precision', 'mixed')
+            platform = Platform.getPlatformByName("CUDA")
+            platform.setPropertyDefaultValue("Precision", "mixed")
         except:
-            platform = Platform.getPlatformByName("CPU")
+            try:
+                platform = Platform.getPlatformByName("OpenCL")
+                # platform.setPropertyDefaultValue('Precision', 'mixed')
+            except:
+                platform = Platform.getPlatformByName("CPU")
 
     # Create a simulation object
     simulation = Simulation(topology, system, integrator, platform)
@@ -221,7 +227,7 @@ def calc_mu_ex(
 
 
 def calc_avg_volume(
-    system, topology, positions, box_vectors, temperature, n_samples, n_equil
+    system, topology, positions, box_vectors, temperature, n_samples, n_equil, platform=None
 ):
     """
     Calculate the average volume of each species in a given system and parameters, this is the volume
@@ -257,16 +263,18 @@ def calc_avg_volume(
         temperature, 1.0 / picosecond, 0.002 * picoseconds
     )
 
-    # Define the platform, first try CUDA, then OpenCL, then CPU
-    try:
+    if platform:
         platform = Platform.getPlatformByName("CUDA")
-        platform.setPropertyDefaultValue("Precision", "mixed")
-    except:
+    else:                                              
         try:
-            platform = Platform.getPlatformByName("OpenCL")
-            # platform.setPropertyDefaultValue('Precision', 'mixed')
+            platform = Platform.getPlatformByName("CUDA")
+            platform.setPropertyDefaultValue("Precision", "mixed")
         except:
-            platform = Platform.getPlatformByName("CPU")
+            try:
+                platform = Platform.getPlatformByName("OpenCL")
+                # platform.setPropertyDefaultValue('Precision', 'mixed')
+            except:
+                platform = Platform.getPlatformByName("CPU")
 
     # Create a simulation object
     simulation = Simulation(topology, system, integrator, platform)

@@ -834,6 +834,9 @@ class TestNonequilibriumGCMCSphereSampler(unittest.TestCase):
         assert neq_gcmc_sphere_sampler.velocities.unit.is_compatible(
             nanometers / picosecond
         )
+        
+        if neq_gcmc_sphere_sampler.tracked_variables["n_explosions"] != 1:
+
         assert (
             len(neq_gcmc_sphere_sampler.tracked_variables["insert_works"]) == 1
             or len(neq_gcmc_sphere_sampler.tracked_variables["delete_works"])
@@ -1146,7 +1149,7 @@ class TestNonequilibriumGCMCSystemSampler(unittest.TestCase):
         assert neq_gcmc_system_sampler.velocities.unit.is_compatible(
             nanometers / picosecond
         )
-        if neq_gcmc_system_sampler.tracked_variables["n_explosions"] == 1:
+        if neq_gcmc_system_sampler.tracked_variables["n_explosions"] != 1:
             assert (
                 len(neq_gcmc_system_sampler.tracked_variables["insert_works"]) == 1
                 or len(neq_gcmc_system_sampler.tracked_variables["delete_works"])

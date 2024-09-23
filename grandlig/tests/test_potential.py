@@ -85,6 +85,7 @@ class TestPotential(unittest.TestCase):
             n_equil=1,
             log_file=log_file,
             pressure=1 * bar,
+            platform="CPU"
         )
 
         # Check that a free energy has been returned
@@ -124,7 +125,7 @@ class TestPotential(unittest.TestCase):
             box_vectors=pdb.topology.getPeriodicBoxVectors(),
             temperature=298 * kelvin,
             n_samples=10,
-            n_equil=1,
+            n_equil=1, platform="CPU"
         )
 
         # Check that a volume has been returned
