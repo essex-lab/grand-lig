@@ -15,7 +15,7 @@ dependencies:
   - scipy
   - tqdm
   - openmmtools
-  - numba
+  - numba >= 0.60
     # Testing
   - pytest
   - pytest-cov
