@@ -40,6 +40,7 @@ def calc_mu_ex(
     log_file,
     pressure=None,
     turnOff=True,
+    platform=None
 ):
     """
     Calculate the excess chemical potential of a molecule in a given system,
