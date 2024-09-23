@@ -101,7 +101,6 @@ def calc_mu_ex(
         log=log_file,
         ghostFile="calc_mu-ghosts.txt",
         overwrite=True,
-        platform=None
     )
     # Remove unneeded ghost file
     os.remove("calc_mu-ghosts.txt")
