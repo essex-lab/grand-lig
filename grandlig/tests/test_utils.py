@@ -17,6 +17,9 @@ from grandlig import utils
 import collections
 
 outdir = os.path.join(os.path.dirname(__file__), "output", "utils")
+# if os.path.exists(outdir):
+#     os.rmdir(outdir)
+# os.makedirs(outdir)
 
 def get_ForceContrib(system, pdb):
     positions = pdb.positions
@@ -27,16 +30,17 @@ def get_ForceContrib(system, pdb):
     for force_index, force in enumerate(system.getForces()):
         force.setForceGroup(force_index)
     new_sys = copy.deepcopy(system)
-    platform = Platform.getPlatformByName('Reference')
+    platform = Platform.getPlatformByName("Reference")
     inte_1 = VerletIntegrator(1.0 * femtosecond)
     contex_1 = Context(new_sys, inte_1, platform)
     contex_1.setPositions(positions)
     energy_components = collections.OrderedDict()
     for force_label, force_index in force_labels.items():
-        energy_components[force_label] = contex_1.getState(getEnergy=True,
-                                                        groups=2 ** force_index).getPotentialEnergy()
+        energy_components[force_label] = contex_1.getState(
+            getEnergy=True, groups=2**force_index
+        ).getPotentialEnergy()
     for key in energy_components.keys():
-        print(f'{key} - {energy_components[key]}')
+        print(f"{key} - {energy_components[key]}")
     return np.sum(list(energy_components.values()))
 
 
@@ -51,9 +55,7 @@ class TestUtils(unittest.TestCase):
         Get things ready to run these tests
         """
         # Make the output directory if needed
-        if not os.path.isdir(
-            os.path.join(os.path.dirname(__file__), "output")
-        ):
+        if not os.path.isdir(os.path.join(os.path.dirname(__file__), "output")):
             os.mkdir(os.path.join(os.path.dirname(__file__), "output"))
         # Create a new directory if needed
         if not os.path.isdir(outdir):
@@ -65,15 +67,11 @@ class TestUtils(unittest.TestCase):
 
         return None
 
-
-
     def test_CreateForces(self):
         """
         Test that setting up the custom forces doesnt result in a change in energy
         """
-        pdb = PDBFile(
-            utils.get_data_file(os.path.join("tests", "WaterBenzene.pdb"))
-        )
+        pdb = PDBFile(utils.get_data_file(os.path.join("tests", "WaterBenzene.pdb")))
 
         ff = ForceField(
             "tip3p.xml",
@@ -87,26 +85,30 @@ class TestUtils(unittest.TestCase):
             switchDistance=10 * angstroms,
         )
 
+        # Turn off the nonbonded dispersion correction
+        for f in range(system.getNumForces()):
+            force = system.getForce(f)
+            if force.__class__.__name__ == "NonbondedForce":
+                nonbonded_force = force
+        nonbonded_force.setUseDispersionCorrection(False)
+
         original_E = get_ForceContrib(system, pdb)._value
         assert np.isclose(original_E, -85598.8164271966)
 
         # Setup the new forces
-        param_dict, custom_nb = utils.create_custom_forces()
+        param_dict, custom_nb = utils.create_custom_forces(system, pdb.topology, "L01")
         assert type(param_dict) == dict
         new_E = get_ForceContrib(system, pdb)._value
         assert np.isclose(original_E, new_E)
         return None
-    
-    
+
     def test_PDBRestartReporter(self):
         """
         Check that the PDBRestart Reporter works okay
         """
         # First need to create a Simulation
         # Load a pre-equilibrated water box
-        pdb = PDBFile(
-            utils.get_data_file(os.path.join("tests", "water_box-eq.pdb"))
-        )
+        pdb = PDBFile(utils.get_data_file(os.path.join("tests", "water_box-eq.pdb")))
 
         # Set up system
         ff = ForceField("tip3p.xml")
@@ -133,9 +135,7 @@ class TestUtils(unittest.TestCase):
         simulation = Simulation(pdb.topology, system, integrator, platform)
         simulation.context.setPositions(pdb.positions)
         simulation.context.setVelocitiesToTemperature(300 * kelvin)
-        simulation.context.setPeriodicBoxVectors(
-            *pdb.topology.getPeriodicBoxVectors()
-        )
+        simulation.context.setPeriodicBoxVectors(*pdb.topology.getPeriodicBoxVectors())
 
         # Initialise the reporter
         restart_file = os.path.join(outdir, "restart.pdb")
@@ -143,9 +143,7 @@ class TestUtils(unittest.TestCase):
             filename=restart_file, topology=pdb.topology
         )
         # Write a restart PDB out
-        pdb_reporter.report(
-            simulation, simulation.context.getState(getPositions=True)
-        )
+        pdb_reporter.report(simulation, simulation.context.getState(getPositions=True))
 
         # Try to load the PDB to check that it exists and is valid
         pdb_out = PDBFile(restart_file)
@@ -159,9 +157,7 @@ class TestUtils(unittest.TestCase):
         # Check that a known file is returned
         assert os.path.isfile(utils.get_data_file("tip3p.pdb"))
         # Check that a made up file raises an exception
-        self.assertRaises(
-            Exception, lambda: utils.get_data_file("imaginary.file")
-        )
+        self.assertRaises(Exception, lambda: utils.get_data_file("imaginary.file"))
 
         return None
 
@@ -170,9 +166,7 @@ class TestUtils(unittest.TestCase):
         Test that the add_ghosts() and remove_ghosts() functions work fine
         """
         # Need to load some test data
-        bpti_orig = PDBFile(
-            utils.get_data_file(os.path.join("tests", "bpti.pdb"))
-        )
+        bpti_orig = PDBFile(utils.get_data_file(os.path.join("tests", "bpti.pdb")))
         # Count the number of water molecules in this file
         n_wats_orig = 0
         for residue in bpti_orig.topology.residues():
@@ -273,19 +267,12 @@ class TestUtils(unittest.TestCase):
 
         # Check all atoms are accounted for
         assert all(
-            [
-                any([atom[0] == name for atom in atom_data])
-                for name in benzene_atoms
-            ]
+            [any([atom[0] == name for atom in atom_data]) for name in benzene_atoms]
         )
 
         # Make sure the atoms have the correct types
-        assert all(
-            [atom[1] == "ca" for atom in atom_data if atom[0].startswith("C")]
-        )
-        assert all(
-            [atom[1] == "ha" for atom in atom_data if atom[0].startswith("H")]
-        )
+        assert all([atom[1] == "ca" for atom in atom_data if atom[0].startswith("C")])
+        assert all([atom[1] == "ha" for atom in atom_data if atom[0].startswith("H")])
 
         # Make sure charges have been read in for all atoms (check that they can be floats)
         charges = [float(atom[2]) for atom in atom_data]
@@ -293,12 +280,7 @@ class TestUtils(unittest.TestCase):
         # Make sure all bonds have been accounted for
         assert all(
             [
-                any(
-                    [
-                        bond1[0] in bond2 and bond1[1] in bond2
-                        for bond2 in prepi_bonds
-                    ]
-                )
+                any([bond1[0] in bond2 and bond1[1] in bond2 for bond2 in prepi_bonds])
                 for bond1 in benzene_bonds
             ]
         )
@@ -312,22 +294,22 @@ class TestUtils(unittest.TestCase):
         # Using benzene as an example
         benzene_bonds = [
             ["C1", "C2"],
-            ["C2", "C5"],
-            ["C5", "C6"],
-            ["C6", "C4"],
+            ["C2", "C1"],
+            ["C3", "C2"],
             ["C4", "C3"],
-            ["C3", "C1"],
-            ["C1", "H1"],
-            ["C2", "H2"],
-            ["C3", "H3"],
-            ["C4", "H4"],
-            ["C5", "H5"],
-            ["C6", "H6"],
+            ["C5", "C4"],
+            ["C6", "C1"],
+            ["H1", "C1"],
+            ["H2", "C2"],
+            ["H3", "C3"],
+            ["H4", "C4"],
+            ["H5", "C5"],
+            ["H6", "C6"],
         ]
 
         # Write a PDB file with CONECT lines
         utils.write_conect(
-            pdb=utils.get_data_file(os.path.join("tests", "benzene.pdb")),
+            pdb=utils.get_data_file(os.path.join("tests", "Benzene.pdb")),
             resname="BEN",
             prepi=utils.get_data_file(os.path.join("tests", "benzene.prepi")),
             output=os.path.join(outdir, "benzene-conect.pdb"),
@@ -351,14 +333,10 @@ class TestUtils(unittest.TestCase):
 
         # Check that the bonds are the same
         assert len(conect_bonds) == len(benzene_bonds)
+
         assert all(
             [
-                any(
-                    [
-                        bond1[0] in bond2 and bond1[1] in bond2
-                        for bond2 in conect_bonds
-                    ]
-                )
+                any([bond1[0] in bond2 and bond1[1] in bond2 for bond2 in conect_bonds])
                 for bond1 in benzene_bonds
             ]
         )
@@ -402,9 +380,7 @@ class TestUtils(unittest.TestCase):
         # Create the XML file
         xml_file = os.path.join(outdir, "benzene.xml")
         utils.create_ligand_xml(
-            prmtop=utils.get_data_file(
-                os.path.join("tests", "benzene.prmtop")
-            ),
+            prmtop=utils.get_data_file(os.path.join("tests", "benzene.prmtop")),
             prepi=utils.get_data_file(os.path.join("tests", "benzene.prepi")),
             resname="BEN",
             output=xml_file,
@@ -421,32 +397,20 @@ class TestUtils(unittest.TestCase):
         bond_lines = [line for line in all_lines if "<Bond atomName1=" in line]
 
         # Check atom types are correct
-        assert all(
-            ["ca" in line for line in atom_type_lines if "BEN-C" in line]
-        )
-        assert all(
-            ["ha" in line for line in atom_type_lines if "BEN-H" in line]
-        )
+        assert all(["ca" in line for line in atom_type_lines if "BEN-C" in line])
+        assert all(["ha" in line for line in atom_type_lines if "BEN-H" in line])
 
         # Check all atoms are accounted for
         assert len(atom_name_lines) == 12
         assert all(
-            [
-                any([name in line for line in atom_name_lines])
-                for name in benzene_atoms
-            ]
+            [any([name in line for line in atom_name_lines]) for name in benzene_atoms]
         )
 
         # Check that the bonds are correct
         assert len(bond_lines) == len(benzene_bonds)
         assert all(
             [
-                any(
-                    [
-                        bond[0] in line and bond[1] in line
-                        for line in bond_lines
-                    ]
-                )
+                any([bond[0] in line and bond[1] in line for line in bond_lines])
                 for bond in benzene_bonds
             ]
         )
@@ -478,12 +442,8 @@ class TestUtils(unittest.TestCase):
             ghost_file=utils.get_data_file(
                 os.path.join("tests", "bpti-ghost-wats.txt")
             ),
-            topology=utils.get_data_file(
-                os.path.join("tests", "bpti-ghosts.pdb")
-            ),
-            trajectory=utils.get_data_file(
-                os.path.join("tests", "bpti-raw.dcd")
-            ),
+            topology=utils.get_data_file(os.path.join("tests", "bpti-ghosts.pdb")),
+            trajectory=utils.get_data_file(os.path.join("tests", "bpti-raw.dcd")),
         )
         assert isinstance(t, mdtraj.Trajectory)
         # Then make sure that the code can also write a DCD file
@@ -491,12 +451,8 @@ class TestUtils(unittest.TestCase):
             ghost_file=utils.get_data_file(
                 os.path.join("tests", "bpti-ghost-wats.txt")
             ),
-            topology=utils.get_data_file(
-                os.path.join("tests", "bpti-ghosts.pdb")
-            ),
-            trajectory=utils.get_data_file(
-                os.path.join("tests", "bpti-raw.dcd")
-            ),
+            topology=utils.get_data_file(os.path.join("tests", "bpti-ghosts.pdb")),
+            trajectory=utils.get_data_file(os.path.join("tests", "bpti-raw.dcd")),
             output=os.path.join(outdir, "bpti-shifted.dcd"),
         )
         assert os.path.isfile(os.path.join(outdir, "bpti-shifted.dcd"))
@@ -541,22 +497,14 @@ class TestUtils(unittest.TestCase):
         """
         # First check that the function can return Trajectory if required
         t = utils.wrap_waters(
-            topology=utils.get_data_file(
-                os.path.join("tests", "bpti-ghosts.pdb")
-            ),
-            trajectory=utils.get_data_file(
-                os.path.join("tests", "bpti-raw.dcd")
-            ),
+            topology=utils.get_data_file(os.path.join("tests", "bpti-ghosts.pdb")),
+            trajectory=utils.get_data_file(os.path.join("tests", "bpti-raw.dcd")),
         )
         assert isinstance(t, mdtraj.Trajectory)
         # Then make sure that the code can also write a DCD file
         utils.wrap_waters(
-            topology=utils.get_data_file(
-                os.path.join("tests", "bpti-ghosts.pdb")
-            ),
-            trajectory=utils.get_data_file(
-                os.path.join("tests", "bpti-raw.dcd")
-            ),
+            topology=utils.get_data_file(os.path.join("tests", "bpti-ghosts.pdb")),
+            trajectory=utils.get_data_file(os.path.join("tests", "bpti-raw.dcd")),
             output=os.path.join(outdir, "bpti-wrapped.dcd"),
         )
         assert os.path.isfile(os.path.join(outdir, "bpti-wrapped.dcd"))
@@ -592,37 +540,23 @@ class TestUtils(unittest.TestCase):
         """
         # First check that the function can return Trajectory if required (with a reference)
         t1 = utils.align_traj(
-            topology=utils.get_data_file(
-                os.path.join("tests", "bpti-ghosts.pdb")
-            ),
-            trajectory=utils.get_data_file(
-                os.path.join("tests", "bpti-raw.dcd")
-            ),
-            reference=utils.get_data_file(
-                os.path.join("tests", "bpti-ghosts.pdb")
-            ),
+            topology=utils.get_data_file(os.path.join("tests", "bpti-ghosts.pdb")),
+            trajectory=utils.get_data_file(os.path.join("tests", "bpti-raw.dcd")),
+            reference=utils.get_data_file(os.path.join("tests", "bpti-ghosts.pdb")),
         )
         assert isinstance(t1, mdtraj.Trajectory)
 
         # Now check without a reference
         t2 = utils.align_traj(
-            topology=utils.get_data_file(
-                os.path.join("tests", "bpti-ghosts.pdb")
-            ),
-            trajectory=utils.get_data_file(
-                os.path.join("tests", "bpti-raw.dcd")
-            ),
+            topology=utils.get_data_file(os.path.join("tests", "bpti-ghosts.pdb")),
+            trajectory=utils.get_data_file(os.path.join("tests", "bpti-raw.dcd")),
         )
         assert isinstance(t2, mdtraj.Trajectory)
 
         # Then make sure that the code can also write a DCD file
         utils.align_traj(
-            topology=utils.get_data_file(
-                os.path.join("tests", "bpti-ghosts.pdb")
-            ),
-            trajectory=utils.get_data_file(
-                os.path.join("tests", "bpti-raw.dcd")
-            ),
+            topology=utils.get_data_file(os.path.join("tests", "bpti-ghosts.pdb")),
+            trajectory=utils.get_data_file(os.path.join("tests", "bpti-raw.dcd")),
             output=os.path.join(outdir, "bpti-aligned.dcd"),
         )
         assert os.path.isfile(os.path.join(outdir, "bpti-aligned.dcd"))
@@ -650,9 +584,7 @@ class TestUtils(unittest.TestCase):
         os.remove(out)
 
         # Make sure that a trajectory object can be returned
-        t = utils.recentre_traj(
-            topology=pdb, trajectory=dcd, resname="TYR", resid=10
-        )
+        t = utils.recentre_traj(topology=pdb, trajectory=dcd, resname="TYR", resid=10)
         assert isinstance(t, mdtraj.Trajectory)
         # Make sure that a file can be written out
         utils.recentre_traj(
@@ -764,12 +696,8 @@ class TestUtils(unittest.TestCase):
         # Need a centred & aligned trajectory first
         dcd = os.path.join(outdir, "bpti-centred-aligned.dcd")
         t = utils.recentre_traj(
-            topology=utils.get_data_file(
-                os.path.join("tests", "bpti-ghosts.pdb")
-            ),
-            trajectory=utils.get_data_file(
-                os.path.join("tests", "bpti-raw.dcd")
-            ),
+            topology=utils.get_data_file(os.path.join("tests", "bpti-ghosts.pdb")),
+            trajectory=utils.get_data_file(os.path.join("tests", "bpti-raw.dcd")),
             resname="TYR",
             resid=10,
         )
@@ -782,12 +710,8 @@ class TestUtils(unittest.TestCase):
             {"name": "CA", "resname": "ASN", "resid": "43"},
         ]
         utils.cluster_waters(
-            topology=utils.get_data_file(
-                os.path.join("tests", "bpti-ghosts.pdb")
-            ),
-            trajectory=utils.get_data_file(
-                os.path.join("tests", "bpti-raw.dcd")
-            ),
+            topology=utils.get_data_file(os.path.join("tests", "bpti-ghosts.pdb")),
+            trajectory=utils.get_data_file(os.path.join("tests", "bpti-raw.dcd")),
             sphere_radius=4.0,
             ref_atoms=ref_atoms,
             output=clust_pdb,

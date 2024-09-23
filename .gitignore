@@ -4,6 +4,7 @@ grandlig/tests/output/*
 docs/Makefile
 docs/make.bat
 settings.json
+U_matrix.npy
 
 # Molssi Cookiecutter
 # Byte-compiled / optimized / DLL files

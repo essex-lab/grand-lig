@@ -17,7 +17,9 @@ from grandlig import utils
 
 
 outdir = os.path.join(os.path.dirname(__file__), "output", "potential")
-
+# if os.path.exists(outdir):
+#     os.rmdir(outdir)
+# os.makedirs(outdir)
 
 class TestPotential(unittest.TestCase):
     """

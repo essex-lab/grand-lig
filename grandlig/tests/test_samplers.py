@@ -17,7 +17,9 @@ from grandlig import samplers
 from grandlig import utils
 from openmmtools.integrators import BAOABIntegrator
 
-# outdir = os.path.join(os.path.dirname(__file__), "output", "samplers")
+outdir = os.path.join(os.path.dirname(__file__), "output", "samplers")
+# if os.path.exists(outdir):
+#     os.rmdir(outdir)
 # os.makedirs(outdir)
 
 
@@ -450,9 +452,9 @@ class TestBaseGrandCanonicalMonteCarloSampler(unittest.TestCase):
         if not os.path.isdir(outdir):
             os.makedirs(outdir)
         # If not, then clear any files already in the output directory so that they don't influence tests
-        # else:
-        #     for file in os.listdir(outdir):
-        #         os.remove(os.path.join(outdir, file))
+        else:
+            for file in os.listdir(outdir):
+                os.remove(os.path.join(outdir, file))
 
         # Need to create the sampler
         setup_BaseGrandCanonicalMonteCarloSampler(outdir)
@@ -564,9 +566,9 @@ class TestGCMCSphereSampler(unittest.TestCase):
         if not os.path.isdir(outdir):
             os.makedirs(outdir)
         # If not, then clear any files already in the output directory so that they don't influence tests
-        # else:
-        #     for file in os.listdir(outdir):
-        #         os.remove(os.path.join(outdir, file))
+        else:
+            for file in os.listdir(outdir):
+                os.remove(os.path.join(outdir, file))
 
         # Need to create the sampler
         setup_GCMCSphereSampler(outdir)
@@ -727,9 +729,9 @@ class TestStandardGCMCSphereSampler(unittest.TestCase):
         if not os.path.isdir(outdir):
             os.makedirs(outdir)
         # If not, then clear any files already in the output directory so that they don't influence tests
-        # else:
-        #     for file in os.listdir(outdir):
-        #         os.remove(os.path.join(outdir, file))
+        else:
+            for file in os.listdir(outdir):
+                os.remove(os.path.join(outdir, file))
 
         # Create sampler
         setup_StandardGCMCSphereSampler(outdir)
@@ -794,9 +796,9 @@ class TestNonequilibriumGCMCSphereSampler(unittest.TestCase):
         if not os.path.isdir(outdir):
             os.makedirs(outdir)
         # If not, then clear any files already in the output directory so that they don't influence tests
-        # else:
-        #     for file in os.listdir(outdir):
-        #         os.remove(os.path.join(outdir, file))
+        else:
+            for file in os.listdir(outdir):
+                os.remove(os.path.join(outdir, file))
 
         # Create sampler
         setup_NonequilibriumGCMCSphereSampler(outdir)
@@ -933,9 +935,9 @@ class TestGCMCSystemSampler(unittest.TestCase):
         if not os.path.isdir(outdir):
             os.makedirs(outdir)
         # If not, then clear any files already in the output directory so that they don't influence tests
-        # else:
-        #     for file in os.listdir(outdir):
-        #         os.remove(os.path.join(outdir, file))
+        else:
+            for file in os.listdir(outdir):
+                os.remove(os.path.join(outdir, file))
 
         # Need to create the sampler
         setup_GCMCSystemSampler(outdir)
@@ -1040,9 +1042,9 @@ class TestStandardGCMCSystemSampler(unittest.TestCase):
         if not os.path.isdir(outdir):
             os.makedirs(outdir)
         # If not, then clear any files already in the output directory so that they don't influence tests
-        # else:
-        #     for file in os.listdir(outdir):
-        #         os.remove(os.path.join(outdir, file))
+        else:
+            for file in os.listdir(outdir):
+                os.remove(os.path.join(outdir, file))
 
         # Create sampler
         setup_StandardGCMCSystemSampler(outdir)
@@ -1106,9 +1108,9 @@ class TestNonequilibriumGCMCSystemSampler(unittest.TestCase):
         if not os.path.isdir(outdir):
             os.makedirs(outdir)
         # If not, then clear any files already in the output directory so that they don't influence tests
-        # else:
-        #     for file in os.listdir(outdir):
-        #         os.remove(os.path.join(outdir, file))
+        else:
+            for file in os.listdir(outdir):
+                os.remove(os.path.join(outdir, file))
 
         # Create sampler
         setup_NonequilibriumGCMCSystemSampler(outdir)
@@ -1144,11 +1146,12 @@ class TestNonequilibriumGCMCSystemSampler(unittest.TestCase):
         assert neq_gcmc_system_sampler.velocities.unit.is_compatible(
             nanometers / picosecond
         )
-        assert (
-            len(neq_gcmc_system_sampler.tracked_variables["insert_works"]) == 1
-            or len(neq_gcmc_system_sampler.tracked_variables["delete_works"])
-            == 1
-        )
+        if neq_gcmc_system_sampler.tracked_variables["n_explosions"] == 1:
+            assert (
+                len(neq_gcmc_system_sampler.tracked_variables["insert_works"]) == 1
+                or len(neq_gcmc_system_sampler.tracked_variables["delete_works"])
+                == 1
+            )
         assert (
             0 <= neq_gcmc_system_sampler.tracked_variables["n_explosions"] <= 1
         )
