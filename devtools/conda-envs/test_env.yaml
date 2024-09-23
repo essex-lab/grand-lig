@@ -1,4 +1,4 @@
-name: test
+name: grand-test
 channels:
 
   - defaults
@@ -15,7 +15,7 @@ dependencies:
   - scipy
   - tqdm
   - openmmtools
-
+  - numba
     # Testing
   - pytest
   - pytest-cov
