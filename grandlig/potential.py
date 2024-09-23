@@ -112,7 +112,7 @@ def calc_mu_ex(
     # Define the platform, first try CUDA, then OpenCL, then CPU
 
     if platform:
-        platform = Platform.getPlatformByName("CUDA")
+        platform = Platform.getPlatformByName(platform)
     else:                                              
         try:
             platform = Platform.getPlatformByName("CUDA")
@@ -264,7 +264,7 @@ def calc_avg_volume(
     )
 
     if platform:
-        platform = Platform.getPlatformByName("CUDA")
+        platform = Platform.getPlatformByName(platform)
     else:                                              
         try:
             platform = Platform.getPlatformByName("CUDA")
