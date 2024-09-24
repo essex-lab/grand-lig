@@ -3,7 +3,7 @@
 
 
 
-[![GitHub Actions Build Status](https://github.com/essex-lab/grandlig/workflows/CI.yaml/badge.svg)](https://github.com/essex-lab/grandlig/actions)
+[![GitHub Actions Build Status](https://github.com/essex-lab/grandlig/actions/workflows/CI/badge.svg)](https://github.com/essex-lab/grandlig/actions)
 [![Documentation Status](https://readthedocs.org/projects/grandlig/badge/?version=latest)](https://grandlig.readthedocs.io/en/latest/?badge=latest)
 [![codecov](https://codecov.io/gh/REPLACE_WITH_OWNER_ACCOUNT/grandlig/branch/main/graph/badge.svg)](https://codecov.io/gh/REPLACE_WITH_OWNER_ACCOUNT/grandlig/branch/main)
 
