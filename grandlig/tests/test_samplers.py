@@ -230,7 +230,7 @@ def setup_NonequilibriumGCMCSphereSampler(outdir):
         sphereRadius=4 * angstroms,
         integrator=integrator,
         nPropStepsPerPert=10,
-        nPertSteps=1,
+        nPertSteps=19,
         ghostFile=os.path.join(outdir, "bpti-ghost-wats.txt"),
         log=os.path.join(outdir, "neqgcmcspheresampler.log"),
     )
@@ -399,6 +399,8 @@ def setup_NonequilibriumGCMCSystemSampler(outdir):
         topology=pdb.topology,
         temperature=300 * kelvin,
         integrator=integrator,
+        nPropStepsPerPert=10,
+        nPertSteps=19,
         boxVectors=np.array(pdb.topology.getPeriodicBoxVectors()),
         ghostFile=os.path.join(outdir, "water-ghost-wats.txt"),
         log=os.path.join(outdir, "neqgcmcsystemsampler.log"),
