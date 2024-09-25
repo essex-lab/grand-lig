@@ -38,6 +38,7 @@ def calc_mu_ex(
     n_samples,
     n_equil,
     log_file,
+    matout="U_matrix.npy",
     pressure=None,
     turnOff=True,
     platform=None
@@ -184,7 +185,7 @@ def calc_mu_ex(
             gcmc_mover.adjustSpecificMolecule(resid, lambdas[i])
 
     # Save the numpy matrix (for now)
-    np.save("U_matrix.npy", U)
+    np.save(matout, U)
 
     # Calculate equilibration & number of uncorrelated samples
     N_k = np.zeros(n_lambdas, np.int32)

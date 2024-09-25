@@ -3,8 +3,8 @@
 
 
 
-[![GitHub Actions Build Status](https://github.com/essex-lab/grandlig/actions/workflows/CI/badge.svg)](https://github.com/essex-lab/grandlig/actions)
-[![Documentation Status](https://readthedocs.org/projects/grandlig/badge/?version=latest)](https://grandlig.readthedocs.io/en/latest/?badge=latest)
+[![GitHub Actions Build Status](https://github.com/essex-lab/grand-lig/actions/workflows/CI.yaml/badge.svg)](https://github.com/essex-lab/grand-lig/actions)
+[![Documentation Status](https://readthedocs.org/projects/grand-lig/badge/?version=latest)](https://grandlig.readthedocs.io/en/latest/?badge=latest)
 [![codecov](https://codecov.io/gh/REPLACE_WITH_OWNER_ACCOUNT/grandlig/branch/main/graph/badge.svg)](https://codecov.io/gh/REPLACE_WITH_OWNER_ACCOUNT/grandlig/branch/main)
 
 # _grandlig_ : Grand Canonical Ligand Sampling in OpenMM
