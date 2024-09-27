@@ -1,16 +1,27 @@
 name: docs_grandlig
 channels:
-
   - defaults
 dependencies:
-    # Base depends
-  - python
-  - pip
+# Base depends
+- python
+- pip
+- sphinx<7
+- sphinx-click
+- gitpython
+- tqdm
+- libsass
+- nbsphinx
+- nbsphinx-link
+- myst-parser
+- pip:
+  - -e ../
+  - sphinx-design
+  - sphinx-toolbox
+  - sphinx<7
   
-
-
-
-    # Pip-only installs
-  - pip:
-    - -e ../
-
+# These are added automatically by RTD, so we include them here 
+# for a consistent environment.
+- mock
+- pillow
+- sphinx
+- sphinx_rtd_theme
