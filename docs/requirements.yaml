@@ -27,6 +27,8 @@ dependencies:
   - -e ../
   - sphinx-design
   - sphinx-toolbox
+  - sphinx-copybutton
+  - sphinx-rtd-theme
   - sphinx<7
 
 # These are added automatically by RTD, so we include them here 
