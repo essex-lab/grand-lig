@@ -13,12 +13,22 @@ dependencies:
 - nbsphinx
 - nbsphinx-link
 - myst-parser
+- numpy
+- MDAnalysis
+- mdtraj
+- openmm
+- parmed
+- pymbar
+- scipy
+- tqdm
+- openmmtools
+- numba >= 0.60
 - pip:
   - -e ../
   - sphinx-design
   - sphinx-toolbox
   - sphinx<7
-  
+
 # These are added automatically by RTD, so we include them here 
 # for a consistent environment.
 - mock
