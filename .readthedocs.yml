@@ -11,4 +11,4 @@ sphinx:
 
 # Conda environment
 conda:
-  environment: docs/requirements.yml
+  environment: docs/requirements.yaml
