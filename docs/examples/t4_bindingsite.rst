@@ -17,5 +17,3 @@ To run this script with the provided input files in ``grandlig/examples/lysozyme
 .. literalinclude:: ../../examples/lysozyme_bindingsite/Benzene_Binding_site.py
     :language: python
 
-
-   
