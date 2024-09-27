@@ -22,10 +22,10 @@ This module can be installed from this directory by running the following
 command:
 
 ```commandline
-python setup.py install
+pip install .
 ```
 
-The unit tests can then be carried out by running the following command from
+<!-- The unit tests can then be carried out by running the following command from
 this directory:
 ```commandline
 python setup.py test
@@ -43,9 +43,9 @@ openmmtools, and will be installed alongside openmmtools.
 Alternatively, _grandlig_ and its dependencies can be installed via conda:
 ```commandline
 conda install -c omnia -c anaconda -c conda-forge -c essexlab grand
-```
+``` -->
 
-Several (very short) examples of how this module is ran alongside OpenMM can be found in
+Several (short) examples of how this module is ran alongside OpenMM can be found in
 the `examples/` directory.
 Additional [examples](https://github.com/essex-lab/grand-paper) and 
 [documentation](https://grand.readthedocs.io/en/latest/) are also available.
@@ -72,7 +72,7 @@ Additional references describing the theory upon which the GCNCMC implemention i
 
 ### Contact
 
-If you have any problems or questions regarding this module, please contact
+If you have any problems or questions regarding this module, please raise a github issue or contact
 one of the contributors, or send an email to `<j.w.essex@soton.ac.uk>`.
 
 ### References
@@ -91,7 +91,6 @@ https://doi.org/10.1021/acs.jctc.7b00738
 ### Copyright
 
 Copyright (c) 2024, Will Poole
-
 
 #### Acknowledgements
  
