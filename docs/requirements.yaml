@@ -30,6 +30,7 @@ dependencies:
   - sphinx-copybutton
   - sphinx-rtd-theme
   - sphinx<7
+  - pydata-sphinx-theme
 
 # These are added automatically by RTD, so we include them here 
 # for a consistent environment.
