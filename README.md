@@ -20,12 +20,15 @@ The theory behind our work on GCMC sampling can be found in the References secti
 
 ### Installation & Usage
 
+A suitable conda environment is provided in `grand_env.yaml`
+
 This module can be installed from this directory by running the following
-command:
+command (conda coming soon):
 
 ```commandline
 pip install .
 ```
+
 
 <!-- The unit tests can then be carried out by running the following command from
 this directory:
@@ -50,7 +53,7 @@ conda install -c omnia -c anaconda -c conda-forge -c essexlab grand
 Several (short) examples of how this module is ran alongside OpenMM can be found in
 the `examples/` directory.
 Additional [examples](https://github.com/essex-lab/grand-paper) and 
-[documentation](https://grand.readthedocs.io/en/latest/) are also available.
+[documentation](https://grandlig.readthedocs.io/en/latest/) are also available.
 
 The _grandlig_ module is released under the MIT licence. 
 

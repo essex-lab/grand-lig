@@ -8,5 +8,6 @@ As will be discussed in the paper, a hydration free energy calculation is tradit
 
 However, at higher concentrations, the approximation breaks down because interactions with other molecules of the same type take effect. Imagine the free energy of adding a Benzene molecule to a water box vs. a 0.5 M solution of water+benzene. It would be a lot more favourable in the later. 
 
-This is an example with Benzene at 0.5M and Toluene at infinite dilution.
+This is an example with Benzene at 0.5M. 
 
+Here, we calculate the excess chemical potential from one script. But it would also be possible to make use of parallelisation and run indiviudal lambda windows as seperate jobs. 

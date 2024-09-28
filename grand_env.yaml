@@ -1,0 +1,20 @@
+name: grandlig
+channels:
+
+  - defaults
+dependencies:
+    # Base depends
+  - python
+  - pip
+  - numpy
+  - MDAnalysis
+  - mdtraj
+  - openmm
+  - parmed
+  - pymbar
+  - scipy
+  - tqdm
+  - openmmtools
+  - numba >= 0.60
+
+
