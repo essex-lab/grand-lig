@@ -5,8 +5,7 @@
 
 [![GitHub Actions Build Status](https://github.com/essex-lab/grand-lig/actions/workflows/CI.yaml/badge.svg)](https://github.com/essex-lab/grand-lig/actions)
 [![Documentation Status](https://readthedocs.org/projects/grandlig/badge/?version=latest)](https://grandlig.readthedocs.io/en/latest/?badge=latest)
-<!-- [![codecov](https://codecov.io/gh/REPLACE_WITH_OWNER_ACCOUNT/grandlig/branch/main/graph/badge.svg)](https://codecov.io/gh/REPLACE_WITH_OWNER_ACCOUNT/grandlig/branch/main) -->
-
+[![codecov](https://codecov.io/gh/essex-lab/grand-lig/branch/master/graph/badge.svg?token=7CS2ZD6SX7)](https://codecov.io/gh/essex-lab/grand-lig)
 
 
 # _grandlig_ : Grand Canonical Ligand Sampling in OpenMM
@@ -20,7 +19,7 @@ The theory behind our work on GCMC sampling can be found in the References secti
 
 ### Installation & Usage
 
-A suitable conda environment is provided in `grand_env.yaml`
+A suitable conda environment is provided in `grand_env.yaml`. We recommend making a new environment from the `.yaml` file.
 
 This module can be installed from this directory by running the following
 command (conda coming soon):
@@ -29,6 +28,11 @@ command (conda coming soon):
 pip install .
 ```
 
+The tests can be carried out by running the following command from this directory:
+```commandline
+pytest -v grandlig/tests/
+```
+Please note, these tests may take a while as they are configured to run on the CPU platform (Up to 2hrs). 
 
 <!-- The unit tests can then be carried out by running the following command from
 this directory:
