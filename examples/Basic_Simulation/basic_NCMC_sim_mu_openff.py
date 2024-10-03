@@ -127,7 +127,7 @@ ff = ForceField("amber14-all.xml", "amber14/tip3p.xml")
 from openmmforcefields.generators import (
     SMIRNOFFTemplateGenerator,
 )
-lig = [Molecule.from_file(sdf_file = args.sdf
+lig = [Molecule.from_file(args.sdf
 )]
 
 smirnoff = SMIRNOFFTemplateGenerator(molecules=lig, forcefield="openff-2.2.0")
