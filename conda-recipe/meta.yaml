@@ -1,6 +1,6 @@
 package:
   name: grandlig
-  version: 1.0.1
+  version: "1.0.0"
 
 source:
   path: ..
@@ -16,17 +16,27 @@ requirements:
   build:
     - python>=3.10
     - pytest
+    - openmm>=8.0  
   run:
-    - openmmtools>=0.15.0
     - lxml
-    - pymbar>=3.0.5
+    - openmm>=8.0
+    - pip
+    - numpy
+    - MDAnalysis
+    - mdtraj
+    - parmed
+    - pymbar
+    - scipy
+    - tqdm
+    - openmmtools
+    - numba>=0.60
 
 test:
   requires:
     - pytest
 
 about:
-  home: https://github.com/essex-lab/grandlig
-  summary: A Python module for carrying out GCMC insertions and deletions of water molecules in OpenMM.
+  home: https://github.com/essex-lab/grand-lig
+  summary: A Python module for carrying out GCNCMC insertions and deletions of small molecules in OpenMM.
   license: MIT
 

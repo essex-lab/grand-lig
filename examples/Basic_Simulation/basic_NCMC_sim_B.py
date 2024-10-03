@@ -211,11 +211,10 @@ for i in range(150):
     ncmc_mover.move(simulation.context, 1)
 
 
-print(
-    "{}/{} equilibration NCMC moves accepted. N = {}".format(
-        ncmc_mover.n_accepted, ncmc_mover.n_moves, ncmc_mover.N
-    )
-)
+print("{}/{} equilibration GCMC moves accepted ({}). N = {}".format(ncmc_mover.tracked_variables["n_accepted"],
+                                                                    ncmc_mover.tracked_variables["n_moves"],
+                                                                    ncmc_mover.tracked_variables["acceptance_probabilities"],
+                                                                    ncmc_mover.N))
 
 print(f"Simulating for {equil_md_steps / 2} MD equil steps")
 simulation.step(int(equil_md_steps / 2))
