@@ -4,7 +4,7 @@ Script that uses GCNCMC to find the occluded Benzene binding site of T4L99A.
 
 import numpy as np
 import argparse
-from openmm.app import *
+from openmm.app import * 
 from openmm import *
 from openmm.unit import *
 from openmmtools.integrators import BAOABIntegrator
@@ -173,7 +173,7 @@ for i in range(50):  # Number of MD - GCNCMC move cycles to perform
 
 # Setup the output files
 # Move ghost waters out of the simulation cell for better visulisation
-trj = grand.utils.shift_ghost_waters(
+trj = grand.utils.shift_ghost_molecules(
     ghost_file="ncmc-ghost-ligs.txt",
     topology="T4L99AWithghosts.pdb",
     trajectory="T4L99A_raw.dcd",

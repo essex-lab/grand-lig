@@ -194,7 +194,7 @@ ncmc_mover.deleteMoleculesInGCMCSphere()  # If there are any 'on' molecules in t
 
 print("Minimising...")
 simulation.minimizeEnergy(
-    tolerance=0.0001 * kilojoules/mole/nanometer, maxIterations=10000
+    tolerance=0.0001 * kilojoules / mole / nanometer, maxIterations=10000
 )  # Quick Minimisation
 
 
@@ -212,10 +212,14 @@ for i in range(150):
     ncmc_mover.move(simulation.context, 1)
 
 
-print("{}/{} equilibration GCMC moves accepted ({}). N = {}".format(ncmc_mover.tracked_variables["n_accepted"],
-                                                                    ncmc_mover.tracked_variables["n_moves"],
-                                                                    ncmc_mover.tracked_variables["acceptance_probabilities"],
-                                                                    ncmc_mover.N))
+print(
+    "{}/{} equilibration GCMC moves accepted ({}). N = {}".format(
+        ncmc_mover.tracked_variables["n_accepted"],
+        ncmc_mover.tracked_variables["n_moves"],
+        ncmc_mover.tracked_variables["acceptance_probabilities"],
+        ncmc_mover.N,
+    )
+)
 
 print(f"Simulating for {equil_md_steps / 2} MD equil steps")
 simulation.step(int(equil_md_steps / 2))
@@ -232,7 +236,7 @@ for i in range(n_gcncmc_moves):
 
 # Setup the output files
 # Move ghost waters out of the simulation cell
-trj = grand.utils.shift_ghost_waters(
+trj = grand.utils.shift_ghost_molecules(
     ghost_file="ncmc-ghost-ligs.txt",
     topology="Protein_Ghosts.pdb",
     trajectory="gcncmc_raw.dcd",
