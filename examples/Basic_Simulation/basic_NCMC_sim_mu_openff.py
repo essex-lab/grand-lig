@@ -207,7 +207,7 @@ ncmc_mover.deleteMoleculesInGCMCSphere()  # If there are any 'on' molecules in t
 
 print("Minimising...")
 simulation.minimizeEnergy(
-    tolerance=0.0001 * kilojoule / mole, maxIterations=10000
+    tolerance=0.0001 * kilojoules/mole/nanometer, maxIterations=10000
 )  # Quick Minimisation
 
 
