@@ -2023,16 +2023,16 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         gcmc_mols_new = self.getMolStatusResids(1)
 
         # Calculate acceptance probability
-        if insert_mol not in gcmc_mols_new:
+        if explosion:
+            acc_prob = -1
+            self.logger.info("Move rejected due to an instability during integration")
+        elif insert_mol not in gcmc_mols_new:
             # If the inserted molecule leaves the sphere, the move cannot be reversed and therefore cannot be accepted
             acc_prob = -1
             self.tracked_variables["n_left_sphere"] += 1
             self.tracked_variables["outcome"].append("left_sphere")
             self.tracked_variables["insert_works"].append(np.nan)
             self.logger.info("Move rejected due to molecule leaving the GCMC sphere")
-        elif explosion:
-            acc_prob = -1
-            self.logger.info("Move rejected due to an instability during integration")
         else:
             # Store the protocol work
             self.logger.info("Insertion work = {}".format(protocol_work))
@@ -2157,16 +2157,17 @@ class NonequilibriumGCMCSphereSampler(GCMCSphereSampler):
         )  # Remeber we've left the status of delete mol as 1 so far
 
         # Calculate acceptance probability
-        if delete_mol not in gcmc_mols_new:
+        if explosion:
+            acc_prob = 0
+            self.logger.info("Move rejected due to an instability during integration")
+        elif delete_mol not in gcmc_mols_new:
             # If the deleted molecule leaves the sphere, the move cannot be reversed and therefore cannot be accepted
             acc_prob = 0
             self.tracked_variables["n_left_sphere"] += 1
             self.tracked_variables["outcome"].append("left_sphere")
             self.tracked_variables["delete_works"].append(np.nan)
             self.logger.info("Move rejected due to molecule leaving the GCMC sphere")
-        elif explosion:
-            acc_prob = 0
-            self.logger.info("Move rejected due to an instability during integration")
+
         else:
             # Get the protocol work
             self.logger.info("Deletion work = {}".format(protocol_work))
