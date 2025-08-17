@@ -609,6 +609,13 @@ def create_custom_forces(system, topology, resnames):
         if force.__class__.__name__ == "NonbondedForce":
             nonbonded_force = force
 
+    # Make sure that sigma is not equal to zero to avoid division by zero in the soft-core potential calculations
+    for atom_idx in range(nonbonded_force.getNumParticles()):
+        [charge, sigma, epsilon] = nonbonded_force.getParticleParameters(atom_idx)
+        if np.isclose(sigma._value, 0.0):
+            sigma = 1.0 * unit.angstrom
+            nonbonded_force.setParticleParameters(atom_idx, charge, sigma, epsilon)
+
     # Get the parameters corresponding to each molecule type
     param_dict = {}
     for resname in resnames:
@@ -684,10 +691,6 @@ def create_custom_forces(system, topology, resnames):
         # Get atom parameters
         [charge, sigma, epsilon] = nonbonded_force.getParticleParameters(atom_idx)
 
-        # Make sure that sigma is not equal to zero (sometimes an issue with the reference force, this fixes it.)
-        if np.isclose(sigma._value, 0.0):
-            sigma = 1.0 * unit.angstrom
-
         # Add particle to the custom force (with lambda=1 for now)
         custom_sterics.addParticle([sigma, epsilon, 1.0])
         # Dont get rid of the interactions in the original force yet, because we need that information for the exceptions below
@@ -748,10 +751,6 @@ def create_custom_forces(system, topology, resnames):
             exception_idx
         )
 
-        # Make sure that sigma is not equal to zero
-        if np.isclose(sigma._value, 0.0):
-            sigma = 1.0 * unit.angstrom
-
         # Copy this over as an exclusion so it isn't counted by the CustomNonbonded Force
         custom_sterics.addExclusion(i, j)
 
@@ -759,10 +758,6 @@ def create_custom_forces(system, topology, resnames):
     for atom_idx in range(nonbonded_force.getNumParticles()):
         # Get atom parameters
         [charge, sigma, epsilon] = nonbonded_force.getParticleParameters(atom_idx)
-
-        # Make sure that sigma is not equal to zero
-        if np.isclose(sigma._value, 0.0):
-            sigma = 1.0 * unit.angstrom
 
         # Disable steric interactions in the original force by setting epsilon=0 (keep the charges for PME purposes)
         nonbonded_force.setParticleParameters(atom_idx, charge, sigma, abs(0))
