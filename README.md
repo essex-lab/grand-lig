@@ -63,7 +63,8 @@ The _grandlig_ module is released under the MIT licence.
 
 If results from this module contribute to a publication, we ask that you cite the following publications:
 
-- PLACEHOLDER FOR PAPER
+- W. G. Poole, M. L. Samways, D. Branduardi, R. D. Taylor, M. L. Verdonk, J. W. Essex, _Nat Commun_, 2025, 16, 6198
+DOI: https://doi.org/10.1038/s41467-025-60561-3
 - O. J. Melling, M. L. Samways, Y. Ge, D. L. Mobley, J. W. Essex, _J. Chem. Theory Comput._, 2023,
 DOI: https://doi.org/10.1021/acs.jctc.2c00823
 - M. L. Samways, H. E. Bruce Macdonald, J. W. Essex, _J. Chem. Inf. Model._, 2020, 60, 4436-4441, DOI: https://doi.org/10.1021/acs.jcim.0c00648
