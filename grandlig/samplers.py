@@ -177,12 +177,12 @@ class BaseGrandCanonicalMonteCarloSampler(object):
 
         # Create the custom forces, if requested (default)
         if createCustomForces:
-            # Get molecule parameters
-            self.mol_params = self.getMoleculeParameters(resname)
             # Create the custom forces
-            (_, self.custom_nb_force) = utils.create_custom_forces(
+            param_dict, self.custom_nb_force = utils.create_custom_forces(
                 system, topology, [resname]
             )
+            # Get molecule parameters
+            self.mol_params = param_dict[resname]
             # Also need to assign exception IDs to each molecule ID
             self.getMoleculeExceptions()
         else:
@@ -301,36 +301,6 @@ class BaseGrandCanonicalMonteCarloSampler(object):
                 self.tracked_variables[key] = 0
 
         return None
-
-    def getMoleculeParameters(self, resname):
-        """
-        Get the non-bonded parameters for each of the atoms in the molecule model used
-
-        Parameters
-        ----------
-        resname : str
-            Name of the molecule residues
-
-        Returns
-        -------
-        mol_params : list
-            List of dictionaries containing the charge, sigma and epsilon for each molecule atom
-        """
-        mol_params = []  # Store parameters in a list
-        for residue in self.topology.residues():
-            if residue.name == resname:
-                for atom in residue.atoms():
-                    # Store the parameters of each atom
-                    atom_params = self.nonbonded_force.getParticleParameters(atom.index)
-                    mol_params.append(
-                        {
-                            "charge": atom_params[0],
-                            "sigma": atom_params[1],
-                            "epsilon": atom_params[2],
-                        }
-                    )
-                break  # Don't need to continue past the first instance
-        return mol_params
 
     def getMoleculeResids(self, resname):
         """
